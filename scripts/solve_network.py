@@ -47,9 +47,14 @@ from prepare_sector_network import get
 from pypsa.descriptors import get_activity_mask
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
 
+from pathlib import Path
+
 logger = logging.getLogger(__name__)
 pypsa.pf.logger.setLevel(logging.WARNING)
 
+tmpdir= '/scratch/' + os.environ['SLURM_JOB_ID']
+if tmpdir is not None:
+   Path(tmpdir).mkdir(parents=True, exist_ok=True)
 
 def add_land_use_constraint_perfect(n):
     """
@@ -1006,6 +1011,7 @@ def solve_network(n, config, params, solving, **kwargs):
     if kwargs["solver_name"] == "gurobi":
         logging.getLogger("gurobipy").setLevel(logging.CRITICAL)
 
+    #model_kwargs["solver_dir"] = tmpdir
     rolling_horizon = cf_solving.pop("rolling_horizon", False)
     skip_iterations = cf_solving.pop("skip_iterations", False)
     if not n.lines.s_nom_extendable.any():
@@ -1061,6 +1067,7 @@ if __name__ == "__main__":
             sector_opts="",
             # planning_horizons="2030",
         )
+    print("here")
     configure_logging(snakemake)
     set_scenario_config(snakemake)
     update_config_from_wildcards(snakemake.config, snakemake.wildcards)

@@ -602,7 +602,7 @@ def calculate_weighted_prices(n, label, weighted_prices):
         #    stores = n.stores_t.p[buses+ " Store"].groupby(n.stores.loc[buses+ " Store", "bus"],axis=1).sum(axis=1)
         #    stores[stores > 0.] = 0.
         #    load += -stores
-
+        print(carrier, label)
         weighted_prices.loc[carrier, label] = (
             load * n.buses_t.marginal_price[buses]
         ).sum().sum() / load.sum().sum()

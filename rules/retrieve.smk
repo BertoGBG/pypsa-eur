@@ -87,6 +87,8 @@ if config["enable"]["retrieve"]:
             shapes_level_2="data/nuts/NUTS_RG_03M_2013_4326_LEVL_2.geojson",
         params:
             zip_file="data/nuts/ref-nuts-2013-03m.geojson.zip",
+        resources:
+            mem_mb=5000,
         run:
             os.rename(input.shapes, params.zip_file)
             with ZipFile(params.zip_file, "r") as zip_ref:

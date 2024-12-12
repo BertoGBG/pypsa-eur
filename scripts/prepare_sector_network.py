@@ -1017,7 +1017,7 @@ def add_methanol_reforming_cc(n, costs):
     )
 
 
-def add_dac(n, costs):
+def add_dac(n, costs, hi=-1, ei=-1):
     heat_carriers = ["urban central heat", "services urban decentral heat"]
     heat_buses = n.buses.index[n.buses.carrier.isin(heat_carriers)]
     locations = n.buses.location[heat_buses]
@@ -1031,6 +1031,11 @@ def add_dac(n, costs):
         - costs.at["direct air capture", "compression-heat-output"]
     )  # MWh_th / tCO2
 
+    if hi > 0:
+       heat_input = hi
+    if ei > 0:
+       electricity_input = ei
+    print("H, EI-----------",hi, ei)
     n.madd(
         "Link",
         heat_buses.str.replace(" heat", " DAC"),
@@ -1047,6 +1052,39 @@ def add_dac(n, costs):
         lifetime=costs.at["direct air capture", "lifetime"],
     )
 
+
+def add_EW(n,marg=1, eff=1, cap=1):
+    nodes = pop_layout.index
+    n.add("Carrier", "EW")
+    n.add("Carrier", "EW store")
+
+    n.madd(
+        "Bus", nodes + " EW co2 store", location=nodes, carrier="EW"
+    )
+
+    n.madd(
+        "Store",
+        nodes + " EW co2 store",
+        suffix=" EW",
+        bus=nodes + " EW co2 store",
+        e_nom = 4E7/len(nodes),
+        carrier="EW store",
+    )
+    n.madd(
+        "Link",
+        nodes,
+        suffix= " EW",
+        bus0=nodes.values,
+        bus1="co2 atmosphere",
+        bus2= nodes + " EW co2 store",
+        carrier = "EW",
+        capital_cost = 922345*cap,
+        marginal_cost = 844*marg,
+        efficiency=-5.4*eff,
+        efficiency2=5.4*eff,
+        p_nom_extendable=True,
+        lifetime = 15,
+    )
 
 def add_co2limit(n, options, nyears=1.0, limit=0.0):
     logger.info(f"Adding CO2 budget limit as per unit of 1990 levels of {limit}")
@@ -4541,6 +4579,25 @@ if __name__ == "__main__":
             planning_horizons="2030",
         )
 
+    opts = snakemake.wildcards.sector_opts.split("-")
+    hi = -1
+    ei = -1
+    eff = 1
+    marg = 1
+    cap = 1
+    for o in opts:
+        if "hi" in o:
+            hi = float(o.split("+")[-1])
+            print(hi)
+        if "ei" in o:
+            ei = float(o.split("+")[-1]) 
+        if "eff" in o:
+            eff = float(o.split("+")[-1])
+        if "marg" in o:
+            marg = float(o.split("+")[-1])
+        if "cap" in o:
+            cap = float(o.split("+")[-1])
+	
     configure_logging(snakemake)
     set_scenario_config(snakemake)
     update_config_from_wildcards(snakemake.config, snakemake.wildcards)
@@ -4623,7 +4680,10 @@ if __name__ == "__main__":
         add_agriculture(n, costs)
 
     if options["dac"]:
-        add_dac(n, costs)
+        add_dac(n, costs, hi, ei)
+
+    if options["EW"]:
+        add_EW(n, marg, eff, cap)
 
     if not options["electricity_transmission_grid"]:
         decentral(n)
