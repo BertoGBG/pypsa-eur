@@ -41,12 +41,12 @@ scenario:
   - vopt
   clusters:
   - 39
-  - 128
-  - 256
+  #- 128
+  #- 256
   opts:
   - ''
   sector_opts:
-  - ''
+  - 168H-T-H-B-I-A
   planning_horizons:
   # - 2020
   # - 2030
@@ -394,11 +394,11 @@ biomass:
     - Poplar
     - FuelwoodRW
     - C&P_RW
+    - "Sunflower, soya seed"
     biofuels 1G:
     - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Sugar from sugar beet
     - Rape seed
-    - "Sunflower, soya seed"
     biogas:
     - Manure solid, liquid
     - Sludge
@@ -610,8 +610,8 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
-  EW: false
-  perennial: false
+  EW: false 
+  perennial: true
   co2_vent: false
   central_heat_vent: false
   allam_cycle_gas: false
