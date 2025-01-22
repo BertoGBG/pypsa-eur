@@ -268,6 +268,28 @@ renewable:
     eia_correct_by_capacity: false
     eia_approximate_missing: false
 
+biochar:
+  corine: [12, 13, 14] # codes for arable land in Corine Land Cover (CLC) dataset
+  potential_per_sqkm: 75 # in tonnes
+  co2_per_tonne: 2.5 # in tonnes
+  max_land_usage: 0.2 # in percentage
+EW:
+  EW_hot: 
+    corine: [12, 13]
+    potential_per_sqkm: 839 # in tonnes
+    co2_per_tonne:  # in tonnes
+    climate: [23, 24, 28, 33, 34, 36]
+  EW_temperate:
+    corine: [12, 13]
+    potential_per_sqkm: 309 # in tonnes
+    co2_per_tonne: # in tonnes   
+    climate: [10, 11, 14, 15]
+  max_land_usage: 0.2 # in percentage
+perennials:
+  yield_perennials: 15 # tDM perennials/ha/y
+  potential_co2_perennials: 2 # tCO2e/ha/y sequestred
+  yields_biofuels_1G: [38.1, 22.3, 11.9] # MWh/ha [Bioethanol barley, Sugar beet, Rape seed]
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
   unit_commitment: false
@@ -393,6 +415,12 @@ biomass:
     - Poplar
     - FuelwoodRW
     - C&P_RW
+    biofuels_1Gbioethanol:
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
+    biofuels_1Gsugar:
+    - Sugar from sugar beet
+    biofuels_1Grs:
+    - Rape seed
     biogas:
     - Manure solid, liquid
     - Sludge

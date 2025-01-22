@@ -431,6 +431,25 @@ rule build_biomass_potentials:
         "../scripts/build_biomass_potentials.py"
 
 
+rule build_EW_potentials:
+    params:
+        component = "EW",
+    input:
+        corine_dataset = "data/bundle/corine/g250_clc06_V18_5.tif",
+        network_geojson = resources("regions_onshore_base_s_{clusters}.geojson"),
+        bioclimate_dataset = "data/World_Ecological_BioVal_cluster.tif",
+    output:
+        csv_file = resources("EW_potentials_s_{clusters}.csv"),
+        png_file = resources("EW_potentials_s_{clusters}.png"),
+    log:
+        logs("build_EW_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb = 10000, #5000,
+    conda:
+        "../envs/environment.yaml"
+    script:
+        "../scripts/build_potentials_EW.py"
+
 rule build_biomass_transport_costs:
     input:
         sc1="data/biomass_transport_costs_supplychain1.csv",
@@ -1067,6 +1086,11 @@ rule prepare_sector_network:
             )
             if config_provider("foresight")(w) == "overnight"
             else resources("biomass_potentials_s_{clusters}_{planning_horizons}.csv")
+        ),
+        EW_potentials=lambda w: (
+            resources("EW_potentials_s_{clusters}.csv")
+            if config_provider("sector", "EW")(w)
+            else []
         ),
         costs=lambda w: (
             resources("costs_{}.csv".format(config_provider("costs", "year")(w)))

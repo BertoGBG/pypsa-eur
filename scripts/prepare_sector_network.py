@@ -1059,15 +1059,18 @@ def add_EW(n,marg=1, eff=1, cap=1):
     n.add("Carrier", "EW store")
 
     n.madd(
-        "Bus", nodes + " EW co2 store", location=nodes, carrier="EW"
+        "Bus", nodes + " EW co2 store", location=nodes, carrier="EW", unit="t_co2",
     )
+    EW_potentials = pd.read_csv(snakemake.input.EW_potentials, index_col=0)
+    EW_potentials = EW_potentials.sum(axis=1)*snakemake.config["EW"]["max_land_usage"]
+    print(EW_potentials)
 
     n.madd(
         "Store",
         nodes,
         suffix=" EW co2 store",
         bus=nodes + " EW co2 store",
-        e_nom = 4E7/len(nodes),
+        e_nom = EW_potentials,
         carrier="EW store",
     )
     n.madd(
@@ -1085,82 +1088,85 @@ def add_EW(n,marg=1, eff=1, cap=1):
         p_nom_extendable=True,
         lifetime = 15,
     )
+def add_perennial(n, cap=1, marg=1):
+    perennial_CO2_seq = (
+        snakemake.config["perennials"]["yield_perennials"]
+        / snakemake.config["perennials"]["potential_co2_perennials"]
+    )  # tDM perennials / tCO2e sequestred
+    print("perennial Co2 seq",perennial_CO2_seq)
 
-def add_perennial(n):
     nodes = pop_layout.index
     n.add("Carrier", "perennial")
     n.add("Carrier", "perennial store")
 
     n.madd(
-        "Bus", nodes + " perennials co2 store", location=nodes, carrier="perennial store"
+        "Bus",
+        nodes + " perennials co2 store",
+        location=nodes,
+        carrier="perennial store",
+        unit="t_co2",
     )
 
-    #n.madd('Bus',nodes +' CO2s_perennials',carrier = 'perennial')
 
     df_gbr = pd.DataFrame(index=n.snapshots, columns=["harvest"])
     df_gbr["harvest"] = df_gbr.index.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(int)
-    #df_gbr["harvest"] = df_gbr.index.month.isin([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]).astype(int)
+    # df_gbr["harvest"] = df_gbr.index.month.isin([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]).astype(int)
     p_max_pu = pd.DataFrame(index=n.snapshots, columns=nodes)
 
     for node in nodes:
         p_max_pu[node] = df_gbr["harvest"]
 
     n.madd(
-      "Link",
-      nodes,
-      suffix = " perennials_GBR",
-      bus0="co2 atmosphere",
-      bus1=nodes + " perennials co2 store",
-      bus2=nodes.values,
-      bus3 =spatial.gas.biogas,
-      efficiency=1,
-      efficiency2 = -1.42, #-eff_el,
-      efficiency3 = 15.97, #eff_biogas,
-      carrier = "perennial",
-      p_nom_extendable=True,
-      p_max_pu = p_max_pu,
-      capital_cost=0, #8.339710e+11, #tech_costs.at['Perennials_GBR', "fixed"],
-      marginal_cost=0, #7.187500e+05, #tech_costs.at['Perennials_GBR', "VOM"]
-      lifetime = 25,
+        "Link",
+        nodes,
+        suffix=" perennials_GBR",
+        bus0="co2 atmosphere",
+        bus1=nodes + " perennials co2 store",
+        bus2=nodes.values,
+        bus3=spatial.gas.biogas,
+        efficiency=1,
+        efficiency2=-0.0733 * perennial_CO2_seq,  # -costs.at['perennials gbr', "electricity-input"] * perennial_CO2_seq,
+        efficiency3=0.33 * perennial_CO2_seq,  # costs.at['perennials gbr', "biomethane-output"] * perennial_CO2_seq,
+        carrier="perennial",
+        p_nom_extendable=True,
+        p_max_pu=p_max_pu,
+        capital_cost=4894 * cap * perennial_CO2_seq,  # costs.at['perennials gbr', "fixed"] * perennial_CO2_seq , --> hardocoded including FOM!
+        marginal_cost=(57.72 - 0.33 * costs.at["biogas manure", "fuel"]) * marg   * perennial_CO2_seq,  # (costs.at['perennials gbr', "VOM"] - costs.at['perennials gbr', "biomethane-output"] * costs.at['biogas manure', 'fuel']) * perennial_CO2_seq, # includes avoided cost for biogas feedstock
+        lifetime=25,  # costs.at['perennials gbr', "lifetime"],
     )
-    print(n.links_t.p_max_pu[n.links[n.links.carrier=="perennial"].index])
+    print(n.links.efficiency2[n.links[n.links.carrier == "perennial"].index])
+    print(n.links.capital_cost[n.links[n.links.carrier == "perennial"].index])
+    print(n.links.marginal_cost[n.links[n.links.carrier == "perennial"].index])
+    print(n.links.efficiency3[n.links[n.links.carrier == "perennial"].index])
+    print(n.links_t.p_max_pu[n.links[n.links.carrier == "perennial"].index])
 
-    nodes_per_country = n.buses.groupby('country').size()
-    countries = ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'FR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK', 'UK']
-    potential_per_country = [0.0, 0.7050691087028436, 0.0, 1.174572113821395, 1.7285812310384285, 0.0, 0.0, 1.6383211771946447, 6.409241470406588, 0.322573575179746, 0.32907133793577686, 0.922797540150047, 5.670842097390862, 0.07813697628059649, 15.173867427323081, 2.0124943876278376, 1.6564409605019665, 0.10706013720348581, 0.0, 4.469270049680192, 2.003422074398534, 0.02878412196721925, 0.2994050710812737, 0.0, 0.0, 0.0, 0.6812078576787576, 0.0, 3.5843302014667295, 0.008972393652742867, 2.241333074057427, 0.0, 0.23953124356176214, 0.02208127906323082, 0.6373849280907636, 6.810782536790558]
-    country_values = pd.DataFrame({
-    'country': countries,
-    'value': potential_per_country,
-})
+    # TODO test new version
+    biomass_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
 
-    # Merge with network buses
-    copu = n.buses.replace("",np.nan)
-    valid_buses = copu[copu['country'].notnull()].index
-    buses_with_values = n.buses[['country']]
-    buses_with_values = buses_with_values.loc[valid_buses] #.reset_index()
-    buses_with_values = buses_with_values.reset_index().merge(
-        country_values, on='country', how='left'
+    perennials_potentials_spatial = (
+        (
+            biomass_potentials.filter(regex='biofuels_1G')
+            / snakemake.config["perennials"]["yields_biofuels_1G"]
+        ).sum(axis=1)
+        * snakemake.config["perennials"]["potential_co2_perennials"]
+    )  # potential tCO2e seq
+    #print(perennials_potentials_spatial)
+    print(perennials_potentials_spatial.describe())
+    print(perennials_potentials_spatial[perennials_potentials_spatial <= 0])  # Check for invalid values
+    print(perennials_potentials_spatial.isna().sum())  # Check for NaNs
+    print("Second case (multiplication):", perennials_potentials_spatial.max())
+
+    n.madd(
+        "Store",
+        nodes,
+        suffix=" CO2s_perennials",
+        bus=nodes + " perennials co2 store",
+        e_nom_extendable=True,  
+        e_nom_max=perennials_potentials_spatial, 
+        carrier="perennial store",
+        e_cyclic=False,
     )
-    nodes_per_country = n.buses.groupby('country').size()
-    buses_with_values['nodes_per_country'] = buses_with_values['country'].map(nodes_per_country)
-
-    # Distribute the values
-    buses_with_values['distributed_value'] = (
-        277778*buses_with_values['value'] / buses_with_values['nodes_per_country']
-    )
-    buses_with_values.set_index(buses_with_values["Bus"], inplace=True)
-    buses_with_values["distributed_value"] = buses_with_values["distributed_value"].fillna(0)
-
-    n.madd('Store',
-           nodes,
-           suffix= ' CO2s_perennials',
-           bus= nodes + ' perennials co2 store',
-           e_nom_extendable= True, #False,
-           e_nom_max = buses_with_values['distributed_value'], #CO2s_potential_perennials,
-           carrier = "perennial store",
-           e_cyclic = False)
-    print(n.stores.e_nom_max[n.stores.carrier=="perennial store"])
-
+    #print(n.stores.e_nom_max[n.stores.carrier == "perennial store"])
 
 def add_co2limit(n, options, nyears=1.0, limit=0.0):
     logger.info(f"Adding CO2 budget limit as per unit of 1990 levels of {limit}")
@@ -4762,7 +4768,7 @@ if __name__ == "__main__":
         add_EW(n, marg, eff, cap)
     
     if options["perennial"]:
-        add_perennial(n)
+        add_perennial(n, cap, marg)
 
     if not options["electricity_transmission_grid"]:
         decentral(n)
