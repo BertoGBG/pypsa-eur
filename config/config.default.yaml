@@ -406,10 +406,7 @@ biomass:
     - Sawdust
     - Residues from landscape care
     not included:
-    - Sugar from sugar beet
-    - Rape seed
     - "Sunflower, soya seed "
-    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Miscanthus, switchgrass, RCG
     - Willow
     - Poplar
