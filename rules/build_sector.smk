@@ -94,7 +94,7 @@ rule build_gas_network:
     output:
         cleaned_gas_network=resources("gas_network.csv"),
     resources:
-        mem_mb=4000,
+        mem_mb=8000,
     log:
         logs("build_gas_network.log"),
     benchmark:
@@ -118,7 +118,7 @@ rule build_gas_input_locations:
             "gas_input_locations_s_{clusters}_simplified.csv"
         ),
     resources:
-        mem_mb=2000,
+        mem_mb=5000,
     log:
         logs("build_gas_input_locations_s_{clusters}.log"),
     benchmark:
@@ -137,7 +137,7 @@ rule cluster_gas_network:
     output:
         clustered_gas_network=resources("gas_network_base_s_{clusters}.csv"),
     resources:
-        mem_mb=4000,
+        mem_mb=8000,
     log:
         logs("cluster_gas_network_{clusters}.log"),
     benchmark:
@@ -187,7 +187,7 @@ rule build_hourly_heat_demand:
             "residential_heat_dsm_profile_total_base_s_{clusters}.csv"
         ),
     resources:
-        mem_mb=2000,
+        mem_mb=5000,
     threads: 8
     log:
         logs("build_hourly_heat_demand_total_s_{clusters}.loc"),
@@ -308,7 +308,7 @@ rule build_dh_areas:
     output:
         dh_areas=resources("dh_areas_base_s_{clusters}.geojson"),
     resources:
-        mem_mb=2000,
+        mem_mb=5000,
     log:
         logs("build_dh_areas_s_{clusters}.log"),
     benchmark:
@@ -348,7 +348,7 @@ rule build_geothermal_heat_potential:
             "heat_source_power_geothermal_base_s_{clusters}.csv"
         ),
     resources:
-        mem_mb=2000,
+        mem_mb=5000,
     log:
         logs("build_heat_source_potentials_geothermal_s_{clusters}.log"),
     benchmark:
@@ -425,7 +425,7 @@ rule build_ates_potentials:
             "ates_potentials_base_s_{clusters}_{planning_horizons}.csv"
         ),
     resources:
-        mem_mb=2000,
+        mem_mb=5000,
     log:
         logs("build_ates_potentials_s_{clusters}_{planning_horizons}.log"),
     benchmark:
@@ -714,7 +714,7 @@ rule build_ptes_operations:
             "ptes_e_max_pu_profiles_base_s_{clusters}_{planning_horizons}.nc"
         ),
     resources:
-        mem_mb=2000,
+        mem_mb=6000,
     log:
         logs("build_ptes_operations_s_{clusters}_{planning_horizons}.log"),
     benchmark:
@@ -789,7 +789,7 @@ rule build_eurostat_balances:
         csv=resources("eurostat_energy_balances.csv"),
     threads: 1
     resources:
-        mem_mb=4000,
+        mem_mb=16000,
     log:
         logs("build_eurostat_balances.log"),
     benchmark:
@@ -807,7 +807,7 @@ rule build_swiss_energy_balances:
         csv=resources("switzerland_energy_balances.csv"),
     threads: 1
     resources:
-        mem_mb=4000,
+        mem_mb=6000,
     log:
         logs("build_swiss_energy_balances.log"),
     benchmark:
@@ -879,7 +879,7 @@ rule build_heat_totals:
         heat_totals=resources("heat_totals.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=6000,
     log:
         logs("build_heat_totals.log"),
     benchmark:
@@ -911,7 +911,7 @@ rule build_biomass_potentials:
         ),
     threads: 8
     resources:
-        mem_mb=2000,
+        mem_mb=6000,
     log:
         logs("build_biomass_potentials_s_{clusters}_{planning_horizons}.log"),
     benchmark:
@@ -930,7 +930,7 @@ rule build_biomass_transport_costs:
         biomass_transport_costs=resources("biomass_transport_costs.csv"),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=4000,
     log:
         logs("build_biomass_transport_costs.log"),
     benchmark:
@@ -953,7 +953,7 @@ rule build_co2_sequestration_potentials:
         resources("co2_sequestration_potentials.geojson"),
     threads: 1
     resources:
-        mem_mb=4000,
+        mem_mb=8000,
     log:
         logs("build_co2_sequestration_potentials.log"),
     benchmark:
@@ -979,7 +979,7 @@ rule build_clustered_co2_sequestration_potentials:
         ),
     threads: 1
     resources:
-        mem_mb=4000,
+        mem_mb=8000,
     log:
         logs("build_clustered_co2_sequestration_potentials_{clusters}.log"),
     benchmark:
@@ -999,7 +999,7 @@ rule build_salt_cavern_potentials:
         h2_cavern_potential=resources("salt_cavern_potentials_s_{clusters}.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_salt_cavern_potentials_s_{clusters}.log"),
     benchmark:
@@ -1017,7 +1017,7 @@ rule build_ammonia_production:
         ammonia_production=resources("ammonia_production.csv"),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=4000,
     log:
         logs("build_ammonia_production.log"),
     benchmark:
@@ -1039,7 +1039,7 @@ rule build_industry_sector_ratios:
         industry_sector_ratios=resources("industry_sector_ratios.csv"),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_industry_sector_ratios.log"),
     benchmark:
@@ -1067,7 +1067,7 @@ rule build_industry_sector_ratios_intermediate:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_industry_sector_ratios_{planning_horizons}.log"),
     benchmark:
@@ -1093,7 +1093,7 @@ rule build_industrial_production_per_country:
         ),
     threads: 8
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_industrial_production_per_country.log"),
     benchmark:
@@ -1117,7 +1117,7 @@ rule build_industrial_production_per_country_tomorrow:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_industrial_production_per_country_tomorrow_{planning_horizons}.log"),
     benchmark:
@@ -1152,7 +1152,7 @@ rule build_industrial_distribution_key:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=5000,
     log:
         logs("build_industrial_distribution_key_{clusters}.log"),
     benchmark:
@@ -1177,7 +1177,7 @@ rule build_industrial_production_per_node:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_industrial_production_per_node_{clusters}_{planning_horizons}.log"),
     benchmark:
@@ -1209,7 +1209,7 @@ rule build_industrial_energy_demand_per_node:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs(
             "build_industrial_energy_demand_per_node_{clusters}_{planning_horizons}.log"
@@ -1243,7 +1243,7 @@ rule build_industrial_energy_demand_per_country_today:
         ),
     threads: 8
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_industrial_energy_demand_per_country_today.log"),
     benchmark:
@@ -1268,7 +1268,7 @@ rule build_industrial_energy_demand_per_node_today:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_industrial_energy_demand_per_node_today_{clusters}.log"),
     benchmark:
@@ -1298,7 +1298,7 @@ rule build_retro_cost:
         retro_cost=resources("retro_cost_base_s_{clusters}.csv"),
         floor_area=resources("floor_area_base_s_{clusters}.csv"),
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_retro_cost_{clusters}.log"),
     benchmark:
@@ -1320,7 +1320,7 @@ rule build_population_weighted_energy_totals:
         resources("pop_weighted_{kind}_totals_s_{clusters}.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_population_weighted_{kind}_totals_{clusters}.log"),
     benchmark:
@@ -1343,7 +1343,7 @@ rule build_shipping_demand:
         resources("shipping_demand_s_{clusters}.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_shipping_demand_s_{clusters}.log"),
     benchmark:
@@ -1371,7 +1371,7 @@ if MOBILITY_PROFILES_DATASET["source"] in ["build"]:
             pkw=MOBILITY_PROFILES_DATASET["folder"] / "pkw.csv",
         threads: 1
         resources:
-            mem_mb=5000,
+            mem_mb=10000,
         log:
             logs("build_mobility_profiles.log"),
         benchmark:
@@ -1405,7 +1405,7 @@ rule build_transport_demand:
         dsm_profile=resources("dsm_profile_s_{clusters}.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_transport_demand_s_{clusters}.log"),
     benchmark:
@@ -1429,7 +1429,7 @@ rule build_district_heat_share:
         ),
     threads: 1
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     log:
         logs("build_district_heat_share_{clusters}_{planning_horizons}.log"),
     benchmark:
@@ -1460,7 +1460,7 @@ rule build_existing_heating_distribution:
         ),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs(
             "build_existing_heating_distribution_base_s_{clusters}_{planning_horizons}.log"
@@ -1498,7 +1498,7 @@ rule time_aggregation:
         ),
     threads: 1
     resources:
-        mem_mb=5000,
+        mem_mb=10000,
     log:
         logs("time_aggregation_base_s_{clusters}_elec_{opts}_{sector_opts}.log"),
     benchmark:
@@ -1537,7 +1537,7 @@ rule build_egs_potentials:
         egs_capacity_factors=resources("egs_capacity_factors_{clusters}.csv"),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=8000,
     log:
         logs("build_egs_potentials_{clusters}.log"),
     benchmark:
@@ -1730,7 +1730,7 @@ rule prepare_sector_network:
         ),
     threads: 1
     resources:
-        mem_mb=2000,
+        mem_mb=10000,
     log:
         logs(
             "prepare_sector_network_base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.log"
