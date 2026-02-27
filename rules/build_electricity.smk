@@ -106,7 +106,7 @@ rule base_network:
         benchmarks("base_network")
     threads: 4
     resources:
-        mem_mb=2000,
+        mem_mb=10000,
     script:
         scripts("base_network.py")
 
@@ -186,7 +186,7 @@ rule build_shapes:
         benchmarks("build_shapes")
     threads: 1
     resources:
-        mem_mb=1500,
+        mem_mb=5000,
     script:
         scripts("build_shapes.py")
 
