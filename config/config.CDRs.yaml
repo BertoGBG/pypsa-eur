@@ -20,7 +20,7 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "test1"
+  prefix: "myopic_test"
   name: "CDR"
   scenarios:
     enable: false
@@ -32,19 +32,20 @@ run:
   use_shadow_directory: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
-foresight: overnight
+foresight: myopic
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 scenario:
   clusters:
-  - 60
+  - 39
   opts:
   - ""
   sector_opts:
   - ""
   planning_horizons:
+  - 2030
+  - 2040
   - 2050
-
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries:
 - AL
