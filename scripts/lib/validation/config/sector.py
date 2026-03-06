@@ -650,10 +650,13 @@ class SectorConfig(BaseModel):
         0.788457,
         description="The correction factor for the value provided by the solar thermal profile calculations.",
     )
-
     methanation: bool = Field(
         True,
         description="Add option for transforming hydrogen and CO2 into methane using methanation.",
+    )
+    biomethanation_biogas: bool = Field(
+        True,
+        description="Add option for transforming hydrogen and biogas (inc. CO2) into methane using biological methanation.",
     )
     coal_cc: bool = Field(
         False, description="Add option for coal CHPs with carbon capture."
@@ -783,6 +786,10 @@ class SectorConfig(BaseModel):
     )
     min_part_load_methanation: float = Field(
         0.3, description="Minimum part load methanation."
+    )
+
+    min_part_load_biomethanation: float = Field(
+        0.05, description="Minimum part load biological methanation technolgies."
     )
 
     use_fischer_tropsch_waste_heat: float = Field(

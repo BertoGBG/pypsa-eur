@@ -834,6 +834,7 @@ sector:
   solar_thermal: true
   solar_cf_correction: 0.788457
   methanation: true
+  biomethanation_biogas: true
   coal_cc: false
   dac: true
   co2_vent: false
@@ -895,6 +896,7 @@ sector:
   min_part_load_fischer_tropsch: 0.5
   min_part_load_methanolisation: 0.3
   min_part_load_methanation: 0.3
+  min_part_load_biomethanation: 0.05
   use_fischer_tropsch_waste_heat: 0.25
   use_haber_bosch_waste_heat: 0.25
   use_methanolisation_waste_heat: 0.25
@@ -1400,8 +1402,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest

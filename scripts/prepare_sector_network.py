@@ -4057,6 +4057,23 @@ def add_biomass(
             lifetime=costs.at["biogas", "lifetime"],
         )
 
+    if options["biomethanation_biogas"]:
+        n.add(
+            "Link",
+            spatial.gas.biogas_to_gas,
+            bus0=spatial.h2.nodes,
+            bus1=spatial.gas.biogas,
+            bus2=spatial.gas.nodes,
+            carrier="biomethanation biogas",
+            capital_cost=costs.at["biomethanation", "capital_cost"],
+            marginal_cost=costs.at["biogas upgrading", "VOM"],
+            efficiency=costs.at["biomethanation", "Biogas Input"],
+            efficiency2=-costs.at["biomethanation", "Methane Output"],
+            p_min_pu=options["min_part_load_biomethanation"],
+            p_nom_extendable=True,
+            lifetime=costs.at["biomethanation", "lifetime"],
+        )
+
     if options["biogas_upgrading_cc"]:
         # Assuming for costs that the CO2 from upgrading is pure, such as in amine scrubbing. I.e., with and without CC is
         # equivalent. Adding biomass CHP capture because biogas is often small-scale and decentral so further
