@@ -833,6 +833,7 @@ sector:
   solar_cf_correction: 0.788457
   methanation: true
   biomethanation_biogas: true
+  biomethanation_CO2 : true
   coal_cc: false
   dac: true
   co2_vent: false

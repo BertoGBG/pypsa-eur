@@ -4612,6 +4612,11 @@
           "description": "Add option for transforming hydrogen and biogas (inc. CO2) into methane using biological methanation.",
           "type": "boolean"
         },
+        "biomethanation_CO2": {
+          "default": true,
+          "description": "Add option for transforming hydrogen and CO2 into methane using biological methanation.",
+          "type": "boolean"
+        },
         "coal_cc": {
           "default": false,
           "description": "Add option for coal CHPs with carbon capture.",

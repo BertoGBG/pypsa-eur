@@ -117,12 +117,14 @@ def define_spatial(nodes, options):
         spatial.gas.industry_cc = nodes + " gas for industry CC"
         spatial.gas.biogas_to_gas = nodes + " biogas to gas"
         spatial.gas.biogas_to_gas_cc = nodes + " biogas to gas CC"
+        spatial.gas.biomethanation_biogas = nodes + " biomethanation biogas"
     else:
         spatial.gas.nodes = ["EU gas"]
         spatial.gas.locations = ["EU"]
         spatial.gas.biogas = ["EU biogas"]
         spatial.gas.industry = ["gas for industry"]
         spatial.gas.biogas_to_gas = ["EU biogas to gas"]
+        spatial.gas.biomethanation_biogas = ["EU biomethanation biogas"]
         if options.get("biomass_spatial", options["biomass_transport"]):
             spatial.gas.biogas_to_gas_cc = nodes + " biogas to gas CC"
         else:
@@ -2112,6 +2114,24 @@ def add_h2_gas_infrastructure(
             lifetime=costs.at["methanation", "lifetime"],
         )
 
+    if options["biomethanation_CO2"]:
+        n.add(
+            "Link",
+            spatial.nodes,
+            suffix=" biomethantion CO2",
+            bus0=nodes + " H2",
+            bus1= spatial.co2.nodes,
+            bus2=spatial.gas.nodes,
+            carrier="biomethanation CO2",
+            capital_cost=costs.at["biomethanation CO2", "capital_cost"],
+            marginal_cost=costs.at["biomethanation CO2", "VOM"],
+            efficiency=-costs.at["biomethanation CO2", "CO2 Input"],
+            efficiency2=costs.at["biomethanation CO2", "Methane Output"],
+            p_min_pu=options["min_part_load_biomethanation"],
+            p_nom_extendable=True,
+            lifetime=costs.at["biomethanation CO2", "lifetime"],
+        )
+
     if options["coal_cc"]:
         n.add(
             "Link",
@@ -4040,6 +4060,23 @@ def add_biomass(
             marginal_cost=costs.at["BtL", "VOM"],
         )
 
+    if options["biomethanation_biogas"]:
+        n.add(
+            "Link",
+            spatial.gas.biomethanation_biogas,
+            bus0=spatial.h2.nodes,
+            bus1=spatial.gas.biogas,
+            bus2=spatial.gas.nodes,
+            carrier="biomethanation biogas",
+            capital_cost=costs.at["biomethanation", "capital_cost"],
+            marginal_cost=costs.at["biomethanation", "VOM"],
+            efficiency=costs.at["biomethanation", "Biogas Input"],
+            efficiency2=-costs.at["biomethanation", "Methane Output"],
+            p_min_pu=options["min_part_load_biomethanation"],
+            p_nom_extendable=True,
+            lifetime=costs.at["biomethanation", "lifetime"],
+        )
+
     if options["biogas_upgrading"]:
         n.add(
             "Link",
@@ -4055,23 +4092,6 @@ def add_biomass(
             efficiency2=-costs.at["gas", "CO2 intensity"],
             p_nom_extendable=True,
             lifetime=costs.at["biogas", "lifetime"],
-        )
-
-    if options["biomethanation_biogas"]:
-        n.add(
-            "Link",
-            spatial.gas.biogas_to_gas,
-            bus0=spatial.h2.nodes,
-            bus1=spatial.gas.biogas,
-            bus2=spatial.gas.nodes,
-            carrier="biomethanation biogas",
-            capital_cost=costs.at["biomethanation", "capital_cost"],
-            marginal_cost=costs.at["biogas upgrading", "VOM"],
-            efficiency=costs.at["biomethanation", "Biogas Input"],
-            efficiency2=-costs.at["biomethanation", "Methane Output"],
-            p_min_pu=options["min_part_load_biomethanation"],
-            p_nom_extendable=True,
-            lifetime=costs.at["biomethanation", "lifetime"],
         )
 
     if options["biogas_upgrading_cc"]:

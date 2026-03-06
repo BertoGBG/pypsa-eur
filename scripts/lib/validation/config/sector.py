@@ -658,6 +658,10 @@ class SectorConfig(BaseModel):
         True,
         description="Add option for transforming hydrogen and biogas (inc. CO2) into methane using biological methanation.",
     )
+    biomethanation_CO2: bool = Field(
+        True,
+        description="Add option for transforming hydrogen and CO2 into methane using biological methanation.",
+    )
     coal_cc: bool = Field(
         False, description="Add option for coal CHPs with carbon capture."
     )
