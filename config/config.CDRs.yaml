@@ -20,7 +20,7 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "myopic_test"
+  prefix: "overnight_test"
   name: "CDR"
   scenarios:
     enable: false
