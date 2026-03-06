@@ -95,3 +95,4 @@ CLAUDE.local.md
 .pixi/*
 !.pixi/config.toml
 log/
+README_genomeDK.md
