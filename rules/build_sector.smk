@@ -942,7 +942,7 @@ rule build_perennial_potentials:
     params:
         biomass=config_provider("biomass"),
     input:
-        nuts2="data/nuts/NUTS_RG_01M_2021_4326_LEVL_2.geojson",
+        nuts2=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
         country_shapes=resources("country_shapes.geojson"),
         perennials_yields_1G_biofuels = resources("perennials_yields_1G_biofuels.csv"),
         regions_onshore = resources("regions_onshore_base_s_{clusters}.geojson"),
@@ -957,17 +957,6 @@ rule build_perennial_potentials:
     script:
         "../scripts/build_perennials_potentials.py"
 
-
-rule get_perennial_potentials_nuts_file:
-    input:
-    output:
-        perennial_nuts_file = resources("perennials_yields_1G_biofuels.csv")
-    log:
-        logs("get_perennial_potential_nuts_file.log"),
-    resources:
-        mem_mb = 1000,
-    shell:
-        "wget https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/refs/heads/main/afforestation_perennials/data/crops/yields_perennials_1G_biofuels.csv -O resources/perennials_yields_1G_biofuels.csv"
 
 rule build_co2_sequestration_potentials:
     message:

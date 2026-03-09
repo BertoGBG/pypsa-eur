@@ -1689,3 +1689,21 @@ if (MOBILITY_PROFILES_DATASET := dataset_version("mobility_profiles"))["source"]
         run:
             copy2(input["kfz"], output["kfz"])
             copy2(input["pkw"], output["pkw"])
+
+
+rule retrieve_perennial_crop_yields:
+    message:
+        "Downloading Eurostat crop data and computing perennial/1G biofuel yields"
+    input:
+        nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
+    output:
+        crops_nuts2="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts2.csv",
+        crops_nuts0="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts0.csv",
+        yields_all="resources/perennials_yields_1G_biofuels.csv",
+    log:
+        logs("retrieve_perennial_crop_yields.log"),
+    resources:
+        mem_mb=4000,
+    retries: 2
+    script:
+        scripts("retrieve_alternative_CDRs.py")
