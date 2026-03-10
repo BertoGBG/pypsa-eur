@@ -1743,6 +1743,11 @@ rule prepare_sector_network:
             if config_provider("sector", "district_heating", "ates", "enable")(w)
             else []
         ),
+        perennials_yields_1G_biofuels=lambda w: (
+            resources("perennials_yields_1G_biofuels_s_{clusters}.csv")
+            if config_provider("sector", "perennials")(w)
+            else []
+        ),
     output:
         resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
