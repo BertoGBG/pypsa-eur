@@ -1699,7 +1699,7 @@ rule retrieve_perennial_crop_yields:
     output:
         crops_nuts2="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts2.csv",
         crops_nuts0="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts0.csv",
-        yields_all="resources/perennials_yields_1G_biofuels.csv",
+        yields_all=resources("perennials_yields_1G_biofuels.csv"),
     log:
         logs("retrieve_perennial_crop_yields.log"),
     resources:
