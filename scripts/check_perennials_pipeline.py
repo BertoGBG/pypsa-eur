@@ -14,7 +14,7 @@ import pandas as pd
 
 # ── Configuration ────────────────────────────────────────────────────────────
 BASE_DIR = Path(".")          # run from pypsa-eur root
-RDIR     = "overnight_perenn/CDR"
+RDIR     = "test_peren_2050"
 CLUSTERS = "39"
 OPTS     = ""
 SECTOR_OPTS = ""

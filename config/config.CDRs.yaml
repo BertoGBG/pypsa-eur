@@ -20,8 +20,8 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "overnight_perenn"
-  name: "CDR"
+  prefix: "test_peren_2050"
+  name: ""
   scenarios:
     enable: false
     file: config/scenarios.yaml
