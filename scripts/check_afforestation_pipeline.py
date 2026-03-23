@@ -14,7 +14,7 @@ import pandas as pd
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 BASE_DIR         = Path(".")       # run from pypsa-eur root
-RDIR             = ""
+RDIR             = "affo_2050"
 CLUSTERS         = "50"
 OPTS             = ""
 SECTOR_OPTS      = "168h"
