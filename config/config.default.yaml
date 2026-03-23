@@ -835,6 +835,10 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
+  biochar:
+    enable: false
+    heat_output: false
+    transport: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1063,6 +1067,13 @@ industry:
   hotmaps_locate_missing: false
   reference_year: 2023
   oil_refining_emissions: 0.013
+
+biochar:
+  corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
+  potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
+  co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
+  max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
+  number_years: 25 # amortisation period (years) for biochar CO2 storage
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
