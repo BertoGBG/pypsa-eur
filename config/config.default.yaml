@@ -1415,8 +1415,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: CO2_stores_latest
   country_runoff:
     source: archive
     version: latest
