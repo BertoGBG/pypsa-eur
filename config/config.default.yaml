@@ -20,8 +20,8 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "affo_2050"
-  name: ""
+  prefix: ""
+  name: "affo_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - ""
+  - 168h
   planning_horizons:
   - 2050
 
@@ -1125,7 +1125,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 168H
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
