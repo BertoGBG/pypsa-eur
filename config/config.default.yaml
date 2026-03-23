@@ -20,7 +20,7 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: ""
+  prefix: "affo_2050"
   name: ""
   scenarios:
     enable: false
@@ -835,7 +835,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
-  afforestation: false
+  afforestation: true
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1125,7 +1125,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: false
+    resolution_sector: 168H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
