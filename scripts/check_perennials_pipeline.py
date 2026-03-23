@@ -1,0 +1,159 @@
+"""
+Check script for the perennials pipeline in pypsa-eur.
+Run from the pypsa-eur root directory on the cluster:
+
+    python scripts/check_perennials_pipeline.py
+
+Adjust BASE_DIR, RDIR, CLUSTERS, PLANNING_HORIZON if needed.
+"""
+
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+# ── Configuration ────────────────────────────────────────────────────────────
+BASE_DIR = Path(".")          # run from pypsa-eur root
+RDIR     = "overnight_perenn/CDR"
+CLUSTERS = "39"
+OPTS     = ""
+SECTOR_OPTS = ""
+PLANNING_HORIZON = "2050"
+
+# derived paths
+RES  = BASE_DIR / "resources" / RDIR
+RESULTS = BASE_DIR / "results" / RDIR
+
+# wildcard-based filenames
+WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+OK   = "  [OK]"
+FAIL = "  [MISSING]"
+WARN = "  [WARN]"
+
+def check_file(path: Path, label: str) -> bool:
+    exists = path.exists()
+    status = OK if exists else FAIL
+    size = f"  ({path.stat().st_size / 1e6:.1f} MB)" if exists else ""
+    print(f"{status}  {label}{size}")
+    print(f"        {path}")
+    return exists
+
+
+def section(title: str):
+    print(f"\n{'='*60}")
+    print(f"  {title}")
+    print('='*60)
+
+
+# ── 1. Retrieve rule outputs ─────────────────────────────────────────────────
+section("1. RETRIEVE: eurostat crops + perennial yields")
+
+check_file(
+    BASE_DIR / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts2.csv",
+    "Eurostat NUTS2 crops"
+)
+check_file(
+    BASE_DIR / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts0.csv",
+    "Eurostat NUTS0 crops"
+)
+check_file(
+    RES / "perennials_yields_1G_biofuels.csv",
+    "Perennials yields (all NUTS)"
+)
+
+# ── 2. Build rule outputs ────────────────────────────────────────────────────
+section("2. BUILD: perennial potentials (clustered)")
+
+yields_clustered = RES / f"perennials_yields_1G_biofuels_s_{CLUSTERS}.csv"
+if check_file(yields_clustered, f"Perennials yields clustered s_{CLUSTERS}"):
+    df = pd.read_csv(yields_clustered)
+    print(f"        Rows: {len(df)}  |  Columns: {list(df.columns)}")
+    print(f"        Perennials column sum: {df['perennials'].sum():.2f}" if 'perennials' in df.columns else "        (no 'perennials' column found)")
+
+# ── 3. Pre-network (prepare_sector_network output) ───────────────────────────
+section("3. PRE-NETWORK: sector-coupled (prepare_sector_network)")
+
+prenet_path = RES / "networks" / f"{WC}.nc"
+prenet_ok = check_file(prenet_path, f"Pre-network {WC}.nc")
+
+if prenet_ok:
+    try:
+        import pypsa
+        n = pypsa.Network(str(prenet_path))
+
+        # Check carriers
+        perenn_carriers = [c for c in n.carriers.index if "perennial" in c.lower()]
+        print(f"\n  Carriers with 'perennial': {perenn_carriers}")
+
+        # Check links
+        perenn_links = n.links[n.links.carrier.str.contains("perennial", case=False, na=False)]
+        print(f"  Links (carrier=perennial): {len(perenn_links)}")
+        if not perenn_links.empty:
+            print(perenn_links[["bus0", "bus1", "carrier", "p_nom"]].to_string(index=True))
+
+        # Check stores
+        perenn_stores = n.stores[n.stores.carrier.str.contains("perennial", case=False, na=False)]
+        print(f"  Stores (carrier=perennial store): {len(perenn_stores)}")
+        if not perenn_stores.empty:
+            print(perenn_stores[["bus", "carrier", "e_nom_max"]].head(10).to_string(index=True))
+
+        if not perenn_carriers:
+            print(f"\n{WARN}  No perennial carriers found — add_perennials may NOT have run!")
+        else:
+            print(f"\n{OK}  Perennial components found in pre-network.")
+
+    except Exception as e:
+        print(f"\n{WARN}  Could not load network: {e}")
+else:
+    print(f"\n{FAIL}  Pre-network missing — prepare_sector_network has not run yet.")
+
+# ── 4. Optimal solution ──────────────────────────────────────────────────────
+section("4. OPTIMAL SOLUTION: solved network (solve_sector_network)")
+
+opt_path = RESULTS / "networks" / f"{WC}.nc"
+opt_ok = check_file(opt_path, f"Optimal network {WC}.nc")
+
+if opt_ok:
+    try:
+        import pypsa
+        n_opt = pypsa.Network(str(opt_path))
+
+        perenn_links = n_opt.links[n_opt.links.carrier.str.contains("perennial", case=False, na=False)]
+        perenn_stores = n_opt.stores[n_opt.stores.carrier.str.contains("perennial", case=False, na=False)]
+
+        print(f"\n  Links (carrier=perennial): {len(perenn_links)}")
+        if not perenn_links.empty:
+            cols = ["carrier", "p_nom_opt"] if "p_nom_opt" in perenn_links.columns else ["carrier", "p_nom"]
+            print(perenn_links[cols].to_string(index=True))
+            if "p_nom_opt" in perenn_links.columns:
+                active = perenn_links[perenn_links["p_nom_opt"] > 0]
+                print(f"\n  Links with p_nom_opt > 0: {len(active)}")
+                if active.empty:
+                    print(f"{WARN}  Perennial links exist but have zero optimal capacity.")
+                else:
+                    print(f"{OK}  Perennial links are deployed in the optimal solution.")
+
+        print(f"\n  Stores (carrier=perennial store): {len(perenn_stores)}")
+        if not perenn_stores.empty:
+            cols = ["carrier", "e_nom_opt"] if "e_nom_opt" in perenn_stores.columns else ["carrier", "e_nom"]
+            print(perenn_stores[cols].to_string(index=True))
+            if "e_nom_opt" in perenn_stores.columns:
+                active = perenn_stores[perenn_stores["e_nom_opt"] > 0]
+                print(f"\n  Stores with e_nom_opt > 0: {len(active)}")
+
+        if perenn_links.empty and perenn_stores.empty:
+            print(f"\n{WARN}  No perennial components in optimal network!")
+
+    except Exception as e:
+        print(f"\n{WARN}  Could not load optimal network: {e}")
+else:
+    print(f"\n{FAIL}  Optimal network missing — solve_sector_network has not run yet.")
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+section("SUMMARY")
+print(f"  Run:      {RDIR}")
+print(f"  Wildcard: {WC}")
+print(f"  Resources dir: {RES.resolve()}")
+print(f"  Results dir:   {RESULTS.resolve()}")
