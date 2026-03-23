@@ -179,6 +179,7 @@ if __name__ == "__main__":
 
     df = df.T.groupby(grouper).sum().T
 
+    df.index.name = "name"
     df.to_csv(snakemake.output.csv_file)
 
 

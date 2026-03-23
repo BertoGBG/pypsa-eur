@@ -951,11 +951,9 @@ rule build_perennial_potentials:
     log:
         logs("build_perennial_potentials_s_{clusters}.log"),
     resources:
-        mem_mb = 1000,
-    conda:
-        "../envs/environment.yaml"
+        mem_mb=1000,
     script:
-        "../scripts/build_perennials_potentials.py"
+        scripts("build_perennials_potentials.py")
 
 
 rule build_co2_sequestration_potentials:
