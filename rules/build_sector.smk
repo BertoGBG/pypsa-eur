@@ -966,7 +966,7 @@ rule build_afforestation_corine_potentials:
     log:
         logs("build_afforestation_corine_potentials_s_{clusters}.log"),
     resources:
-        mem_mb=16000,
+        mem_mb=32000,
     script:
         scripts("build_corine_potentials.py")
 
