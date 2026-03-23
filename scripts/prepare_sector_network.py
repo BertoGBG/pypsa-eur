@@ -1246,6 +1246,61 @@ def add_dac(n, costs):
     )
 
 
+def add_afforestation(n, costs):
+    logger.info("Adding afforestation.")
+
+    afforestation_potentials = pd.read_csv(
+        snakemake.input.afforestation_potentials
+    ).set_index("node")
+    densities = afforestation_potentials["biomass density [t/ha]"].values
+    potentials = afforestation_potentials["potential [t/ha]"].values
+
+    co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
+    max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
+
+    n.add("Carrier", "co2 afforestation", co2_emissions=-1.0)
+
+    n.add(
+        "Bus",
+        spatial.nodes + " co2 afforestation",
+        location=spatial.nodes,
+        carrier="co2 afforestation",
+        unit="t_co2",
+    )
+
+    investment_cost = costs.at["Afforestation", "investment"]
+    maintenance_cost = (
+        investment_cost
+        * (costs.at["Afforestation", "FOM"] / 100)
+        * costs.at["Afforestation", "lifetime"]
+    )
+    capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
+
+    n.add(
+        "Store",
+        spatial.nodes + " co2 afforestation",
+        bus=spatial.nodes + " co2 afforestation",
+        carrier="co2 afforestation",
+        capital_cost=capital_cost,
+        e_nom_extendable=True,
+        e_nom_max=potentials / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage,
+        lifetime=costs.at["Afforestation", "lifetime"],
+    )
+
+    n.add(
+        "Link",
+        spatial.nodes + " afforestation",
+        bus0="co2 atmosphere",
+        bus1=spatial.nodes + " co2 afforestation",
+        carrier="co2 afforestation",
+        efficiency=1.0,
+        p_min_pu=1.0,
+        p_max_pu=1.0,
+        p_nom_extendable=True,
+        lifetime=costs.at["Afforestation", "lifetime"],
+    )
+
+
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     """
     Add a global CO2 emissions constraint to the network.
@@ -6490,6 +6545,9 @@ if __name__ == "__main__":
 
     if options["dac"]:
         add_dac(n, costs)
+
+    if options.get("afforestation"):
+        add_afforestation(n, costs)
 
     if not options["electricity_transmission_grid"]:
         decentral(n)

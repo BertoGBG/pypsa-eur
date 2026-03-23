@@ -939,6 +939,61 @@ rule build_biomass_transport_costs:
         scripts("build_biomass_transport_costs.py")
 
 
+rule get_afforestation_nuts_file:
+    output:
+        afforestation_nuts_file=resources("afforestation_nuts_biomass_densities.xlsx")
+        if config["afforestation"]["potential_type"] == "density"
+        else resources("afforestation_nuts2_growth_rates.csv"),
+    log:
+        logs("get_afforestation_nuts_file.log"),
+    resources:
+        mem_mb=500,
+    shell:
+        (
+            "wget https://ndownloader.figshare.com/files/43678089 -O {output.afforestation_nuts_file}"
+            if config["afforestation"]["potential_type"] == "density"
+            else "wget https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/refs/heads/main/afforestation/data/afforestation/afforestation_nuts2.csv -O {output.afforestation_nuts_file}"
+        )
+
+
+rule build_afforestation_corine_potentials:
+    params:
+        component="afforestation",
+        resolution=250,
+        corine_codes=config["afforestation"]["corine"],
+    input:
+        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+    output:
+        csv_file=resources("afforestation_corine_potentials_s_{clusters}.csv"),
+        png_file=resources("afforestation_corine_potentials_s_{clusters}.png"),
+    log:
+        logs("build_afforestation_corine_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=5000,
+    script:
+        scripts("build_corine_potentials.py")
+
+
+rule build_afforestation_potentials:
+    params:
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+        nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
+    input:
+        afforestation_corine_potentials_csv_file=resources(
+            "afforestation_corine_potentials_s_{clusters}.csv"
+        ),
+        afforestation_nuts_file=rules.get_afforestation_nuts_file.output.afforestation_nuts_file,
+    output:
+        csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
+    log:
+        logs("build_afforestation_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=5000,
+    script:
+        scripts("build_afforestation_potentials.py")
+
+
 rule build_co2_sequestration_potentials:
     message:
         "Building CO2 sequestration potentials"
@@ -1722,6 +1777,11 @@ rule prepare_sector_network:
         ates_potentials=lambda w: (
             resources("ates_potentials_base_s_{clusters}_{planning_horizons}.csv")
             if config_provider("sector", "district_heating", "ates", "enable")(w)
+            else []
+        ),
+        afforestation_potentials=lambda w: (
+            resources("afforestation_potentials_s_{clusters}.csv")
+            if config_provider("sector", "afforestation")(w)
             else []
         ),
     output:

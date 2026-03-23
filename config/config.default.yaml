@@ -835,6 +835,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
+  afforestation: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1063,6 +1064,12 @@ industry:
   hotmaps_locate_missing: false
   reference_year: 2023
   oil_refining_emissions: 0.013
+
+afforestation:
+  corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
+  potential_type: "density" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
+  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
