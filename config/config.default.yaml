@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: ""
+  name: "biochar_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - ""
+  - 168h
   planning_horizons:
   - 2050
 
@@ -1129,7 +1129,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: false
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1419,8 +1419,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary #archive
+    version: CO2_stores_latest #latest
   country_runoff:
     source: archive
     version: latest

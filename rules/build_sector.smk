@@ -953,7 +953,7 @@ rule build_biochar_potentials:
     log:
         logs("build_biochar_potentials_s_{clusters}.log"),
     resources:
-        mem_mb=5000,
+        mem_mb=32000,
     script:
         scripts("build_corine_potentials.py")
 
