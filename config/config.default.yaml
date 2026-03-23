@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: ""
+  name: "peren_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -1413,8 +1413,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: CO2_stores_latest
   country_runoff:
     source: archive
     version: latest

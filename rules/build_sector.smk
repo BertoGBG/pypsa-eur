@@ -942,7 +942,7 @@ rule build_perennial_potentials:
     params:
         biomass=config_provider("biomass"),
     input:
-        nuts2=rules.retrieve_eu_nuts_2021.output.["shapes_level_2"],
+        nuts2=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
         country_shapes=resources("country_shapes.geojson"),
         perennials_yields_1G_biofuels = resources("perennials_yields_1G_biofuels.csv"),
         regions_onshore = resources("regions_onshore_base_s_{clusters}.geojson"),

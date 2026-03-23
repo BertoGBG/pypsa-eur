@@ -14,8 +14,8 @@ import pandas as pd
 
 # ── Configuration ────────────────────────────────────────────────────────────
 BASE_DIR = Path(".")          # run from pypsa-eur root
-RDIR     = "test_peren_2050"
-CLUSTERS = "39"
+RDIR     = "peren_2050"
+CLUSTERS = "50"
 OPTS     = ""
 SECTOR_OPTS = ""
 PLANNING_HORIZON = "2050"
