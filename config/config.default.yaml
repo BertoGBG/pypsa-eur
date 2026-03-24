@@ -1077,7 +1077,7 @@ biochar:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
