@@ -1419,8 +1419,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: primary #archive
-    version: CO2_stores_latest #latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
