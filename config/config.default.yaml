@@ -1408,8 +1408,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
