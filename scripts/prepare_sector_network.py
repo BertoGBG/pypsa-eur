@@ -1253,7 +1253,6 @@ def add_EW(n, costs):
         bus1="co2 atmosphere",
         bus2=spatial.nodes + " EW co2 store",
         carrier="EW",
-        capital_cost=costs.at["Enhanced Weathering", "investment"] / electricity_input,
         marginal_cost=costs.at["Enhanced Weathering", "VOM"] / electricity_input,
         efficiency=-1 / electricity_input,
         efficiency2=1 / electricity_input,
