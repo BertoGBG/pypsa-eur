@@ -17,10 +17,12 @@ BASE_DIR         = Path(".")       # run from pypsa-eur root
 RDIR             = "biochar_2050"
 CLUSTERS         = "50"
 OPTS             = ""
-SECTOR_OPTS      = ""
+SECTOR_OPTS      = "168h"
 PLANNING_HORIZON = "2050"
 
 # derived paths
+# derived paths
+RES     = BASE_DIR / "resources"
 RES_RUN = BASE_DIR / "resources" / RDIR
 RESULTS = BASE_DIR / "results"    / RDIR
 
