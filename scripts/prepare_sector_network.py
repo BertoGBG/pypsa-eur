@@ -1252,7 +1252,7 @@ def add_biochar(n, costs):
     biochar_potentials = pd.read_csv(snakemake.input.biochar_potentials).set_index("node")
 
     n.add("Carrier", "biochar")
-    n.add("Carrier", "co2 biochar", co2_emissions=-1.0)
+    n.add("Carrier", "co2 biochar")
 
     n.add(
         "Bus",
