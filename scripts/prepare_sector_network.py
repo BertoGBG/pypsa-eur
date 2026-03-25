@@ -1354,7 +1354,7 @@ def add_biochar(n, costs):
         bus3=spatial.nodes,
         bus4=biochar_heat_buses,
         carrier="biochar",
-        capital_cost=costs.at["biochar pyrolysis", "fixed"],
+        capital_cost=costs.at["biochar pyrolysis", "capital_cost"],
         marginal_cost=costs.at["biochar pyrolysis", "VOM"],
         efficiency=1.0,
         efficiency2=-costs.at["biochar pyrolysis", "biomass-input"],
