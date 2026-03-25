@@ -691,6 +691,8 @@ plotting:
     CCS: '#f29dae'
     CO2 sequestration: '#f29dae'
     DAC: '#ff5270'
+    EW: '#ab6ae9'
+    EW store: '#fcba00'
     co2 stored: '#f2385a'
     co2 sequestered: '#f2682f'
     co2: '#f29dae'

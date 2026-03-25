@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: ""
+  name: "EW_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -835,6 +835,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
+  EW: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1064,9 +1065,14 @@ industry:
   reference_year: 2023
   oil_refining_emissions: 0.013
 
+EW:
+  corine: [12, 13] # CORINE Land Cover codes for non-irrigated arable land and permanent crops
+  potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate Europe)
+  max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for EW
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1408,8 +1414,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
