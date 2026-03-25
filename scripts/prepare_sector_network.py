@@ -1258,7 +1258,7 @@ def add_afforestation(n, costs):
     co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
 
-    n.add("Carrier", "co2 afforestation", co2_emissions=-1.0)
+    n.add("Carrier", "co2 afforestation")
 
     n.add(
         "Bus",
