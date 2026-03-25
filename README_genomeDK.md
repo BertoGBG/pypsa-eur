@@ -18,3 +18,4 @@ sbatch \
 squeue -u $USER
 
 tail -f log_snakemake/smk-<jobid>.out
+tail -f log_snakemake/smk-<jobid>.err
