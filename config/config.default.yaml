@@ -27,7 +27,7 @@ run:
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: 'biochar_2050'
+    policy: false
     exclude: []
   use_shadow_directory: false
 
