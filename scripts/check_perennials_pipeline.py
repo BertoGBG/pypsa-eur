@@ -70,7 +70,18 @@ yields_clustered = RES / f"perennials_yields_1G_biofuels_s_{CLUSTERS}.csv"
 if check_file(yields_clustered, f"Perennials yields clustered s_{CLUSTERS}"):
     df = pd.read_csv(yields_clustered)
     print(f"        Rows: {len(df)}  |  Columns: {list(df.columns)}")
-    print(f"        Perennials column sum: {df['perennials'].sum():.2f}" if 'perennials' in df.columns else "        (no 'perennials' column found)")
+    if 'perennials' in df.columns:
+        print(f"        perennials [tDM/ha] — min: {df['perennials'].min():.2f}, mean: {df['perennials'].mean():.2f}, max: {df['perennials'].max():.2f}")
+    else:
+        print(f"        {WARN} no 'perennials' column found!")
+    biofuels_1G_cols = [c for c in df.columns if 'biofuels_1G' in c]
+    if biofuels_1G_cols:
+        print(f"        biofuels_1G columns: {biofuels_1G_cols}")
+        for col in biofuels_1G_cols:
+            print(f"          {col}: mean={df[col].mean():.3f} MWh/ha")
+    else:
+        print(f"        {WARN} No 'biofuels_1G_*' columns found — biomass.classes in config.default.yaml")
+        print(f"        {WARN} must use biofuels_1G_* names, NOT 'not included', for perennials to work!")
 
 # ── 3. Pre-network (prepare_sector_network output) ───────────────────────────
 section("3. PRE-NETWORK: sector-coupled (prepare_sector_network)")
@@ -98,6 +109,14 @@ if prenet_ok:
         print(f"  Stores (carrier=perennial store): {len(perenn_stores)}")
         if not perenn_stores.empty:
             print(perenn_stores[["bus", "carrier", "e_nom_max"]].head(10).to_string(index=True))
+            if "e_nom_max" in perenn_stores.columns:
+                finite_max = perenn_stores["e_nom_max"][perenn_stores["e_nom_max"] < 1e18]
+                total_cap = finite_max.sum()
+                print(f"\n  Total store capacity (e_nom_max): {total_cap:,.0f} tCO2  ({total_cap/1e6:.3f} MtCO2)")
+                if total_cap == 0:
+                    print(f"  {WARN} ALL stores have e_nom_max=0!")
+                    print(f"  {WARN} This usually means biomass.classes in config.default.yaml")
+                    print(f"  {WARN} is missing biofuels_1G_* entries — check and re-run prepare_sector_network.")
 
         if not perenn_carriers:
             print(f"\n{WARN}  No perennial carriers found — add_perennials may NOT have run!")
