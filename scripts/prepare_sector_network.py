@@ -1049,7 +1049,7 @@ def add_perennials(n, costs):
        carrier="perennial",
        p_nom_extendable=True,
        p_max_pu=p_max_pu,
-       capital_cost=costs.at["perennials gbr", "fixed"] * perennial_CO2_seq,
+       capital_cost=costs.at["perennials gbr", "capital_cost"] * perennial_CO2_seq,
        marginal_cost=costs.at["perennials gbr", "VOM"] * perennial_CO2_seq,
        lifetime=costs.at["perennials gbr", "lifetime"],
     )
