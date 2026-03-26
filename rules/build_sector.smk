@@ -951,7 +951,7 @@ rule build_perennial_potentials:
     log:
         logs("build_perennial_potentials_s_{clusters}.log"),
     resources:
-        mem_mb=1000,
+        mem_mb=8000,
     script:
         scripts("build_perennials_potentials.py")
 
