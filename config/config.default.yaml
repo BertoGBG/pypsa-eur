@@ -27,8 +27,9 @@ run:
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
-    exclude: []
+    policy: "biochar_2050"
+    exclude:
+      - retrieve_perennial_crop_yields
   use_shadow_directory: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
