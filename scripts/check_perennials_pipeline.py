@@ -15,15 +15,16 @@ import pandas as pd
 # ── Configuration ────────────────────────────────────────────────────────────
 BASE_DIR = Path(".")          # run from pypsa-eur root
 RDIR     = "peren_2050"
+SHARED_RES_POLICY = "biochar_2050"  # matches run.shared_resources.policy in config
 CLUSTERS = "50"
 OPTS     = ""
-SECTOR_OPTS = ""
+SECTOR_OPTS = "168h"
 PLANNING_HORIZON = "2050"
 
 # derived paths
-RES     = BASE_DIR / "resources"
-RES_RUN = BASE_DIR / "resources" / RDIR
-RESULTS = BASE_DIR / "results"    / RDIR
+RES        = BASE_DIR / "resources"
+SHARED_RES = BASE_DIR / "resources" / SHARED_RES_POLICY  # shared resources directory
+RESULTS    = BASE_DIR / "results" / RDIR
 
 # wildcard-based filenames
 WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
@@ -60,14 +61,14 @@ check_file(
     "Eurostat NUTS0 crops"
 )
 check_file(
-    RES / "perennials_yields_1G_biofuels.csv",
+    SHARED_RES / "perennials_yields_1G_biofuels.csv",
     "Perennials yields (all NUTS)"
 )
 
 # ── 2. Build rule outputs ────────────────────────────────────────────────────
 section("2. BUILD: perennial potentials (clustered)")
 
-yields_clustered = RES / f"perennials_yields_1G_biofuels_s_{CLUSTERS}.csv"
+yields_clustered = SHARED_RES / f"perennials_yields_1G_biofuels_s_{CLUSTERS}.csv"
 if check_file(yields_clustered, f"Perennials yields clustered s_{CLUSTERS}"):
     df = pd.read_csv(yields_clustered)
     print(f"        Rows: {len(df)}  |  Columns: {list(df.columns)}")
@@ -87,7 +88,7 @@ if check_file(yields_clustered, f"Perennials yields clustered s_{CLUSTERS}"):
 # ── 3. Pre-network (prepare_sector_network output) ───────────────────────────
 section("3. PRE-NETWORK: sector-coupled (prepare_sector_network)")
 
-prenet_path = RES / "networks" / f"{WC}.nc"
+prenet_path = SHARED_RES / "networks" / f"{WC}.nc"
 prenet_ok = check_file(prenet_path, f"Pre-network {WC}.nc")
 
 if prenet_ok:
@@ -173,7 +174,7 @@ else:
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 section("SUMMARY")
-print(f"  Run:      {RDIR}")
-print(f"  Wildcard: {WC}")
-print(f"  Resources dir: {RES.resolve()}")
-print(f"  Results dir:   {RESULTS.resolve()}")
+print(f"  Run:             {RDIR}")
+print(f"  Wildcard:        {WC}")
+print(f"  Shared resources:{SHARED_RES.resolve()}")
+print(f"  Results dir:     {RESULTS.resolve()}")
