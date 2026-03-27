@@ -14,6 +14,7 @@ from _helpers import configure_logging, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
+
 def build_nuts2_shapes():
     """
     - load NUTS2 geometries
@@ -24,8 +25,6 @@ def build_nuts2_shapes():
         gpd.read_file(snakemake.input.nuts2).set_index("NUTS_ID").geometry
     )
 
-    #countries_file = 'debug_pypsa_eur/perennials/country_shapes.geojson'
-    #countries = gpd.read_file(countries_file).set_index("name")
     countries = gpd.read_file(snakemake.input.country_shapes).set_index("name")
     missing_iso2 = countries.index.intersection(["AL", "RS", "XK", "BA"])
     missing = countries.loc[missing_iso2]
@@ -144,7 +143,7 @@ if __name__ == "__main__":
     regions = gpd.read_file(snakemake.input.regions_onshore)
     nuts2 = build_nuts2_shapes()
 
-    yields = pd.read_csv(snakemake.input.perennials_yields_1G_biofuels, index_col = 0)
+    yields = pd.read_csv(snakemake.input.perennials_yields_1G_biofuels, index_col=0)
 
     df_nuts2 = gpd.GeoDataFrame(nuts2.geometry).join(yields)
 
@@ -154,10 +153,10 @@ if __name__ == "__main__":
 
     # Impute yields for missing shapes basest of nearest valid Nuts2
     yield_cols = [
-        'Bioethanol barley, wheat, grain maize, oats, other cereals and rye',
-        'Sugar from sugar beet',
-        'Rape seed',
-        'perennials'
+        "Bioethanol barley, wheat, grain maize, oats, other cereals and rye",
+        "Sugar from sugar beet",
+        "Rape seed",
+        "perennials",
     ]
     imputed_missing = impute_missing_values(df_nuts2, missing_shapes, yield_cols)
     df_nuts2 = pd.concat([
@@ -181,5 +180,3 @@ if __name__ == "__main__":
 
     df.index.name = "name"
     df.to_csv(snakemake.output.csv_file)
-
-

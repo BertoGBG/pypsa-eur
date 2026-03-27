@@ -1,16 +1,28 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+"""
+Retrieve crop harvest data from the Eurostat API (dataset ``apro_cpshr``) at
+NUTS2 and NUTS0 resolution, compute area-weighted yields for 1st-generation
+biofuel feedstocks and perennial grasses, and harmonize the results to the
+NUTS2021 region definitions used by PyPSA-Eur.
+
+Outputs a single CSV with columns for each crop class (cereals, sugar beet,
+rapeseed, perennials) indexed by NUTS2 region.
+"""
+
 import logging
 import os
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import requests
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-# ----helpers -----
 def harmonize_to_nuts2021(df, keep_col, nuts2021_n2):
     """
     df : DataFrame indexed by ['geo', 'TIME_PERIOD', 'mapping']
@@ -26,34 +38,33 @@ def harmonize_to_nuts2021(df, keep_col, nuts2021_n2):
     df = df.copy()
 
     # Identify NUTS2 and NUTS0 by index length
-    df['is_nuts2'] = df.index.str.len() == 4
+    df["is_nuts2"] = df.index.str.len() == 4
 
     # Split into NUTS2 and NUTS0
-    df_nuts2 = df[df['is_nuts2']]
-    df_nuts0 = df[~df['is_nuts2']]
+    df_nuts2 = df[df["is_nuts2"]]
+    df_nuts0 = df[~df["is_nuts2"]]
 
     # Prepare working layer for only NUTS2
     df_work = df_nuts2[[keep_col]].reindex(target)
 
     # Country code extraction (first 2 chars)
-    df_work['country'] = df_work.index.str[:2]
+    df_work["country"] = df_work.index.str[:2]
 
     # Fallback 2 — Use NUTS-0 values
     df_work = df_work.join(
-        df_nuts0[[keep_col]].rename(columns={keep_col: 'fallback'}),
-        on='country'
+        df_nuts0[[keep_col]].rename(columns={keep_col: "fallback"}), on="country"
     )
-    df_work[keep_col] = df_work[keep_col].fillna(df_work['fallback'])
-    df_work.drop(columns=['fallback'], inplace=True)
+    df_work[keep_col] = df_work[keep_col].fillna(df_work["fallback"])
+    df_work.drop(columns=["fallback"], inplace=True)
 
     # Join geometry
     nuts_proj = nuts2021_n2.to_crs(epsg=3035)
-    gdf = nuts_proj.join(df_work)[[keep_col, 'country', 'geometry']]
+    gdf = nuts_proj.join(df_work)[[keep_col, "country", "geometry"]]
 
     # Fallback 3 — Spatial neighbors mean or nearest region if island
     mask_missing = gdf[keep_col].isna() | (gdf[keep_col] <= 0)
     if mask_missing.any():
-        print(f"Spatial fallback required for {mask_missing.sum()} regions")
+        logger.warning("Spatial fallback required for %d regions", mask_missing.sum())
 
         # Pre-calc distance matrix only once
         valid = gdf[gdf[keep_col].notna() & (gdf[keep_col] > 0)]
@@ -72,11 +83,11 @@ def harmonize_to_nuts2021(df, keep_col, nuts2021_n2):
                 # Island fallback: nearest valid NUTS2 region
                 nearest_idx = valid.distance(region).idxmin()
                 gdf.at[idx, keep_col] = valid.at[nearest_idx, keep_col]
-                print(f"fallback for {idx}: nearest = {nearest_idx}")
+                logger.debug("Spatial fallback for %s: nearest = %s", idx, nearest_idx)
 
     # Final output tidy
     result = gdf[[keep_col]]
-    result.index.name = 'NUTS2'
+    result.index.name = "NUTS2"
     result.sort_index()
     return result
 
@@ -101,7 +112,6 @@ def download_database_nuts2(filepath):
     # I1120 Sunflower seed
     # I1130 Soya
     # P0000 Dry pulses and [protein crops for the production of grains]
-
 
     url = (
         "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/apro_cpshr/1.0/*.*.*.*?"
@@ -145,16 +155,16 @@ def download_database_nuts2(filepath):
         "TR10,TR21,TR22,TR31,TR32,TR33,TR41,TR42,TR51,TR52,TR61,TR62,TR63,TR71,TR72,TR81,TR82,TR83,TR90,TRA1,TRA2,TRB1,TRB2,TRC1,TRC2,TRC3"
     )
 
-    print("Downloading data from Eurostat...")
+    logger.info("Downloading NUTS2 data from Eurostat...")
     response = requests.get(url)
 
     if response.status_code == 200:
         with open(filepath, "wb") as f:
             f.write(response.content)
-        print(f" File downloaded successfully → {os.path.abspath(filepath)}")
+        logger.info("File downloaded successfully -> %s", os.path.abspath(filepath))
     else:
-        print(f" Failed → HTTP {response.status_code}")
-        print("Server says:", response.text[:250])
+        logger.error("Download failed: HTTP %d", response.status_code)
+        logger.error("Server says: %s", response.text[:250])
 
 
 def download_database_nuts0(filepath):
@@ -178,7 +188,6 @@ def download_database_nuts0(filepath):
     # I1130 Soya
     # P0000 Dry pulses and [protein crops for the production of grains]
 
-
     url = (
         "https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/data/dataflow/ESTAT/apro_cpshr/1.0/*.*.*.*?"
         "c[freq]=A"
@@ -189,42 +198,41 @@ def download_database_nuts0(filepath):
         "&compress=false&format=csvdata&formatVersion=2.0&lang=en&labels=name"
     )
 
-    print("Downloading NATIONAL (NUTS-0) data from Eurostat…")
+    logger.info("Downloading NUTS0 data from Eurostat...")
     response = requests.get(url)
 
     if response.status_code == 200:
         with open(filepath, "wb") as f:
             f.write(response.content)
-        print(f" Downloaded successfully → {os.path.abspath(filepath)}")
+        logger.info("Downloaded successfully -> %s", os.path.abspath(filepath))
     else:
-        print(f" HTTP {response.status_code}")
-        print("Server response:", response.text[:500])
+        logger.error("HTTP %d", response.status_code)
+        logger.error("Server response: %s", response.text[:500])
 
 
 def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, biofuel_yields):
-
     # filter columns - keep only relevant
     df_crops_raw_nuts2 = pd.read_csv(filepath_nuts2)
-    df_crops_raw_nuts2['TIME_PERIOD'] = df_crops_raw_nuts2['TIME_PERIOD'].astype(int)  #
+    df_crops_raw_nuts2["TIME_PERIOD"] = df_crops_raw_nuts2["TIME_PERIOD"].astype(int)
 
     df_crops_raw_nuts0 = pd.read_csv(filepath_nuts0)
-    df_crops_raw_nuts0['TIME_PERIOD'] = df_crops_raw_nuts0['TIME_PERIOD'].astype(int)  #
+    df_crops_raw_nuts0["TIME_PERIOD"] = df_crops_raw_nuts0["TIME_PERIOD"].astype(int)
 
     df_crops_raw = pd.concat([df_crops_raw_nuts0, df_crops_raw_nuts2], ignore_index=True)
 
     # drop empty and irrelevant columns
     columns_to_drop = [
-        'Observation value',
-        'OBS_FLAG',
-        'Observation status (Flag) V2 structure',
-        'CONF_STATUS',
-        'Confidentiality status (flag)',
-        'Time',
-        'STRUCTURE_ID',
-        'STRUCTURE',
-        'STRUCTURE_NAME',
-        'Geopolitical entity (reporting)',
-        'Time frequency'
+        "Observation value",
+        "OBS_FLAG",
+        "Observation status (Flag) V2 structure",
+        "CONF_STATUS",
+        "Confidentiality status (flag)",
+        "Time",
+        "STRUCTURE_ID",
+        "STRUCTURE",
+        "STRUCTURE_NAME",
+        "Geopolitical entity (reporting)",
+        "Time frequency",
     ]
 
     # useful columns:
@@ -235,45 +243,43 @@ def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, b
     # 'strucpro' : type of data ['AR', 'MA', 'PR_HU_EU'], where AR is  cultivated area, MA is  and PR_HU_EU is production at standard EU humidity
     # 'OBS_VALUE' : numerical value
 
-    df_crops = df_crops_raw.drop(columns=columns_to_drop, errors='ignore')
-    df_crops['OBS_VALUE'] = df_crops['OBS_VALUE'].fillna(0)
+    df_crops = df_crops_raw.drop(columns=columns_to_drop, errors="ignore")
+    df_crops["OBS_VALUE"] = df_crops["OBS_VALUE"].fillna(0)
 
     # Step 1: Filter to relevant rows for 2023 and strucpro of interest
     # Keep only relevant structure and crops (all years)
     df_sub = df_crops[
-        (df_crops['strucpro'].isin(['AR', 'PR_HU_EU'])) &
-        (df_crops['crops'].isin(crops_sel))
-        ][['crops', 'geo', 'TIME_PERIOD', 'strucpro', 'OBS_VALUE']]
+        (df_crops["strucpro"].isin(["AR", "PR_HU_EU"])) & (df_crops["crops"].isin(crops_sel))
+    ][["crops", "geo", "TIME_PERIOD", "strucpro", "OBS_VALUE"]]
 
     # Pivot so AR and PR_HU_EU are columns for each (crop, geo, year)
     df_pivot = (
         df_sub.pivot_table(
-            index=['crops', 'geo', 'TIME_PERIOD'],
-            columns='strucpro',
-            values='OBS_VALUE'
+            index=["crops", "geo", "TIME_PERIOD"],
+            columns="strucpro",
+            values="OBS_VALUE",
         )
-        .dropna(subset=['AR', 'PR_HU_EU'])
+        .dropna(subset=["AR", "PR_HU_EU"])
         .reset_index()
     )
 
     # Compute yield per year (PR_HU_EU / AR)
-    df_pivot['YL_(t/ha)'] = np.divide(
-        df_pivot['PR_HU_EU'],
-        df_pivot['AR'],
-        out=np.zeros_like(df_pivot['PR_HU_EU'], dtype=float),
-        where=df_pivot['AR'] != 0
+    df_pivot["YL_(t/ha)"] = np.divide(
+        df_pivot["PR_HU_EU"],
+        df_pivot["AR"],
+        out=np.zeros_like(df_pivot["PR_HU_EU"], dtype=float),
+        where=df_pivot["AR"] != 0,
     )
 
     # Average data across years
     df_avg_yield = (
-        df_pivot
-        .groupby(['crops', 'geo'], as_index=False)[['AR', 'PR_HU_EU', 'YL_(t/ha)']]
+        df_pivot.groupby(["crops", "geo"], as_index=False)[["AR", "PR_HU_EU", "YL_(t/ha)"]]
         .mean()
     )
 
-    min_year = df_pivot['TIME_PERIOD'].min()
-    max_year = df_pivot['TIME_PERIOD'].max()
-    df_avg_yield['TIME_PERIOD'] = f"{min_year}-{max_year}"
+    min_year = df_pivot["TIME_PERIOD"].min()
+    max_year = df_pivot["TIME_PERIOD"].max()
+    df_avg_yield["TIME_PERIOD"] = f"{min_year}-{max_year}"
 
     # map crops to categories unsustainable biofuels in
     rev_map = {
@@ -281,45 +287,48 @@ def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, b
         for key, val in crops_mapping.items()
         for code in (val if isinstance(val, list) else [val])
     }
-    df_avg_yield['mapping'] = df_avg_yield['crops'].map(rev_map)
+    df_avg_yield["mapping"] = df_avg_yield["crops"].map(rev_map)
 
     # calculate weighted production per crop within mapping classes
-    df_avg_yield['PR_share'] = (df_avg_yield['PR_HU_EU'] / df_avg_yield.groupby(['geo', 'TIME_PERIOD', 'mapping'])[
-        'PR_HU_EU'].transform('sum'))
-    df_avg_yield['PR_share'] = df_avg_yield['PR_share'].fillna(0)
+    df_avg_yield["PR_share"] = df_avg_yield["PR_HU_EU"] / df_avg_yield.groupby(
+        ["geo", "TIME_PERIOD", "mapping"]
+    )["PR_HU_EU"].transform("sum")
+    df_avg_yield["PR_share"] = df_avg_yield["PR_share"].fillna(0)
 
     # calculated average weighted yield
-    df_avg_yield['weighted_YL_(t/ha)'] = df_avg_yield['YL_(t/ha)'] * df_avg_yield['PR_share']
+    df_avg_yield["weighted_YL_(t/ha)"] = df_avg_yield["YL_(t/ha)"] * df_avg_yield["PR_share"]
 
     # sanity check for very low yields due to small productions
     thresholds = {
-        'MINBIOCRP11': 2.0,  # cereals
-        'MINBIOCRP21': 50.0,  # sugar beet
-        'MINBIORPS1': 1.5,  # rapeseed
-        'PERENNIALS': 5.0  # perennial grasses
+        "MINBIOCRP11": 2.0,  # cereals
+        "MINBIOCRP21": 50.0,  # sugar beet
+        "MINBIORPS1": 1.5,  # rapeseed
+        "PERENNIALS": 5.0,  # perennial grasses
     }
 
     # Apply crop-specific minimum threshold
-    df_avg_yield['weighted_YL_(t/ha)'] = df_avg_yield.apply(
-        lambda row: row['weighted_YL_(t/ha)'] if row['weighted_YL_(t/ha)'] >= thresholds.get(row['mapping'], 0) else 0,
-        axis=1
+    df_avg_yield["weighted_YL_(t/ha)"] = df_avg_yield.apply(
+        lambda row: row["weighted_YL_(t/ha)"]
+        if row["weighted_YL_(t/ha)"] >= thresholds.get(row["mapping"], 0)
+        else 0,
+        axis=1,
     )
 
     # weighted yields from current production : applies to unsustainable biofuels
-    weighted_yields = (
-        df_avg_yield.groupby(['geo', 'TIME_PERIOD', 'mapping'])['weighted_YL_(t/ha)'].sum()
-    )
+    weighted_yields = df_avg_yield.groupby(["geo", "TIME_PERIOD", "mapping"])[
+        "weighted_YL_(t/ha)"
+    ].sum()
 
-    unsustainalbe_biofuels_yields = pd.DataFrame(weighted_yields)
+    unsustainable_biofuels_yields = pd.DataFrame(weighted_yields)
 
     # unsustainable biomass yield units from t/ha to MWh/ha
-    unsustainalbe_biofuels_yields = unsustainalbe_biofuels_yields[
-        unsustainalbe_biofuels_yields.index.get_level_values('mapping') != 'PERENNIALS'
-        ]
+    unsustainable_biofuels_yields = unsustainable_biofuels_yields[
+        unsustainable_biofuels_yields.index.get_level_values("mapping") != "PERENNIALS"
+    ]
 
-    unsustainalbe_biofuels_yields['energy_yields_(MWh/ha)'] = (
-            unsustainalbe_biofuels_yields['weighted_YL_(t/ha)'] *
-            unsustainalbe_biofuels_yields.index.get_level_values('mapping').map(biofuel_yields)
+    unsustainable_biofuels_yields["energy_yields_(MWh/ha)"] = (
+        unsustainable_biofuels_yields["weighted_YL_(t/ha)"]
+        * unsustainable_biofuels_yields.index.get_level_values("mapping").map(biofuel_yields)
     )
 
     # yields of perennials per hectar in ton/ha
@@ -328,148 +337,18 @@ def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, b
 
     perennial_yields = pd.DataFrame(weighted_yields)
     perennial_yields = perennial_yields[
-        perennial_yields.index.get_level_values('mapping') == 'PERENNIALS'
-        ] * (1-std_moist_perennials)
+        perennial_yields.index.get_level_values("mapping") == "PERENNIALS"
+    ] * (1 - std_moist_perennials)
 
-
-    # max yields from current production : applies to perennials for greeen biorefining
-    max_yields = df_avg_yield.groupby(['geo', 'TIME_PERIOD', 'mapping'])['YL_(t/ha)'].max()
+    # max yields from current production : applies to perennials for green biorefining
+    max_yields = df_avg_yield.groupby(["geo", "TIME_PERIOD", "mapping"])["YL_(t/ha)"].max()
 
     perennial_yields_max = pd.DataFrame(max_yields)
     perennial_yields_max = perennial_yields_max[
-        perennial_yields_max.index.get_level_values('mapping') == 'PERENNIALS'
-        ] * (1-std_moist_perennials)
+        perennial_yields_max.index.get_level_values("mapping") == "PERENNIALS"
+    ] * (1 - std_moist_perennials)
 
-    return unsustainalbe_biofuels_yields, perennial_yields, perennial_yields_max
-
-
-def main():
-    PROJECT_ROOT = Path(__file__).resolve().parents[1] if "__file__" in globals() else Path.cwd()
-    print(PROJECT_ROOT)
-    print(PROJECT_ROOT)
-    CROPS_CSV_NUTS2 = PROJECT_ROOT / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts2.csv"
-    CROPS_CSV_NUTS0 = PROJECT_ROOT / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts0.csv"
-
-    NUTS2_2021_GEOJSON = PROJECT_ROOT / "data" / "nuts" / "NUTS_RG_01M_2021_4326_LEVL_2.geojson"
-    OUT_CSV_perennials = PROJECT_ROOT / 'data' / 'crops' / "yields_perennials_nuts2.csv"
-    OUT_CSV_perennials_max = PROJECT_ROOT / 'data' / 'crops' / "yields_perennials_max_nuts2.csv"
-    OUT_CSV_MINBIOCRP21 = PROJECT_ROOT / 'data' / 'crops' / "yields_MINBIOCRP21_nuts2.csv"
-    OUT_CSV_MINBIORPS1 = PROJECT_ROOT / 'data' / 'crops' / "yields_MINBIORPS1_nuts2.csv"
-    OUT_CSV_MINBIOCRP11 = PROJECT_ROOT / 'data' / 'crops' / "yields_MINBIOCRP11_nuts2.csv"
-    OUT_CSV_YIELDS_ALL = PROJECT_ROOT / 'data' / 'crops' / "yields_perennials_1G_biofuels.csv"
-
-
-    OUT_CSV_perennials.parent.mkdir(parents=True, exist_ok=True)
-
-    #################################
-    #           INPUT DATA
-
-    download_dataset_flag = False
-
-    # mapping perennial crops in eurostat
-
-    ## from enspreso
-    # commodity	description
-    # MINBIOCRP11	Bioethanol barley, wheat, grain maize, oats, other cereals and rye: starchy crops
-    # MINBIOCRP21	Sugar from sugar beet
-    # MINBIOCRP41	Willow
-    # MINBIOCRP41a	Poplar
-    # MINBIOLIQ1	Sunflower, soya seed
-    # MINBIORPS1	Rape seed
-
-    perennial_codes = ['G0000', 'G1000', 'G2000', 'G2100', 'G2900']
-
-    # mapping of 1st generation biofuels eurostat to enspreso
-    crops_mapping = dict(MINBIOCRP11 = ['C0000','C1000','C1210','C1300','C1310','C1320',], # bioethanol from cereals,
-                   MINBIOCRP21 = 'R2000', # bioethanol from sugar beet
-                   MINBIORPS1 =  ['I1110', 'I1120', 'I1130', 'I1110-1130', 'I0000'], # biodiesel from rape seed, sunflower seed, soy
-                   PERENNIALS = perennial_codes)
-
-    LHV_fuels = dict(ethanol = 26.81/3.6, # MWh/t
-                     biodiesel = 36.7/3.6) # MWh/t
-
-    # biofuel conversion process from (doi:10.2760/69179) - NOTE: same inputs used in CAPRI in 2015 (MJ biofuel/MJ feedstock)
-    biofuel_yields = dict(MINBIOCRP11 = 0.295 * LHV_fuels['ethanol'] ,  # t_ethanol/t_wheat ( wheat grain @ 13.5 % H2O) * LHV (MWh/t)- TABLE 93
-                   MINBIOCRP21 = 0.07777 * LHV_fuels['ethanol'], # t_ethanol/t_SB (SB at 16% sugar content) LHV (MWh/t) - TABLE 133
-                   MINBIORPS1 = 0.420 / 1.0063 * LHV_fuels['biodiesel']) # kg crude oil/(kg rapeseed @ 9 %H2O) * crude to FAME * LHV (MWh/t) - TABLE 155 and 159
-
-    # mapping of crops
-    other_crops_codes = [item for v in crops_mapping.values() for item in (v if isinstance(v, list) else [v])]
-    crops_sel = perennial_codes + other_crops_codes
-
-    #################################
-    #      DOWNLOAD DATASETS
-
-    # download file if not present
-    if download_dataset_flag:
-        download_database_nuts2(CROPS_CSV_NUTS2)
-        download_database_nuts0(CROPS_CSV_NUTS0)
-
-    #################################
-    #    PROCESSING OF DATASETS
-    unsustainalbe_biofuels_yields, perennial_yields, perennial_yields_max  = calculate_yields(filepath_nuts0=CROPS_CSV_NUTS0,filepath_nuts2=CROPS_CSV_NUTS2, crops_sel=crops_sel, crops_mapping=crops_mapping, biofuel_yields=biofuel_yields)
-
-    # create yield conversion for each
-    yield_MINBIOCRP11 = unsustainalbe_biofuels_yields[unsustainalbe_biofuels_yields.index.get_level_values('mapping') == 'MINBIOCRP11']
-    yield_MINBIOCRP21 = unsustainalbe_biofuels_yields[unsustainalbe_biofuels_yields.index.get_level_values('mapping') == 'MINBIOCRP21']
-    yield_MINBIORPS1 = unsustainalbe_biofuels_yields[unsustainalbe_biofuels_yields.index.get_level_values('mapping') == 'MINBIORPS1']
-
-    # Drop index levels and set index to NUTS2
-    yield_MINBIOCRP11 = yield_MINBIOCRP11.droplevel(['TIME_PERIOD', 'mapping'])
-    yield_MINBIOCRP11.index.name = 'NUTS2'
-    yield_MINBIOCRP21 = yield_MINBIOCRP21.droplevel(['TIME_PERIOD', 'mapping'])
-    yield_MINBIOCRP21.index.name = 'NUTS2'
-    yield_MINBIORPS1 = yield_MINBIORPS1.droplevel(['TIME_PERIOD', 'mapping'])
-    yield_MINBIORPS1.index.name = 'NUTS2'
-    perennial_yields = perennial_yields.droplevel(['TIME_PERIOD', 'mapping'])
-    perennial_yields.index.name = 'NUTS2'
-    perennial_yields_max = perennial_yields_max.droplevel(['TIME_PERIOD', 'mapping'])
-    perennial_yields_max.index.name = 'NUTS2'
-
-    #################################
-    # MAP DATA TO ALL NUTS2 REGIONS
-    nuts2021_n2 = gpd.read_file(NUTS2_2021_GEOJSON) \
-               .loc[:, ["NUTS_ID", "NUTS_NAME", "CNTR_CODE", "geometry"]] \
-               .set_index("NUTS_ID")
-
-    yield_MINBIOCRP11_full = harmonize_to_nuts2021(yield_MINBIOCRP11, 'energy_yields_(MWh/ha)', nuts2021_n2)
-    yield_MINBIOCRP21_full = harmonize_to_nuts2021(yield_MINBIOCRP21, 'energy_yields_(MWh/ha)', nuts2021_n2)
-    yield_MINBIORPS1_full = harmonize_to_nuts2021(yield_MINBIORPS1, 'energy_yields_(MWh/ha)', nuts2021_n2)
-    yields_perennials_max_full = harmonize_to_nuts2021(perennial_yields_max, 'YL_(t/ha)', nuts2021_n2)
-
-    yields_perennials_full = harmonize_to_nuts2021(perennial_yields, 'weighted_YL_(t/ha)', nuts2021_n2)
-
-    # collapse into a single data frame
-    # Combine all harmonized results into one table
-    df_yields_all = pd.concat(
-        {
-            "MINBIOCRP11": yield_MINBIOCRP11_full["energy_yields_(MWh/ha)"],
-            "MINBIOCRP21": yield_MINBIOCRP21_full["energy_yields_(MWh/ha)"],
-            "MINBIORPS1": yield_MINBIORPS1_full["energy_yields_(MWh/ha)"],
-            "PERENNIALS_MAX": yields_perennials_max_full["YL_(t/ha)"]
-        },
-        axis=1
-    )
-
-    # Rename columns for clarity
-    df_yields_all.columns = [
-        "Bioethanol barley, wheat, grain maize, oats, other cereals and rye",
-        "Sugar from sugar beet",
-        "Rape seed",
-        "perennials"
-    ]
-
-    # Sort by NUTS2 for consistency
-    df_yields_all = df_yields_all.sort_index()
-
-    """ save to csv"""
-    # Save the DataFrame
-    df_yields_all.to_csv(OUT_CSV_YIELDS_ALL, index= True)
-    yield_MINBIOCRP11_full.to_csv(OUT_CSV_MINBIOCRP11, index=True)
-    yield_MINBIOCRP21_full.to_csv(OUT_CSV_MINBIOCRP21, index=True)
-    yield_MINBIORPS1_full.to_csv(OUT_CSV_MINBIORPS1, index=True)
-    yields_perennials_full.to_csv(OUT_CSV_perennials, index=True)
-    yields_perennials_max_full.to_csv(OUT_CSV_perennials_max, index=True)
+    return unsustainable_biofuels_yields, perennial_yields, perennial_yields_max
 
 
 if __name__ == "__main__":
@@ -489,7 +368,7 @@ if __name__ == "__main__":
     OUT_CSV_YIELDS_ALL = Path(snakemake.output["yields_all"])
 
     CROPS_CSV_NUTS2.parent.mkdir(parents=True, exist_ok=True)
-    OUT_CSV_YIELDS_ALL.parent.mkdir(parents=True, exist_ok=True)  # resources/ already exists but safe
+    OUT_CSV_YIELDS_ALL.parent.mkdir(parents=True, exist_ok=True)
 
     perennial_codes = ["G0000", "G1000", "G2000", "G2100", "G2900"]
 
@@ -522,24 +401,22 @@ if __name__ == "__main__":
     download_database_nuts0(CROPS_CSV_NUTS0)
 
     logger.info("Computing crop yields...")
-    unsustainalbe_biofuels_yields, perennial_yields, perennial_yields_max = (
-        calculate_yields(
-            filepath_nuts0=CROPS_CSV_NUTS0,
-            filepath_nuts2=CROPS_CSV_NUTS2,
-            crops_sel=crops_sel,
-            crops_mapping=crops_mapping,
-            biofuel_yields=biofuel_yields,
-        )
+    unsustainable_biofuels_yields, perennial_yields, perennial_yields_max = calculate_yields(
+        filepath_nuts0=CROPS_CSV_NUTS0,
+        filepath_nuts2=CROPS_CSV_NUTS2,
+        crops_sel=crops_sel,
+        crops_mapping=crops_mapping,
+        biofuel_yields=biofuel_yields,
     )
 
-    yield_MINBIOCRP11 = unsustainalbe_biofuels_yields[
-        unsustainalbe_biofuels_yields.index.get_level_values("mapping") == "MINBIOCRP11"
+    yield_MINBIOCRP11 = unsustainable_biofuels_yields[
+        unsustainable_biofuels_yields.index.get_level_values("mapping") == "MINBIOCRP11"
     ]
-    yield_MINBIOCRP21 = unsustainalbe_biofuels_yields[
-        unsustainalbe_biofuels_yields.index.get_level_values("mapping") == "MINBIOCRP21"
+    yield_MINBIOCRP21 = unsustainable_biofuels_yields[
+        unsustainable_biofuels_yields.index.get_level_values("mapping") == "MINBIOCRP21"
     ]
-    yield_MINBIORPS1 = unsustainalbe_biofuels_yields[
-        unsustainalbe_biofuels_yields.index.get_level_values("mapping") == "MINBIORPS1"
+    yield_MINBIORPS1 = unsustainable_biofuels_yields[
+        unsustainable_biofuels_yields.index.get_level_values("mapping") == "MINBIORPS1"
     ]
 
     yield_MINBIOCRP11 = yield_MINBIOCRP11.droplevel(["TIME_PERIOD", "mapping"])

@@ -21,8 +21,9 @@ SECTOR_OPTS = ""
 PLANNING_HORIZON = "2050"
 
 # derived paths
-RES  = BASE_DIR / "resources" / RDIR
-RESULTS = BASE_DIR / "results" / RDIR
+RES     = BASE_DIR / "resources"
+RES_RUN = BASE_DIR / "resources" / RDIR
+RESULTS = BASE_DIR / "results"    / RDIR
 
 # wildcard-based filenames
 WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
