@@ -1029,10 +1029,11 @@ def add_perennials(n, costs):
     )
 
     # calculate biogas production based on harvesting time (in month)
-    # single Series broadcast to all nodes - avoids creating a redundant (snapshots x nodes) matrix
-    p_max_pu = pd.Series(
-        n.snapshots.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(float),
+    harvest = n.snapshots.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(float)
+    p_max_pu = pd.DataFrame(
+        np.tile(harvest.values[:, None], len(nodes)),
         index=n.snapshots,
+        columns=nodes,
     )
 
     n.add(
