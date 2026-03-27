@@ -422,7 +422,7 @@ renewable:
 
 # alternative CDRs
 perennials:
-  potential_co2: 2 # tCO2e/ha/y sequestered
+  potential_co2: 2 # tCO2e/(ha y) sequestered
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
