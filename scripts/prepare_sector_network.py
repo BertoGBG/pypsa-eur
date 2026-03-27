@@ -1029,12 +1029,11 @@ def add_perennials(n, costs):
     )
 
     # calculate biogas production based on harvesting time (in month)
-    harvest = n.snapshots.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(float)
-    p_max_pu = pd.DataFrame(
-        np.tile(harvest.values[:, None], len(nodes)),
-        index=n.snapshots,
-        columns=nodes,
-    )
+    df_gbr = pd.DataFrame(index=n.snapshots, columns=["harvest"])
+    df_gbr["harvest"] = df_gbr.index.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(int)
+    p_max_pu = pd.DataFrame(index=n.snapshots, columns=nodes)
+    for node in nodes:
+        p_max_pu[node] = df_gbr["harvest"]
 
     n.add(
        "Link",
