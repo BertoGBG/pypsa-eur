@@ -5,50 +5,110 @@
 """
 Build Enhanced Weathering (EW) CO2 sequestration potentials per network node.
 
-Takes the available CORINE agricultural land area (sqkm) per node from
-build_EW_corine_potentials and multiplies by a uniform potential_per_sqkm
-(tonnes CO2 per sqkm) from the config to estimate total sequestration potential.
+Intersects CORINE Land Cover data with bioclimatic zone data for each EW
+subclass (e.g. EW_hot, EW_temperate) defined in the config. Each subclass
+specifies its own CORINE land-use codes, bioclimatic zone codes, and
+sequestration rate (potential_per_sqkm). Potentials from all subclasses are
+summed per node.
 
-Output: CSV with columns [node, area [sqkm], potential [t]].
+The bioclimatic dataset ``World_Ecological_BioVal_cluster.tif`` must be placed
+at ``data/World_Ecological_BioVal_cluster.tif`` before running the workflow.
+
+Output: CSV with column ``potential [t]`` indexed by node name.
 """
 
 import logging
 
+import geopandas
+import matplotlib.pyplot as plt
 import pandas
+from atlite.gis import ExclusionContainer, shape_availability
+from rasterio.plot import show
+
 from scripts._helpers import configure_logging
 
 logger = logging.getLogger(__name__)
 
+_EW_NON_SUBCLASS_KEYS = {"max_land_usage"}
 
-def build_EW_potentials(corine_potentials_csv, potential_per_sqkm, output_csv):
-    corine = pandas.read_csv(corine_potentials_csv).set_index("node")
 
-    data_frame = pandas.DataFrame(columns=["node", "area [sqkm]", "potential [t]"])
+def build_EW_potentials(
+    network_geojson,
+    corine_dataset,
+    bioclimate_dataset,
+    ew_config,
+    resolution,
+    csv_file,
+    png_file,
+):
+    nodes_geojson = geopandas.read_file(network_geojson).set_index("name")
+    subclasses = {k: v for k, v in ew_config.items() if k not in _EW_NON_SUBCLASS_KEYS}
 
-    for node in corine.index:
-        area_sqkm = corine.loc[node, "potential [sqkm]"]
-        potential = area_sqkm * potential_per_sqkm
-        logger.info(
-            "Node '%s': area = %.1f sqkm, EW potential = %.1f t CO2"
-            % (node, area_sqkm, potential)
+    node_potentials = {node: 0.0 for node in nodes_geojson.index}
+    excluder_total = ExclusionContainer(crs=3035, res=resolution)
+
+    for comp, cfg in subclasses.items():
+        logger.info("Calculating potentials for EW subclass '%s'", comp)
+        excluder = ExclusionContainer(crs=3035, res=resolution)
+        excluder.add_raster(corine_dataset, codes=cfg["corine"], invert=True, crs=3035)
+        excluder.add_raster(
+            bioclimate_dataset, codes=cfg["climate"], invert=True, crs=3035
         )
-        data_frame.loc[len(data_frame)] = [node, area_sqkm, potential]
+        cell_area_sqkm = excluder.res**2 / 1e6
 
-    data_frame.set_index("node", inplace=True)
-    logger.info("Saving EW potentials to '%s'" % output_csv)
-    data_frame.to_csv(output_csv)
+        excluder_total.add_raster(excluder)
+
+        for node in nodes_geojson.index:
+            shape = nodes_geojson.to_crs(excluder.crs).loc[[node]].geometry
+            band, _ = shape_availability(shape, excluder)
+            area_sqkm = band.sum() * cell_area_sqkm
+            potential = area_sqkm * cfg["potential_per_sqkm"]
+            node_potentials[node] += potential
+            logger.debug(
+                "  %s / %s: area=%.1f sqkm, potential=%.1f t CO2",
+                comp,
+                node,
+                area_sqkm,
+                potential,
+            )
+
+    df = pandas.DataFrame.from_dict(
+        node_potentials, orient="index", columns=["potential [t]"]
+    )
+    df.index.name = "node"
+
+    logger.info("Total EW potential: %.2f Mt CO2", df["potential [t]"].sum() / 1e6)
+
+    if csv_file is not None:
+        logger.info("Saving EW potentials to '%s'", csv_file)
+        df.to_csv(csv_file)
+
+    if png_file is not None:
+        logger.info("Saving EW potentials map to '%s'", png_file)
+        shape = nodes_geojson.to_crs(excluder_total.crs).geometry
+        band, transform = shape_availability(shape, excluder_total)
+        fig, ax = plt.subplots(figsize=(20, 23))
+        ax.set_axis_off()
+        shape.plot(ax=ax, color="none")
+        show(band, transform=transform, cmap="Greens", ax=ax)
+        plt.savefig(png_file)
+        plt.close(fig)
 
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_EW_potentials", clusters="39")
+        snakemake = mock_snakemake("build_EW_potentials")
 
     configure_logging(snakemake)
 
     build_EW_potentials(
-        corine_potentials_csv=snakemake.input["EW_corine_potentials_csv_file"],
-        potential_per_sqkm=snakemake.params["potential_per_sqkm"],
-        output_csv=snakemake.output["csv_file"],
+        network_geojson=snakemake.input["network_geojson"],
+        corine_dataset=snakemake.input["corine_dataset"],
+        bioclimate_dataset=snakemake.input["bioclimate_dataset"],
+        ew_config=snakemake.config["EW"],
+        resolution=snakemake.params["resolution"],
+        csv_file=snakemake.output["csv_file"],
+        png_file=snakemake.output.get("png_file"),
     )

@@ -55,32 +55,20 @@ def section(title: str):
     print("=" * 60)
 
 
-# ── 1. BUILD: EW CORINE potentials (build_EW_corine_potentials) ────────────────
-section("1. BUILD: EW CORINE land potentials")
+# ── 0. INPUT DATA ──────────────────────────────────────────────────────────────
+section("0. INPUT DATA")
 
-corine_csv = RES_RUN / f"EW_corine_potentials_s_{CLUSTERS}.csv"
-corine_png = RES_RUN / f"EW_corine_potentials_s_{CLUSTERS}.png"
+bioclimate_tif = BASE_DIR / "data" / "World_Ecological_BioVal_cluster.tif"
+check_file(bioclimate_tif, "Bioclimate TIF (World_Ecological_BioVal_cluster.tif)")
 
-corine_ok = check_file(corine_csv, f"EW CORINE potentials CSV  s_{CLUSTERS}")
-check_file(corine_png, f"EW CORINE potentials PNG  s_{CLUSTERS}")
-
-if corine_ok:
-    df_corine = pd.read_csv(corine_csv)
-    print(f"        Rows: {len(df_corine)}  |  Columns: {list(df_corine.columns)}")
-    if "potential [sqkm]" in df_corine.columns:
-        total = df_corine["potential [sqkm]"].sum()
-        print(f"        Total CORINE area: {total:,.0f} km²")
-        print(f"        Per-node [km²] — min: {df_corine['potential [sqkm]'].min():.1f}, "
-              f"mean: {df_corine['potential [sqkm]'].mean():.1f}, "
-              f"max: {df_corine['potential [sqkm]'].max():.1f}")
-    if df_corine.isnull().any().any():
-        print(f"{WARN}  NaN values detected in CORINE potentials CSV.")
-
-# ── 2. BUILD: EW potentials (build_EW_potentials) ─────────────────────────────
-section("2. BUILD: EW CO2 sequestration potentials")
+# ── 1. BUILD: EW potentials (build_EW_potentials) ─────────────────────────────
+section("1. BUILD: EW CO2 sequestration potentials (CORINE + bioclimate)")
 
 ew_csv = RES_RUN / f"EW_potentials_s_{CLUSTERS}.csv"
-ew_ok  = check_file(ew_csv, f"EW potentials CSV  s_{CLUSTERS}")
+ew_png = RES_RUN / f"EW_potentials_s_{CLUSTERS}.png"
+
+ew_ok = check_file(ew_csv, f"EW potentials CSV  s_{CLUSTERS}")
+check_file(ew_png, f"EW potentials PNG  s_{CLUSTERS}")
 
 if ew_ok:
     df_ew = pd.read_csv(ew_csv, index_col=0)
@@ -92,18 +80,11 @@ if ew_ok:
         print(f"        Per-node [t CO2] — min: {df_ew['potential [t]'].min():,.0f}, "
               f"mean: {df_ew['potential [t]'].mean():,.0f}, "
               f"max: {df_ew['potential [t]'].max():,.0f}")
-    if "area [sqkm]" in df_ew.columns and corine_ok:
-        # quick sanity check: areas should match CORINE CSV
-        if "potential [sqkm]" in df_corine.columns:
-            corine_total = df_corine["potential [sqkm]"].sum()
-            ew_area_total = df_ew["area [sqkm]"].sum()
-            if abs(corine_total - ew_area_total) > 1.0:
-                print(f"{WARN}  Area mismatch: CORINE={corine_total:.1f} km² vs EW={ew_area_total:.1f} km²")
     if df_ew.isnull().any().any():
         print(f"{WARN}  NaN values detected in EW potentials CSV.")
 
-# ── 3. Pre-network (prepare_sector_network) ────────────────────────────────────
-section("3. PRE-NETWORK: sector-coupled (prepare_sector_network)")
+# ── 2. Pre-network (prepare_sector_network) ────────────────────────────────────
+section("2. PRE-NETWORK: sector-coupled (prepare_sector_network)")
 
 prenet_path = RES_RUN / "networks" / f"{WC}.nc"
 prenet_ok   = check_file(prenet_path, f"Pre-network  {WC}.nc")
@@ -182,8 +163,8 @@ if prenet_ok:
 else:
     print(f"\n{FAIL}  Pre-network missing — prepare_sector_network has not run yet.")
 
-# ── 4. Solved network (solve_sector_network) ───────────────────────────────────
-section("4. OPTIMAL SOLUTION: solved network (solve_sector_network)")
+# ── 3. Solved network (solve_sector_network) ───────────────────────────────────
+section("3. OPTIMAL SOLUTION: solved network (solve_sector_network)")
 
 opt_path = RESULTS / "networks" / f"{WC}.nc"
 opt_ok   = check_file(opt_path, f"Optimal network  {WC}.nc")

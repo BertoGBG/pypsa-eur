@@ -1562,36 +1562,20 @@ def input_heat_source_power(w):
     }
 
 
-rule build_EW_corine_potentials:
+rule build_EW_potentials:
     params:
-        component="EW",
         resolution=250,
-        corine_codes=config["EW"]["corine"],
     input:
         corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
         network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
-    output:
-        csv_file=resources("EW_corine_potentials_s_{clusters}.csv"),
-        png_file=resources("EW_corine_potentials_s_{clusters}.png"),
-    log:
-        logs("build_EW_corine_potentials_s_{clusters}.log"),
-    resources:
-        mem_mb=32000,
-    script:
-        scripts("build_corine_potentials.py")
-
-
-rule build_EW_potentials:
-    params:
-        potential_per_sqkm=config["EW"]["potential_per_sqkm"],
-    input:
-        EW_corine_potentials_csv_file=resources("EW_corine_potentials_s_{clusters}.csv"),
+        bioclimate_dataset=ancient("data/World_Ecological_BioVal_cluster.tif"),
     output:
         csv_file=resources("EW_potentials_s_{clusters}.csv"),
+        png_file=resources("EW_potentials_s_{clusters}.png"),
     log:
         logs("build_EW_potentials_s_{clusters}.log"),
     resources:
-        mem_mb=5000,
+        mem_mb=10000,
     script:
         scripts("build_EW_potentials.py")
 
