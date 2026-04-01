@@ -1575,7 +1575,7 @@ rule build_EW_potentials:
     log:
         logs("build_EW_potentials_s_{clusters}.log"),
     resources:
-        mem_mb=10000,
+        mem_mb=30000,
     script:
         scripts("build_EW_potentials.py")
 
