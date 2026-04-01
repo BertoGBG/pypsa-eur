@@ -45,7 +45,7 @@ def build_EW_potentials(
     subclasses = {k: v for k, v in ew_config.items() if k not in _EW_NON_SUBCLASS_KEYS}
 
     node_potentials = {node: 0.0 for node in nodes_geojson.index}
-    excluder_total = ExclusionContainer(crs=3035, res=resolution)
+    excluder = None
 
     for comp, cfg in subclasses.items():
         logger.info("Calculating potentials for EW subclass '%s'", comp)
@@ -55,8 +55,6 @@ def build_EW_potentials(
             bioclimate_dataset, codes=cfg["climate"], invert=True, crs=3035
         )
         cell_area_sqkm = excluder.res**2 / 1e6
-
-        excluder_total.add_raster(excluder)
 
         for node in nodes_geojson.index:
             shape = nodes_geojson.to_crs(excluder.crs).loc[[node]].geometry
@@ -85,8 +83,8 @@ def build_EW_potentials(
 
     if png_file is not None:
         logger.info("Saving EW potentials map to '%s'", png_file)
-        shape = nodes_geojson.to_crs(excluder_total.crs).geometry
-        band, transform = shape_availability(shape, excluder_total)
+        shape = nodes_geojson.to_crs(excluder.crs).geometry
+        band, transform = shape_availability(shape, excluder)
         fig, ax = plt.subplots(figsize=(20, 23))
         ax.set_axis_off()
         shape.plot(ax=ax, color="none")
