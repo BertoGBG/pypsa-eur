@@ -939,16 +939,6 @@ rule build_biomass_transport_costs:
         scripts("build_biomass_transport_costs.py")
 
 
-rule get_afforestation_nuts_file:
-    input:
-    output:
-        afforestation_nuts_file = resources("afforestation_nuts_biomass_densities.xlsx") if config["afforestation"]["potential_type"] == "density" else resources("afforestation_nuts2_growth_rates.csv")
-    log:
-        logs("get_afforestation_nuts_file.log"),
-    resources:
-        mem_mb = 5000,
-    shell:
-        "wget https://ndownloader.figshare.com/files/43678089 -O {output.afforestation_nuts_file} &> {log[0]}" if config["afforestation"]["potential_type"] == "density" else "wget https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/refs/heads/main/afforestation/data/afforestation/afforestation_nuts2.csv -O {output.afforestation_nuts_file} &> {log[0]}"
 
 
 
@@ -979,7 +969,11 @@ rule build_afforestation_potentials:
         afforestation_corine_potentials_csv_file=resources(
             "afforestation_corine_potentials_s_{clusters}.csv"
         ),
-        afforestation_nuts_file=rules.get_afforestation_nuts_file.output.afforestation_nuts_file,
+        afforestation_nuts_file=lambda w: (
+            rules.retrieve_aCDRs_data.output.afforestation_nuts_biomass_densities
+            if config["afforestation"]["potential_type"] == "density"
+            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_growth_rates
+        ),
     output:
         csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
     log:
