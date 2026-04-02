@@ -939,9 +939,6 @@ rule build_biomass_transport_costs:
         scripts("build_biomass_transport_costs.py")
 
 
-
-
-
 rule build_afforestation_corine_potentials:
     params:
         component="afforestation",

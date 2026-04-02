@@ -1706,10 +1706,10 @@ rule retrieve_aCDRs_data:
     run:
         with ZipFile(input.zip_file) as z:
             for src_path, dest in [
-                ("outputs/afforestation/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
-                ("outputs/afforestation/afforestation_nuts2_growth_rates.csv", output.afforestation_nuts2_growth_rates),
-                ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
-                ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+                ("outputs/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
+                ("outputs/afforestation_nuts2_growth_rates.csv", output.afforestation_nuts2_growth_rates),
+                ("outputs/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
+                ("outputs/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
             ]:
                 with z.open(src_path) as src, open(dest, "wb") as dst:
                     dst.write(src.read())
