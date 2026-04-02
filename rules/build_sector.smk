@@ -938,6 +938,19 @@ rule build_biomass_transport_costs:
     script:
         scripts("build_biomass_transport_costs.py")
 
+rule get_perennial_potentials_nuts_file:
+    input:
+        nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
+        crops_nuts2="resources/aCDRs/estat_apro_cpshr_filtered_en_nuts2.csv",
+        crops_nuts0="resources/aCDRs/estat_apro_cpshr_filtered_en_nuts0.csv",
+    output:
+        yields_all=resources("perennials_yields_1G_biofuels.csv"),
+    log:
+        logs("build_perennial_crop_yields_nuts2.log"),
+    script:
+        scripts("build_perennial_crop_yields_nuts2.py")
+
+
 rule build_perennial_potentials:
     params:
         biomass=config_provider("biomass"),

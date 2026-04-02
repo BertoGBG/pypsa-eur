@@ -1691,19 +1691,16 @@ if (MOBILITY_PROFILES_DATASET := dataset_version("mobility_profiles"))["source"]
             copy2(input["pkw"], output["pkw"])
 
 
-rule retrieve_perennial_crop_yields:
+rule retrieve_aCDRs_data:
     message:
-        "Downloading Eurostat crop data and computing perennial/1G biofuel yields"
-    input:
-        nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
-    output:
-        crops_nuts2="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts2.csv",
-        crops_nuts0="resources/eurostat_crops/estat_apro_cpshr_filtered_en_nuts0.csv",
-        yields_all=resources("perennials_yields_1G_biofuels.csv"),
-    log:
-        logs("retrieve_perennial_crop_yields.log"),
+        "Downloading Afforestation data, Eurostat crop data for perennialisation"
     resources:
-        mem_mb=4000,
+        mem_mb=2000,
     retries: 2
-    script:
-        scripts("retrieve_alternative_CDRs.py")
+    params:
+        url="https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"
+    shell:
+        r"""
+        wget -O resources/outputs.zip {params.url}
+        unzip -o resources/outputs.zip -d resources/aCDRs
+        """
