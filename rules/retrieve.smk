@@ -1695,7 +1695,7 @@ rule retrieve_aCDRs_data:
     message:
         "Downloading Afforestation data, Eurostat crop data for perennialisation"
     resources:
-        mem_mb=2000,
+        mem_mb=4000,
     retries: 2
     params:
         url="https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"

@@ -235,7 +235,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("get_perennial_potentials_nuts_file")
+        snakemake = mock_snakemake("build_perennials_yields_nuts_file")
 
     from scripts._helpers import configure_logging, set_scenario_config
 
