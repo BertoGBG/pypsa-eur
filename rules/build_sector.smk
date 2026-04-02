@@ -941,8 +941,8 @@ rule build_biomass_transport_costs:
 rule build_perennials_yields_nuts_file:
     input:
         nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
-        crops_nuts2="resources/aCDRs/estat_apro_cpshr_filtered_en_nuts2.csv",
-        crops_nuts0="resources/aCDRs/estat_apro_cpshr_filtered_en_nuts0.csv",
+        crops_nuts2=rules.retrieve_aCDRs_data.output.eurostat_crops_nuts2,
+        crops_nuts0=rules.retrieve_aCDRs_data.output.eurostat_crops_nuts0,
     output:
         yields_all=resources("perennials_yields_1G_biofuels.csv"),
     log:
