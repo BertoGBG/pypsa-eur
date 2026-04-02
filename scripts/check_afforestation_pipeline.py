@@ -19,7 +19,7 @@ CLUSTERS         = "50"
 OPTS             = ""
 SECTOR_OPTS      = "168h"
 PLANNING_HORIZON = "2050"
-POTENTIAL_TYPE   = "density"       # "density" or "growth" — must match config
+POTENTIAL_TYPE   = "growth"       # "density" or "growth" — must match config
 
 # derived paths
 RES     = BASE_DIR / "resources"
