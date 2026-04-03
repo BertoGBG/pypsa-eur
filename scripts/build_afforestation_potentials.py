@@ -53,8 +53,11 @@ def build_afforestation_potentials(
             nuts_biomass_density.index.str.len() == 2
         ]
 
+        # Use the different column names as growth mode hence branching is needed in prepare_sector_network.py
+        #   "biomass density [t/ha] [t/ha]" → weighted-average growth rate [t/(ha y)]
+        #   "AGB [t]"    → total Above Ground Biomass in forest per node [t]
         data_frame = pandas.DataFrame(
-            columns=["node", "biomass density [t/ha]", "potential [t/ha]"]
+            columns=["node", "biomass density [t/ha]", "AGB [t]"]
         )
 
         for i in range(len(network)):
@@ -72,7 +75,7 @@ def build_afforestation_potentials(
                 corine_potentials.loc[node_name]["potential [sqkm]"] * 100
             ) * biomass_density
             logger.info(
-                "Node '%s': afforestation potential = %d t/ha" % (node_name, potential)
+                "Node '%s': afforestation potential = %d t/ha" % (node_name, potential) # this is dimensionally not correct!
             )
             data_frame.loc[len(data_frame)] = [node_name, biomass_density, potential]
 
@@ -97,12 +100,18 @@ def build_afforestation_potentials(
             index=lambda x: "GB%s" % x[2:] if x[:2] == "UK" else x
         )
 
-        data_frame = pandas.DataFrame(columns=["node", "land [ha]", "potential [t/ha]"])
+        # Use the different column names as density mode hence branching is needed in prepare_sector_network.py
+        #   "growth rate [t/ha]" → weighted-average growth rate [t/(ha y)]
+        #   "potential [t/y]"    → total annual sequestration potential [t/y]
+        data_frame = pandas.DataFrame(
+            columns=["node", "growth rate [t/ha]", "potential [t/y]"]
+        )
 
         for i in range(len(network)):
             node_row = network.iloc[i]
             node_name = node_row["name"]
             node_geometry = geopandas.GeoSeries(node_row["geometry"], crs=3035)
+            total_area_ha = corine_potentials.loc[node_name]["potential [sqkm]"] * 100
 
             total_fraction = 0
             node_potential = 0
@@ -118,8 +127,10 @@ def build_afforestation_potentials(
                 )
                 total_fraction += fraction
                 node_potential += (
-                    corine_potentials.loc[node_name]["potential [sqkm]"] * 100
-                ) * nuts2_growth_rates.loc[nuts2_name]["affo rate (t/ha/y)"] * fraction
+                    total_area_ha
+                    * nuts2_growth_rates.loc[nuts2_name]["affo rate (t/ha/y)"]
+                    * fraction
+                )
 
             if total_fraction > 0 and (
                 total_fraction < 0.99 or total_fraction > 1.01
@@ -129,10 +140,14 @@ def build_afforestation_potentials(
                     % (node_name, total_fraction)
                 )
 
+            # weighted-average growth rate [t/ha/y] — used for capital cost
+            weighted_growth_rate = node_potential / total_area_ha if total_area_ha > 0 else 0.0
+
             logger.info(
-                "Node '%s': afforestation potential = %d t/ha" % (node_name, node_potential)
+                "Node '%s': afforestation potential = %.1f t/y  (growth rate = %.3f t/ha/y)"
+                % (node_name, node_potential, weighted_growth_rate)
             )
-            data_frame.loc[len(data_frame)] = [node_name, node_potential]
+            data_frame.loc[len(data_frame)] = [node_name, weighted_growth_rate, node_potential]
 
     data_frame.set_index("node", inplace=True)
     logger.info("Saving afforestation potentials to '%s'" % output_csv)
@@ -147,7 +162,7 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
-    potential_type = snakemake.config["afforestation"]["potential_type"]
+    potential_type = snakemake.params.afforestation_potential_type
 
     build_afforestation_potentials(
         network_geojson=snakemake.params["network_geojson"],

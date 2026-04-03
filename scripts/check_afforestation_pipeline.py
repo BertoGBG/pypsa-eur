@@ -118,9 +118,7 @@ if prenet_ok:
         print(f"\n  Carriers with 'afforestation': {affo_carriers}")
         if "co2 afforestation" in n.carriers.index:
             co2_em = n.carriers.at["co2 afforestation", "co2_emissions"]
-            print(f"    co2_emissions = {co2_em}  (expected -1.0)")
-            if abs(co2_em - (-1.0)) > 1e-6:
-                print(f"{WARN}  co2_emissions != -1.0 — check add_afforestation()!")
+            print(f"    co2_emissions = {co2_em}  (expected 0.0 — removal handled via link flow)")
 
         # --- Buses ---
         affo_buses = n.buses[n.buses.carrier.str.contains("afforestation", case=False, na=False)]
@@ -217,6 +215,23 @@ if opt_ok:
             print(f"    min:  {affo_stores['e_nom_opt'].min():,.0f}")
             print(f"    mean: {affo_stores['e_nom_opt'].mean():,.0f}")
             print(f"    max:  {affo_stores['e_nom_opt'].max():,.0f}")
+
+        # --- Capital cost per node + weighted average ---------------------------
+        if (
+            not affo_stores.empty
+            and "e_nom_opt" in affo_stores.columns
+            and "capital_cost" in affo_stores.columns
+        ):
+            print(f"\n  Capital cost per node [€/tCO2]:")
+            node_costs = affo_stores[["capital_cost", "e_nom_opt"]].copy()
+            print(node_costs["capital_cost"].to_string())
+
+            total_weight = affo_stores["e_nom_opt"].sum()
+            if total_weight > 0:
+                wavg_cost = (
+                    affo_stores["capital_cost"] * affo_stores["e_nom_opt"]
+                ).sum() / total_weight
+                print(f"\n  Weighted-avg capital cost (by e_nom_opt): {wavg_cost:.2f} €/tCO2")
 
         if affo_links.empty and affo_stores.empty:
             print(f"\n{WARN}  No afforestation components in optimal network!")

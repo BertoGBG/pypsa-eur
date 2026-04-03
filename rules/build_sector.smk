@@ -962,6 +962,7 @@ rule build_afforestation_potentials:
     params:
         network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
         nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
+        afforestation_potential_type=config["afforestation"]["potential_type"],
     input:
         afforestation_corine_potentials_csv_file=resources(
             "afforestation_corine_potentials_s_{clusters}.csv"
@@ -1640,6 +1641,7 @@ rule prepare_sector_network:
         temperature_limited_stores=config_provider(
             "sector", "district_heating", "temperature_limited_stores"
         ),
+        potential_type=config_provider("afforestation", "potential_type"),
     input:
         unpack(input_profile_offwind),
         unpack(input_heat_source_power),

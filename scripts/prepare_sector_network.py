@@ -1252,11 +1252,31 @@ def add_afforestation(n, costs):
     afforestation_potentials = pd.read_csv(
         snakemake.input.afforestation_potentials
     ).set_index("node")
-    densities = afforestation_potentials["biomass density [t/ha]"].values
-    potentials = afforestation_potentials["potential [t/ha]"].values
 
+    potential_type = snakemake.params.afforestation_potential_type
     co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
+
+    if potential_type == "density":
+        densities = afforestation_potentials["biomass density [t/ha]"].values
+        AGB = afforestation_potentials["AGB [t]"].values
+        potentials = AGB / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage
+
+        # capital cost calculated from total CO2 removal during lifetime
+        investment_cost = costs.at["Afforestation", "investment"]
+        maintenance_cost = (
+            investment_cost
+            * (costs.at["Afforestation", "FOM"] / 100)
+            * costs.at["Afforestation", "lifetime"]
+        )
+        capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
+
+    else:  # growth
+        potentials = afforestation_potentials["potential [t/y]"].values * co2_per_tonne * max_land_usage
+        growth_rate = afforestation_potentials["growth rate [t/ha]"].values
+
+        # capital cost calculated from annual CO2 removal rates
+        capital_cost = costs.at["Afforestation", "capital_cost"] / (growth_rate * co2_per_tonne)
 
     n.add("Carrier", "co2 afforestation")
 
@@ -1268,14 +1288,6 @@ def add_afforestation(n, costs):
         unit="t_co2",
     )
 
-    investment_cost = costs.at["Afforestation", "investment"]
-    maintenance_cost = (
-        investment_cost
-        * (costs.at["Afforestation", "FOM"] / 100)
-        * costs.at["Afforestation", "lifetime"]
-    )
-    capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
-
     n.add(
         "Store",
         spatial.nodes + " co2 afforestation",
@@ -1283,7 +1295,7 @@ def add_afforestation(n, costs):
         carrier="co2 afforestation",
         capital_cost=capital_cost,
         e_nom_extendable=True,
-        e_nom_max=potentials / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage,
+        e_nom_max=potentials,
         lifetime=costs.at["Afforestation", "lifetime"],
     )
 
