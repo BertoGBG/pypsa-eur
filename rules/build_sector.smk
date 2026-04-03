@@ -1641,7 +1641,7 @@ rule prepare_sector_network:
         temperature_limited_stores=config_provider(
             "sector", "district_heating", "temperature_limited_stores"
         ),
-        potential_type=config_provider("afforestation", "potential_type"),
+        afforestation_potential_type=config_provider("afforestation", "potential_type"),
     input:
         unpack(input_profile_offwind),
         unpack(input_heat_source_power),
