@@ -958,6 +958,47 @@ rule build_biochar_potentials:
         scripts("build_corine_potentials.py")
 
 
+rule build_afforestation_corine_potentials:
+    params:
+        component="afforestation",
+        resolution=250,
+        corine_codes=config["afforestation"]["corine"],
+    input:
+        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+    output:
+        csv_file=resources("afforestation_corine_potentials_s_{clusters}.csv"),
+        png_file=resources("afforestation_corine_potentials_s_{clusters}.png"),
+    log:
+        logs("build_afforestation_corine_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=32000,
+    script:
+        scripts("build_corine_potentials.py")
+
+
+rule build_afforestation_potentials:
+    params:
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+        nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
+        afforestation_potential_type=config["afforestation"]["potential_type"],
+    input:
+        afforestation_corine_potentials_csv_file=resources(
+            "afforestation_corine_potentials_s_{clusters}.csv"
+        ),
+        afforestation_nuts_file=lambda w: (
+            rules.retrieve_aCDRs_data.output.afforestation_nuts_biomass_densities
+            if config["afforestation"]["potential_type"] == "density"
+            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_growth_rates
+        ),
+    output:
+        csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
+    log:
+        logs("build_afforestation_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=5000,
+    script:
+        scripts("build_afforestation_potentials.py")
 rule build_co2_sequestration_potentials:
     message:
         "Building CO2 sequestration potentials"
@@ -1635,6 +1676,7 @@ rule prepare_sector_network:
         temperature_limited_stores=config_provider(
             "sector", "district_heating", "temperature_limited_stores"
         ),
+        afforestation_potential_type=config_provider("afforestation", "potential_type"),
     input:
         unpack(input_profile_offwind),
         unpack(input_heat_source_power),
@@ -1769,6 +1811,11 @@ rule prepare_sector_network:
         EW_potentials=lambda w: (
             resources("EW_potentials_s_{clusters}.csv")
             if config_provider("sector", "EW")(w)
+            else []
+        ),
+        afforestation_potentials=lambda w: (
+            resources("afforestation_potentials_s_{clusters}.csv")
+            if config_provider("sector", "afforestation")(w)
             else []
         ),
     output:

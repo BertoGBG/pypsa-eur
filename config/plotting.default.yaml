@@ -699,6 +699,7 @@ plotting:
     co2 biochar: '#005000'
     EW: '#ab6ae9'
     EW store: '#fcba00'
+    co2 afforestation: '#22cc22'
     co2 stored: '#f2385a'
     co2 sequestered: '#f2682f'
     co2: '#f29dae'

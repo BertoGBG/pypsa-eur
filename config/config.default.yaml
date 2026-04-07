@@ -842,6 +842,7 @@ sector:
     heat_output: false
     transport: false
   EW: true
+  afforestation: true
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1088,6 +1089,12 @@ EW:
     potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
     climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
   max_land_usage: 0.2 # maximum fraction of suitable area used for EW
+
+afforestation:
+  corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
+  potential_type: "density" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
+  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:

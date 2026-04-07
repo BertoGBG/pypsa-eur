@@ -1689,3 +1689,27 @@ if (MOBILITY_PROFILES_DATASET := dataset_version("mobility_profiles"))["source"]
         run:
             copy2(input["kfz"], output["kfz"])
             copy2(input["pkw"], output["pkw"])
+
+rule retrieve_aCDRs_data:
+    message:
+        "Downloading aCDRs data (afforestation and perennialisation inputs)"
+    input:
+        zip_file=storage("https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"),
+    output:
+        afforestation_nuts_biomass_densities=resources("afforestation_nuts_biomass_densities.xlsx"),
+        afforestation_nuts2_growth_rates=resources("afforestation_nuts2_growth_rates.csv"),
+        eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
+        eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
+    resources:
+        mem_mb=4000,
+    retries: 2
+    run:
+        with ZipFile(input.zip_file) as z:
+            for src_path, dest in [
+                ("outputs/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
+                ("outputs/afforestation_nuts2_growth_rates.csv", output.afforestation_nuts2_growth_rates),
+                ("outputs/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
+                ("outputs/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+            ]:
+                with z.open(src_path) as src, open(dest, "wb") as dst:
+                    dst.write(src.read())
