@@ -697,6 +697,8 @@ plotting:
     biochar heat: '#228B22'
     biochar transport: '#006400'
     co2 biochar: '#005000'
+    EW: '#ab6ae9'
+    EW store: '#fcba00'
     co2 stored: '#f2385a'
     co2 sequestered: '#f2682f'
     co2: '#f29dae'

@@ -27,6 +27,7 @@ gurobi.log
 /data/*
 /cutouts
 /tmp
+/zenodo
 doc/_build
 _build
 

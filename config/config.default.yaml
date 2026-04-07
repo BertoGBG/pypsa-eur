@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "biochar_2050"
+  name: "CDRs_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -841,6 +841,7 @@ sector:
     enable: true
     heat_output: false
     transport: false
+  EW: true
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1076,6 +1077,17 @@ biochar:
   co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
   number_years: 25 # amortisation period (years) for biochar CO2 storage
+
+EW:
+  EW_hot:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 839 # tonnes CO2 sequestered per sqkm (hot climate)
+    climate: [23, 24, 28, 33, 34, 36] # bioclimatic zone codes for hot regions
+  EW_temperate:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
+    climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
+  max_land_usage: 0.2 # maximum fraction of suitable area used for EW
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:

@@ -5,7 +5,8 @@
 """
 Build available land area per network node from CORINE Land Cover data.
 
-Used upstream of build_afforestation_potentials.py and build_biochar_potentials rule.
+Used upstream of build_afforestation_potentials.py, build_biochar_potentials
+and build_EW_potentials rules.
 """
 
 import logging
