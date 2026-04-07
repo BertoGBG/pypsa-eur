@@ -1002,6 +1002,71 @@ def add_allam_gas(
     )
 
 
+def add_perennials(n, costs):
+
+    logger.info("Adding perennials.")
+
+    # load resources
+    biomass_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
+    perennials_yields_1G_biofuels = pd.read_csv(snakemake.input.perennials_yields_1G_biofuels).set_index("name")
+
+    # calculate CO2 sequestration per tDM perennials
+    perennial_CO2_seq = perennials_yields_1G_biofuels["perennials"] / snakemake.config["perennials"]["potential_co2"] # (tDM/tCO2 seq)
+
+    # calculate perennials potential based on conversion on first generation biofuels
+    perennials_area_spatial = (biomass_potentials.filter(regex='biofuels_1G') / perennials_yields_1G_biofuels.filter(regex='biofuels_1G')).sum(axis=1)
+    # (MWh/y) / (MWh / ha / y) = (ha) returns the area used by sum of the 3 biofuels_1G classes which can be assigned for perennials
+    perennials_potentials_spatial = perennials_area_spatial * snakemake.config["perennials"]["potential_co2"]  # (tCO2seq)  =  (ha) * (tCO2 seq/ha)
+
+    nodes = pop_layout.index
+    n.add("Carrier", "perennial")
+    n.add("Carrier", "perennial store")
+
+    n.add(
+       "Bus",
+       nodes + " perennials co2 store",
+       location=nodes,
+       carrier="perennial store",
+       unit="t_co2",
+    )
+
+    # calculate biogas production based on harvesting time (in month)
+    df_gbr = pd.DataFrame(index=n.snapshots, columns=["harvest"])
+    df_gbr["harvest"] = df_gbr.index.month.isin([4, 5, 6, 7, 8, 9, 10]).astype(int)
+    p_max_pu = pd.DataFrame(index=n.snapshots, columns=nodes)
+    for node in nodes:
+        p_max_pu[node] = df_gbr["harvest"]
+
+    n.add(
+       "Link",
+       nodes,
+       suffix=" perennials GBR",
+       bus0="co2 atmosphere",
+       bus1=nodes + " perennials co2 store",
+       bus2=nodes.values,
+       bus3=spatial.gas.biogas,
+       efficiency=1,
+       efficiency2=-costs.at["perennials gbr", "electricity-input"] * perennial_CO2_seq,
+       efficiency3=costs.at["perennials gbr", "biogas-output"] * perennial_CO2_seq,
+       carrier="perennial",
+       p_nom_extendable=True,
+       p_max_pu=p_max_pu,
+       capital_cost=costs.at["perennials gbr", "capital_cost"] * perennial_CO2_seq,
+       marginal_cost=costs.at["perennials gbr", "VOM"] * perennial_CO2_seq,
+       lifetime=costs.at["perennials gbr", "lifetime"],
+    )
+
+    n.add(
+       "Store",
+       nodes,
+       suffix=" CO2s_perennials",
+       bus=nodes + " perennials co2 store",
+       e_nom_extendable=True,
+       e_nom_max=perennials_potentials_spatial.values,
+       carrier="perennial store",
+       e_cyclic=False,
+    )
+
 def add_biomass_to_methanol(n, costs):
     n.add(
         "Link",
@@ -6789,6 +6854,9 @@ if __name__ == "__main__":
 
     if options.get("afforestation"):
         add_afforestation(n, costs)
+
+    if options.get("perennials"):
+        add_perennials(n, costs)
 
     if not options["electricity_transmission_grid"]:
         decentral(n)

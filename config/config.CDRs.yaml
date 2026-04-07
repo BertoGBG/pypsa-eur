@@ -420,6 +420,10 @@ renewable:
     eia_correct_by_capacity: false
     eia_approximate_missing: false
 
+# alternative CDRs
+perennials:
+  potential_co2: 2 # tCO2e/ha/y sequestered
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
   unit_commitment: false
