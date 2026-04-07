@@ -665,6 +665,8 @@ plotting:
     # syngas
     Sabatier: '#9850ad'
     methanation: '#c44ce6'
+    biomethanation biogas: '#c44ce6'
+    biomethanation CO2: '#c44ce6'
     methane: '#c44ce6'
     # synfuels
     Fischer-Tropsch: '#25c49a'

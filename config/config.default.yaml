@@ -833,6 +833,8 @@ sector:
   solar_thermal: true
   solar_cf_correction: 0.788457
   methanation: true
+  biomethanation_biogas: true
+  biomethanation_CO2: true
   coal_cc: false
   dac: true
   co2_vent: false
@@ -1066,7 +1068,7 @@ industry:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1408,8 +1410,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
