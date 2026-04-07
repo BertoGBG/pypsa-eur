@@ -939,6 +939,25 @@ rule build_biomass_transport_costs:
         scripts("build_biomass_transport_costs.py")
 
 
+rule build_biochar_potentials:
+    params:
+        component="biochar",
+        resolution=250,
+        corine_codes=config["biochar"]["corine"],
+    input:
+        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+    output:
+        csv_file=resources("biochar_potentials_s_{clusters}.csv"),
+        png_file=resources("biochar_potentials_s_{clusters}.png"),
+    log:
+        logs("build_biochar_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=32000,
+    script:
+        scripts("build_corine_potentials.py")
+
+
 rule build_co2_sequestration_potentials:
     message:
         "Building CO2 sequestration potentials"
@@ -1722,6 +1741,11 @@ rule prepare_sector_network:
         ates_potentials=lambda w: (
             resources("ates_potentials_base_s_{clusters}_{planning_horizons}.csv")
             if config_provider("sector", "district_heating", "ates", "enable")(w)
+            else []
+        ),
+        biochar_potentials=lambda w: (
+            resources("biochar_potentials_s_{clusters}.csv")
+            if config_provider("sector", "biochar")(w)
             else []
         ),
     output:

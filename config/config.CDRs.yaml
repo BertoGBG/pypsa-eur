@@ -836,68 +836,6 @@ sector:
   methanation: true
   biomethanation_biogas: true
   biomethanation_CO2 : true
-  coal_cc: false
-  dac: true
-  co2_vent: false
-  heat_vent:
-    urban central: true
-    urban decentral: true
-    rural: true
-  marginal_cost_heat_vent: 0.02
-  allam_cycle_gas: false
-  hydrogen_fuel_cell: false
-  hydrogen_turbine: false
-  SMR: true
-  SMR_cc: true
-  regional_oil_demand: true
-  regional_coal_demand: false
-  regional_co2_sequestration_potential:
-    enable: true
-    attribute:
-    - conservative estimate Mt
-    - conservative estimate GAS Mt
-    - conservative estimate OIL Mt
-    - conservative estimate aquifer Mt
-    include_onshore: false
-    min_size: 3
-    max_size: 25
-    years_of_storage: 25
-  co2_sequestration_potential:
-    2020: 0
-    2025: 0
-    2030: 40
-    2035: 100
-    2040: 180
-    2045: 250
-    2050: 250
-  co2_sequestration_cost: 30
-  co2_sequestration_lifetime: 50
-  co2_spatial: true
-  co2_network: true
-  co2_network_cost_factor: 1
-  cc_fraction: 0.9
-  hydrogen_underground_storage: true
-  hydrogen_underground_storage_locations:
-  - onshore
-  - nearshore
-  methanol:
-    regional_methanol_demand: false
-    methanol_reforming: false
-    methanol_reforming_cc: false
-    methanol_to_kerosene: false
-    methanol_to_power:
-      ccgt: false
-      ccgt_cc: false
-      ocgt: true
-      allam: false
-    biomass_to_methanol: true
-    biomass_to_methanol_cc: false
-  ammonia: true
-  min_part_load_electrolysis: 0
-  min_part_load_fischer_tropsch: 0.5
-  min_part_load_methanolisation: 0.3
-  min_part_load_methanation: 0.3
-  min_part_load_biomethanation: 0.05
   use_fischer_tropsch_waste_heat: 0.25
   use_haber_bosch_waste_heat: 0.25
   use_methanolisation_waste_heat: 0.25
