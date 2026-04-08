@@ -2,27 +2,28 @@
 
 ## 1. The Core Problem
 
-You need a **single annualised sequestration rate** (tCO₂ ha⁻¹ yr⁻¹) per NUTS-2 region that is meaningful for energy system optimisation. The difficulty is that real forests follow a sigmoidal growth curve — fast growth when young, peaking around age 30–60, then levelling off — and are typically harvested on 60–100 year rotations. The optimiser doesn't model forest age classes; it sees afforestation as a CDR technology with a **cost per tCO₂** and a **potential per region** (hectares × rate).
+We need a **single annualised sequestration rate** (tCO₂ ha⁻¹ yr⁻¹) per NUTS-2 region that is meaningful for energy system optimisation. The difficulty is that real forests follow a sigmoidal growth curve — fast growth when young, peaking around age 30–60, then levelling off — and are typically harvested on 60–100 year rotations. The optimiser doesn't model forest age classes; it sees afforestation as a CDR technology with a **cost per tCO₂** and a **potential per region** (hectares × rate).
 
-Your Corine land cover work already handles the *potential hectares*. What remains is the *rate* and how to make it spatially resolved and scientifically defensible.
+The Corine land cover work already handles the *potential hectares*. What remains is the *rate* and how to make it spatially resolved and scientifically defensible.
 
 ---
 
-## 2. Understanding Your Sources
+## 2. Understanding our Sources
 
 ### Nabuurs et al. (2013/2018) — Nature Climate Change
-This work documents the *existing* European forest carbon sink (~436 MtCO₂eq/yr for the EU) and its emerging saturation. It provides aggregate country/regional sink values for *established forests of mixed ages*, not specifically for newly afforested land. **Not directly usable** for your purpose without significant reinterpretation, because it blends old growth, managed forests, and new plantations.
+This work documents the *existing* European forest carbon sink (~436 MtCO₂eq/yr for the EU) and its emerging saturation. It provides aggregate country/regional sink values for *established forests of mixed ages*, not specifically for newly afforested land. Not directly usable for our purpose without significant reinterpretation, because it blends old growth, managed forests, and new plantations.
 
 ### Avitabile et al. (2024) — Scientific Data (your third link)
-This is the **harmonised biomass & increment dataset** for 38 European countries at NUTS-1 to NUTS-3 resolution. It provides:
+This is the **harmonised biomass & increment dataset** for 38 European countries at NUTS-1 to NUTS-3 resolution used in the model.
+It provides:
 - **Net Annual Increment (NAI)** in m³ ha⁻¹ yr⁻¹ for existing forests (2010–2020)
-- **Aboveground biomass stock** in t ha⁻¹ for 2020
+- **Aboveground biomass stock** in t ha⁻¹ for 2020, also for young forstes (1-19y) but not growth rates directly.
 - Sub-national resolution for 24 countries
 
-This gives you the *average productivity of existing forests per region* but again reflects a mix of age classes, not specifically young afforestation.
+This gives you the *average productivity of existing forests per region* but again reflects a mix of age classes, not specifically young afforestation as we need to assume and average age for young forests to xalulate the rates. Note: using a 10 years average age the average growth rate is about 5.5 t/ha y a bit lower than the EU general estimates at 8 t/ha y.
 
 ### Pilli et al. (2024) — Zenodo dataset
-This is the **age-class-resolved** volume and increment library (222 forest types, 48 management types, 25 EU Member States). It provides standing volume and net increment **by age class** for each forest type and region (often NUTS-2). Combined with the BCEF data in the same dataset, you can convert volume increments to biomass and then to CO₂. **This is the most useful dataset for your purpose** because it lets you compute rotation-averaged values.
+This is the **age-class-resolved** volume and increment library (222 forest types, 48 management types, 25 EU Member States). It provides standing volume and net increment **by age class** for each forest type and region (often NUTS-2). Combined with the BCEF data in the same dataset, you can convert volume increments to biomass and then to CO₂. **This is the most useful dataset for our purpose** because it lets you compute rotation-averaged values.
 
 ### EU publication (op.europa.eu link)
 This is the JRC report documenting the methodology behind the EU-CBM-HAT carbon budget model, which uses the Pilli et al. data. It provides the full conversion chain from volume → biomass → carbon.
@@ -33,9 +34,9 @@ This is the JRC report documenting the methodology behind the EU-CBM-HAT carbon 
 
 ### Proposal A: Rotation-Averaged Rate from Pilli et al. Yield Tables (Recommended)
 
-**Concept**: Use the age-class-resolved increment data to compute a *rotation-averaged* annual CO₂ sequestration rate, which represents the steady-state annual removal you would get from a landscape of afforested plots planted in staggered years.
+**Concept**: Use the age-class-resolved increment data to compute a *rotation-averaged* annual CO₂ sequestration rate, which represents the steady-state annual removal you would get from a landscape of afforested plots planted in staggered years. With this method we take in cosideration the forest mix and weighted for age until harvesting.
 
-**Why this is appropriate**: In an energy system model with a planning horizon of 2025–2050, afforestation decisions made in 2025 will produce forests of different ages by 2050. If you assume continuous planting (which the optimiser effectively does by investing in capacity), the aggregate removal rate converges to the rotation average. This is exactly the annualised value you need.
+**Why this is a better idea than averge growth rates from ABG density**: In an energy system model with a planning horizon of 2025–2050, afforestation decisions made in 2025 will produce forests of different ages by 2050. If we assume continuous planting (especially in transition studies), the aggregate removal rate converges to the rotation average. This is exactly the annualised value we need.
 
 **Method**:
 
