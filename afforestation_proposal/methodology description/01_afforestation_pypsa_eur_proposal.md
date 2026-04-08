@@ -141,11 +141,11 @@ This is the JRC report documenting the methodology behind the EU-CBM-HAT carbon 
 
 ---
 
-## 4. My Recommendation
+## 4. Implementation plan
 
 **Use Proposal A** as the primary approach. It is the most defensible and uses exactly the data infrastructure that the JRC built for EU LULUCF accounting. The Pilli et al. dataset already sits behind the EU-CBM-HAT model that EU member states use for their carbon sink projections.
 
-**The key insight for your PyPSA-Eur implementation**:
+**The key insight for PyPSA-Eur implementation**:
 
 The rotation-averaged MAI (Mean Annual Increment) is the correct metric for an energy system model. It answers the question: *"If I convert 1 hectare per year to forest, what is the steady-state annual CO₂ removal?"* This sidesteps the entire growth-curve complexity.
 
