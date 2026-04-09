@@ -126,6 +126,9 @@ if prenet_ok:
                 finite = bc_stores["e_nom_max"][bc_stores["e_nom_max"] < 1e18]
                 print(f"\n    e_nom_max (finite) [tCO2] — "
                       f"min: {finite.min():.0f}, mean: {finite.mean():.0f}, max: {finite.max():.0f}")
+                total_max = finite.sum()
+                print(f"    Total e_nom_max (max potential): {total_max:,.0f} tCO2  "
+                      f"({total_max / 1e6:.3f} MtCO2)")
 
         if not biochar_carriers:
             print(f"\n{WARN}  No biochar carriers found — add_biochar may NOT have run!")
