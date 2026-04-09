@@ -1,16 +1,16 @@
 """
-Download FluxCom monthly GPP data for Europe.
+Download FluxCom RS+METEO daily GPP data (ERA5 forcing) via anonymous FTP.
 
-FluxCom (Jung et al. 2020, Biogeosciences) provides machine-learning upscaled
-GPP from FLUXNET eddy-covariance towers at 0.5° resolution, monthly timestep.
+Dataset: FluxCom RS_METEO ensemble, ERA5 forcing, GPP variable
+  FTP:  ftp.bgc-jena.mpg.de (anonymous, no credentials needed)
+  Path: /pub/outgoing/uweber/Fluxcom/tCarbonFluxes/RS_METEO/ensemble/ERA5/daily/
+  File: GPP.RS_METEO.FP-ALL.MLM-ALL.METEO-ERA5.720_360.daily.YYYY.nc
+  Unit: gC m⁻² day⁻¹  |  Resolution: 0.5° global  |  Period: 1979–2020
+  Size: ~1.2 GB per year
 
-Dataset: RS (remote sensing) ensemble, GPP variable
-  - Unit: gC m⁻² day⁻¹
-  - Resolution: 0.5° × 0.5°, monthly, global
-  - Period: 2001–2015 (RS version)
-
-Registration required at: http://www.fluxcom.org/CF-Download/
-After registering you receive credentials for the THREDDS/HTTP server.
+We download 3 years by default — sufficient for a stable seasonal climatology.
+Files are saved to data/fluxcom_raw/ for processing by 02_compute_nuts2_profiles.py,
+and will be uploaded to Zenodo alongside the Pilli et al. afforestation rates.
 
 Reference:
   Jung, M. et al. (2020). Scaling carbon fluxes from eddy covariance sites to
@@ -18,122 +18,75 @@ Reference:
   Biogeosciences, 17(5), 1343–1365. https://doi.org/10.5194/bg-17-1343-2020
 
 Usage:
-    # Set your credentials as environment variables first:
-    export FLUXCOM_USER="your_username"
-    export FLUXCOM_PASS="your_password"
-
-    python 01_download_fluxcom.py
-
-    # Or run in test mode with a single year (no credentials needed if using
-    # the public TRENDY mirror — see NOTE below):
-    python 01_download_fluxcom.py --test
-
-NOTE on public access:
-    FluxCom RS GPP is also mirrored on the ICOS Carbon Portal and can be
-    accessed via the ESA CCI Land Cover portal. If you have access to the
-    full dataset, set YEARS to the full 2001–2015 range. For a seasonal
-    climatology, any 5+ year subset is sufficient.
-
-    Alternatively, the FluxCom data can be obtained via:
-    https://doi.org/10.17871/FluxCom-RS-v006 (requires registration)
+    python 01_download_fluxcom.py            # downloads 2010, 2011, 2012
+    python 01_download_fluxcom.py --years 2008 2009 2010 2011 2012
 """
 
-import os
-import sys
 import argparse
+import urllib.request
 from pathlib import Path
 
-import requests
-import numpy as np
+# ── Configuration ──────────────────────────────────────────────────────────────
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-
-# Years to download (2001–2015 for RS ensemble)
-# For a test or climatology purpose, 5 years is enough
-YEARS = list(range(2008, 2013))  # 5-year subset by default
-
-# FluxCom RS ensemble base URL (after login)
-# Files follow the pattern: GPP.RS_V006.FP-ALL.MLM-ALL.METEO-NONE.720_360.monthly.YYYY.nc
-BASE_URL = (
-    "http://www.fluxcom.org/CF-Download/RS_V006/"
-    "GPP.RS_V006.FP-ALL.MLM-ALL.METEO-NONE.720_360.monthly.{year}.nc"
+FTP_BASE = (
+    "ftp://ftp.bgc-jena.mpg.de/pub/outgoing/uweber/Fluxcom/"
+    "tCarbonFluxes/RS_METEO/ensemble/ERA5/daily/"
 )
+FILE_PATTERN = "GPP.RS_METEO.FP-ALL.MLM-ALL.METEO-ERA5.720_360.daily.{year}.nc"
+
+DEFAULT_YEARS = [2010, 2011, 2012]   # 3 years → stable climatology, ~3.6 GB
 
 OUTPUT_DIR = Path(__file__).parent / "data" / "fluxcom_raw"
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── CLI ────────────────────────────────────────────────────────────────────────
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Download FluxCom monthly GPP")
+    p = argparse.ArgumentParser(description="Download FluxCom GPP via anonymous FTP")
     p.add_argument(
-        "--test",
-        action="store_true",
-        help="Download only the first year (quick smoke test)",
-    )
-    p.add_argument(
-        "--years",
-        nargs="+",
-        type=int,
-        default=YEARS,
-        help="Years to download (default: 2008–2012)",
+        "--years", nargs="+", type=int, default=DEFAULT_YEARS,
+        help=f"Years to download (default: {DEFAULT_YEARS}). Available: 1979–2020.",
     )
     return p.parse_args()
 
+# ── Download ───────────────────────────────────────────────────────────────────
 
-# ── Download ──────────────────────────────────────────────────────────────────
+def _progress(block_count, block_size, total_size):
+    downloaded = block_count * block_size
+    if total_size > 0:
+        pct = min(100, 100 * downloaded / total_size)
+        mb = downloaded / 1e6
+        total_mb = total_size / 1e6
+        print(f"\r    {pct:5.1f}%  {mb:.0f} / {total_mb:.0f} MB", end="", flush=True)
 
-def download_year(year: int, user: str, password: str) -> Path:
-    url = BASE_URL.format(year=year)
-    output_dir = OUTPUT_DIR
-    output_dir.mkdir(parents=True, exist_ok=True)
-    out_path = output_dir / f"GPP_fluxcom_monthly_{year}.nc"
+
+def download_year(year: int) -> Path:
+    filename = FILE_PATTERN.format(year=year)
+    url = FTP_BASE + filename
+    out_path = OUTPUT_DIR / filename
 
     if out_path.exists():
-        print(f"  {year}: already downloaded, skipping.")
+        size_mb = out_path.stat().st_size / 1e6
+        print(f"  {year}: already downloaded ({size_mb:.0f} MB), skipping.")
         return out_path
 
-    print(f"  {year}: downloading from {url} ...")
-    resp = requests.get(url, auth=(user, password), stream=True, timeout=120)
-    resp.raise_for_status()
-
-    total = int(resp.headers.get("content-length", 0))
-    downloaded = 0
-    with open(out_path, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=1024 * 256):
-            f.write(chunk)
-            downloaded += len(chunk)
-            if total:
-                pct = 100 * downloaded / total
-                print(f"\r    {pct:.1f}%", end="", flush=True)
-    print()
+    print(f"  {year}: downloading {filename}")
+    print(f"         from {url}")
+    urllib.request.urlretrieve(url, out_path, reporthook=_progress)
+    print(f"\n         done → {out_path.stat().st_size / 1e6:.0f} MB")
     return out_path
 
 
 def main():
     args = parse_args()
-    years = args.years[:1] if args.test else args.years
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    user = os.environ.get("FLUXCOM_USER", "")
-    password = os.environ.get("FLUXCOM_PASS", "")
+    print(f"FluxCom GPP download — {len(args.years)} year(s): {args.years}")
+    print(f"Output directory: {OUTPUT_DIR.resolve()}\n")
 
-    if not user or not password:
-        print(
-            "ERROR: set FLUXCOM_USER and FLUXCOM_PASS environment variables.\n"
-            "Register at http://www.fluxcom.org/CF-Download/ to get credentials.\n"
-            "\n"
-            "If you already have the files, place them in:\n"
-            f"  {OUTPUT_DIR}/\n"
-            "named as: GPP_fluxcom_monthly_YYYY.nc\n"
-            "Then run 02_compute_nuts2_profiles.py directly."
-        )
-        sys.exit(1)
+    for year in args.years:
+        download_year(year)
 
-    print(f"Downloading FluxCom GPP for years: {years}")
-    for year in years:
-        download_year(year, user, password)
-
-    print(f"\nDone. Files saved to: {OUTPUT_DIR}")
-    print("Next step: run 02_compute_nuts2_profiles.py")
+    print(f"\nDone. Next step: run 02_compute_nuts2_profiles.py")
 
 
 if __name__ == "__main__":
