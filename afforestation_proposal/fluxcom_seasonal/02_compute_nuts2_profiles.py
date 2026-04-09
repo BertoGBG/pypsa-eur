@@ -79,7 +79,7 @@ def load_monthly_climatology(gpp_dir: Path) -> xr.DataArray:
         )
     print(f"Loading {len(nc_files)} file(s): {[f.name for f in nc_files]}")
 
-    ds = xr.open_mfdataset(nc_files, combine="by_coords", engine="netcdf4")
+    ds = xr.open_mfdataset(nc_files, combine="by_coords", engine="netcdf4", use_cftime=True)
 
     # variable name varies slightly between versions
     gpp_var = next((v for v in ["GPP", "gpp"] if v in ds), None)
