@@ -2445,7 +2445,6 @@ def add_h2_gas_infrastructure(
             marginal_cost=costs.at["biomethanation CO2", "VOM"],
             efficiency=-costs.at["biomethanation CO2", "CO2-input"],
             efficiency2=costs.at["biomethanation CO2", "methane-output"],
-            p_min_pu=options["min_part_load_biomethanation"],
             p_nom_extendable=True,
             lifetime=costs.at["biomethanation CO2", "lifetime"],
         )
@@ -4390,7 +4389,6 @@ def add_biomass(
             marginal_cost=costs.at["biomethanation", "VOM"],
             efficiency=costs.at["biomethanation", "biogas-input"],
             efficiency2=-costs.at["biomethanation", "methane-output"],
-            p_min_pu=options["min_part_load_biomethanation"],
             p_nom_extendable=True,
             lifetime=costs.at["biomethanation", "lifetime"],
         )
