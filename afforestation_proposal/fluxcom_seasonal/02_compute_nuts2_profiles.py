@@ -79,7 +79,23 @@ def load_monthly_climatology(gpp_dir: Path) -> xr.DataArray:
         )
     print(f"Loading {len(nc_files)} file(s): {[f.name for f in nc_files]}")
 
-    ds = xr.open_mfdataset(nc_files, combine="by_coords", engine="netcdf4", use_cftime=True)
+    # FluxCom uses reference date 1582-10-15 which overflows pandas/cftime.
+    # Fix: decode_times=False + drop time_bnds, then assign a clean date range
+    # from the year embedded in each filename.
+    def open_one(path):
+        year = int(path.stem.split(".")[-1])
+        ds = xr.open_dataset(
+            path, engine="netcdf4",
+            decode_times=False,
+            drop_variables=["time_bnds"],
+        )
+        n_days = ds.sizes["time"]
+        ds = ds.assign_coords(
+            time=pd.date_range(f"{year}-01-01", periods=n_days, freq="D")
+        )
+        return ds
+
+    ds = xr.concat([open_one(f) for f in nc_files], dim="time")
 
     # variable name varies slightly between versions
     gpp_var = next((v for v in ["GPP", "gpp"] if v in ds), None)
