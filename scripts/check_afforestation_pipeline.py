@@ -2,9 +2,11 @@
 Check script for the afforestation pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
-    python scripts/check_afforestation_pipeline.py
+    python scripts/check_afforestation_pipeline.py --config config/config.CDRs.yaml
 
-Adjust BASE_DIR, RDIR, CLUSTERS, PLANNING_HORIZON, SECTOR_OPTS if needed.
+Wildcards are read from the config file. Override any value on the CLI:
+    --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
+    --potential-type density|growth
 """
 
 import sys
@@ -12,22 +14,32 @@ from pathlib import Path
 
 import pandas as pd
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-BASE_DIR         = Path(".")       # run from pypsa-eur root
-RDIR             = "affo_2050"
-CLUSTERS         = "50"
-OPTS             = ""
-SECTOR_OPTS      = "168h"
-PLANNING_HORIZON = "2050"
-POTENTIAL_TYPE   = "growth"       # "density" or "growth" — must match config
+from _check_utils import parse_check_args, load_check_params
 
-# derived paths
-RES     = BASE_DIR / "resources"
-RES_RUN = BASE_DIR / "resources" / RDIR
-RESULTS = BASE_DIR / "results"    / RDIR
+# ── Configuration (from config file + CLI overrides) ──────────────────────────
+_args = parse_check_args(extra_args=[
+    (["--potential-type"],
+     {"default": None,
+      "metavar": "TYPE",
+      "help": "Override potential type (density or growth). "
+              "Reads afforestation.potential_type from config if not set."}),
+])
+_p = load_check_params(_args)
 
-# wildcard-based filename stem
-WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
+BASE_DIR         = _p["BASE_DIR"]
+RDIR             = _p["RDIR"]
+CLUSTERS         = _p["CLUSTERS"]
+OPTS             = _p["OPTS"]
+SECTOR_OPTS      = _p["SECTOR_OPTS"]
+PLANNING_HORIZON = _p["PLANNING_HORIZON"]
+WC               = _p["WC"]
+RES              = _p["RES"]
+RES_RUN          = _p["RES_RUN"]
+RESULTS          = _p["RESULTS"]
+POTENTIAL_TYPE   = (
+    _args.potential_type
+    or _p["cfg"].get("afforestation", {}).get("potential_type", "density")
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 OK   = "  [OK]"

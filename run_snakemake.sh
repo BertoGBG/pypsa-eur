@@ -15,7 +15,7 @@ conda activate pypsa-eur
 
 # Run workflow
 snakemake --profile profiles/default \
-  --configfile config/config.default.yaml \
+  --configfile config/config.CDRs.yaml \
   --rerun-incomplete \
   all
 

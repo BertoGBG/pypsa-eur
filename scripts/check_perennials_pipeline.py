@@ -2,9 +2,11 @@
 Check script for the perennials pipeline in pypsa-eur.
 Run from the pypsa-eur root directory on the cluster:
 
-    python scripts/check_perennials_pipeline.py
+    python scripts/check_perennials_pipeline.py --config config/config.CDRs.yaml
 
-Adjust BASE_DIR, RDIR, CLUSTERS, PLANNING_HORIZON if needed.
+Wildcards are read from the config file. Override any value on the CLI:
+    --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
+    --shared-resources NAME
 """
 
 import sys
@@ -12,22 +14,36 @@ from pathlib import Path
 
 import pandas as pd
 
-# ── Configuration ────────────────────────────────────────────────────────────
-BASE_DIR = Path(".")          # run from pypsa-eur root
-RDIR     = "peren_2050"
-SHARED_RES_POLICY = "biochar_2050"  # matches run.shared_resources.policy in config
-CLUSTERS = "50"
-OPTS     = ""
-SECTOR_OPTS = "168h"
-PLANNING_HORIZON = "2050"
+from _check_utils import parse_check_args, load_check_params
 
-# derived paths
-RES        = BASE_DIR / "resources"
-SHARED_RES = BASE_DIR / "resources" / SHARED_RES_POLICY  # shared resources directory
-RESULTS    = BASE_DIR / "results" / RDIR
+# ── Configuration (from config file + CLI overrides) ──────────────────────────
+_args = parse_check_args(extra_args=[
+    (["--shared-resources"],
+     {"default": None,
+      "metavar": "NAME",
+      "help": "Override shared resources directory name. "
+              "Reads run.shared_resources.policy from config if not set, "
+              "falls back to run name."}),
+])
+_p = load_check_params(_args)
 
-# wildcard-based filenames
-WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
+BASE_DIR         = _p["BASE_DIR"]
+RDIR             = _p["RDIR"]
+CLUSTERS         = _p["CLUSTERS"]
+OPTS             = _p["OPTS"]
+SECTOR_OPTS      = _p["SECTOR_OPTS"]
+PLANNING_HORIZON = _p["PLANNING_HORIZON"]
+WC               = _p["WC"]
+RES              = _p["RES"]
+RESULTS          = _p["RESULTS"]
+
+_shared_policy = (
+    _args.shared_resources
+    or _p["cfg"].get("run", {}).get("shared_resources", {}).get("policy")
+    or RDIR
+)
+SHARED_RES_POLICY = str(_shared_policy)
+SHARED_RES        = BASE_DIR / "resources" / SHARED_RES_POLICY
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 OK   = "  [OK]"

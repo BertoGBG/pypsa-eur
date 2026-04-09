@@ -20,8 +20,8 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "myopic_test"
-  name: "CDR"
+  prefix: ""
+  name: "CDRs_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -32,20 +32,19 @@ run:
   use_shadow_directory: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
-foresight: myopic
+foresight: overnight
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 scenario:
   clusters:
-  - 39
+  - 50
   opts:
   - ""
   sector_opts:
-  - ""
+  - 168h
   planning_horizons:
-  - 2030
-  - 2040
   - 2050
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 countries:
 - AL
@@ -422,7 +421,7 @@ renewable:
 
 # alternative CDRs
 perennials:
-  potential_co2: 2 # tCO2e/ha/y sequestered
+  potential_co2: 2 # tCO2e/(ha y) sequestered
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -545,15 +544,18 @@ biomass:
     - Sawdust
     - Residues from landscape care
     not included:
-    - Sugar from sugar beet
-    - Rape seed
-    - 'Sunflower, soya seed '
-    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Miscanthus, switchgrass, RCG
     - Willow
     - Poplar
     - FuelwoodRW
     - "C&P_RW"
+    biofuels_1G_bioethanol_cereals:
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
+    biofuels_1G_bioethanol_sugar:
+    - Sugar from sugar beet
+    biofuels_1G_biodiesel:
+    - Rape seed
+    - 'Sunflower, soya seed '
     biogas:
     - Manure solid, liquid
     - Sludge
@@ -587,7 +589,7 @@ solar_thermal:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#existing_capacities
 existing_capacities:
   grouping_years_power:
-  - 1920
+  - 1900
   - 1950
   - 1955
   - 1960
@@ -742,7 +744,7 @@ sector:
   bev_charge_rate: 0.011
   bev_avail_max: 0.95
   bev_avail_mean: 0.8
-  v2g: false
+  v2g: true
   land_transport_fuel_cell_share:
     2020: 0
     2025: 0
@@ -839,7 +841,74 @@ sector:
   solar_cf_correction: 0.788457
   methanation: true
   biomethanation_biogas: true
-  biomethanation_CO2 : true
+  biomethanation_CO2: true
+  coal_cc: false
+  dac: true
+  biochar:
+    enable: true
+    heat_output: false
+    transport: false
+  EW: true
+  afforestation: true
+  co2_vent: false
+  heat_vent:
+    urban central: true
+    urban decentral: true
+    rural: true
+  marginal_cost_heat_vent: 0.02
+  allam_cycle_gas: false
+  hydrogen_fuel_cell: true
+  hydrogen_turbine: true
+  SMR: true
+  SMR_cc: true
+  regional_oil_demand: true
+  regional_coal_demand: false
+  regional_co2_sequestration_potential:
+    enable: true
+    attribute:
+    - conservative estimate Mt
+    - conservative estimate GAS Mt
+    - conservative estimate OIL Mt
+    - conservative estimate aquifer Mt
+    include_onshore: false
+    min_size: 3
+    max_size: 25
+    years_of_storage: 25
+  co2_sequestration_potential:
+    2020: 0
+    2025: 0
+    2030: 40
+    2035: 100
+    2040: 180
+    2045: 250
+    2050: 250
+  co2_sequestration_cost: 30
+  co2_sequestration_lifetime: 50
+  co2_spatial: true
+  co2_network: true
+  co2_network_cost_factor: 1
+  cc_fraction: 0.9
+  hydrogen_underground_storage: true
+  hydrogen_underground_storage_locations:
+  - onshore
+  - nearshore
+  methanol:
+    regional_methanol_demand: false
+    methanol_reforming: false
+    methanol_reforming_cc: false
+    methanol_to_kerosene: false
+    methanol_to_power:
+      ccgt: false
+      ccgt_cc: false
+      ocgt: true
+      allam: false
+    biomass_to_methanol: true
+    biomass_to_methanol_cc: false
+  ammonia: true
+  min_part_load_electrolysis: 0
+  min_part_load_fischer_tropsch: 0.5
+  min_part_load_methanolisation: 0.3
+  min_part_load_methanation: 0.3
   use_fischer_tropsch_waste_heat: 0.25
   use_haber_bosch_waste_heat: 0.25
   use_methanolisation_waste_heat: 0.25
@@ -887,6 +956,7 @@ sector:
   biosng: false
   biosng_cc: false
   bioH2: false
+  perennials: true
   municipal_solid_waste: false
   limit_max_growth:
     enable: false
@@ -1007,12 +1077,36 @@ industry:
   MWh_CH4_per_tMeOH: 10.25
   MWh_MeOH_per_tMeOH: 5.528
   hotmaps_locate_missing: false
-  reference_year: 2019
+  reference_year: 2023
   oil_refining_emissions: 0.013
+
+biochar:
+  corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
+  potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
+  co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
+  max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
+  number_years: 25 # amortisation period (years) for biochar CO2 storage
+
+EW:
+  EW_hot:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 839 # tonnes CO2 sequestered per sqkm (hot climate)
+    climate: [23, 24, 28, 33, 34, 36] # bioclimatic zone codes for hot regions
+  EW_temperate:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
+    climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
+  max_land_usage: 0.2 # maximum fraction of suitable area used for EW
+
+afforestation:
+  corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
+  potential_type: "density" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
+  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1064,7 +1158,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 168H
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1082,6 +1176,14 @@ solving:
     clip_p_max_pu: 0.01
     load_shedding:
       enable: false
+      default_cost: 100000
+      all_carriers: true
+      carriers: {}
+    load_sinks:
+      enable: false
+      default_cost: 100000
+      all_carriers: false
+      carriers: {}
     curtailment_mode: false
     noisy_costs: true
     skip_iterations: true
@@ -1210,7 +1312,7 @@ solving:
     atol: 1000000
     rtol: 0.01
   oetc:
-  mem_mb: 128000
+  mem_mb: 192000
   memory_logging_frequency: 5
   runtime: 48h
 
