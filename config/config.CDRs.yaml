@@ -219,7 +219,7 @@ atlite:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#renewable
 renewable:
   onwind:
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -263,7 +263,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "offwind-ac":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -284,7 +284,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 20.0
   "offwind-dc":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -305,7 +305,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 30.0
   "offwind-float":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -326,7 +326,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 40.0
   solar:
-    cutout: default
+    cutout: default_AU
     resource:
       method: pv
       panel: CSi
@@ -366,7 +366,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "solar-hsat":
-    cutout: default
+    cutout: default_AU
     resource:
       method: pv
       panel: CSi
@@ -406,7 +406,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   hydro:
-    cutout: default
+    cutout: default_AU
     carriers:
     - ror
     - PHS
@@ -452,7 +452,7 @@ lines:
   under_construction: keep
   dynamic_line_rating:
     activate: false
-    cutout: default
+    cutout: default_AU
     correction_factor: 0.95
     max_voltage_difference: false
     max_line_rating: false
@@ -578,7 +578,7 @@ solar_thermal:
   orientation:
     slope: 45.0
     azimuth: 180.0
-  cutout: default
+  cutout: default_AU
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#existing_capacities
 existing_capacities:
@@ -722,7 +722,7 @@ sector:
       - 10
       - 22
   cluster_heat_buses: true
-  heat_demand_cutout: default
+  heat_demand_cutout: default_AU
   bev_dsm_restriction_value: 0.8
   bev_dsm_restriction_time: 7
   transport_heating_deadband_upper: 20.0
@@ -1179,7 +1179,7 @@ solving:
     SAFE: false
   solver:
     name: gurobi
-    options: "gurobi-default"
+    options: "gurobi-default_AU"
   solver_options:
     "highs-default":
       threads: 1

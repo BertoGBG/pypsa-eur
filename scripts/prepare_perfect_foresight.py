@@ -72,7 +72,7 @@ def get_social_discount(t: int, r: float = 0.01) -> float:
     ----------
     t : int
         Time period in years
-    r : float, default 0.01
+    r : float, default_AU 0.01
         Social discount rate per unit
 
     Returns
@@ -91,7 +91,7 @@ def get_investment_weighting(time_weighting: pd.Series, r: float = 0.01) -> pd.S
     ----------
     time_weighting : pd.Series
         Time weightings for each period
-    r : float, default 0.01
+    r : float, default_AU 0.01
         Social discount rate per unit
 
     Returns
@@ -542,7 +542,7 @@ def apply_time_segmentation_perfect(
         Network to segment
     segments : int
         Number of segments for typical period subdivision
-    solver_name : str, default "cbc"
+    solver_name : str, default_AU "cbc"
         Name of solver to use for segmentation
 
     Returns

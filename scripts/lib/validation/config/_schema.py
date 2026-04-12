@@ -77,7 +77,7 @@ class ConfigSchema(BaseModel):
     # coverage or allow extra fields with extra='allow'
     model_config = ConfigDict(extra="allow", title="PyPSA-Eur Configuration")
 
-    _name: str = "default"
+    _name: str = "default_AU"
     """internal attribute to track the config filename following the application of config updates"""
     _docs_url: str = (
         "https://pypsa-eur.readthedocs.io/en/latest/configuration.html#{field_name}"

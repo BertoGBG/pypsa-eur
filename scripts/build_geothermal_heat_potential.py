@@ -227,7 +227,7 @@ if __name__ == "__main__":
     ).to_crs("EPSG:4326")
     lau_regions.index = lau_regions.GISCO_ID
 
-    # temperature scenario that was assumed by Manz et al. when computing potentials is 65C (default) or 85C
+    # temperature scenario that was assumed by Manz et al. when computing potentials is 65C (default_AU) or 85C
     this_temperature_scenario = ISI_TEMPERATURE_SCENARIOS[
         snakemake.params.constant_temperature_celsius
     ]

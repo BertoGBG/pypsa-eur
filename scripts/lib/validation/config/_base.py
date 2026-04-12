@@ -29,7 +29,7 @@ class ConfigModel(BaseModel):
         return hasattr(self, key)
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Enable: config.get('key', default)."""
+        """Enable: config.get('key', default_AU)."""
         return getattr(self, key, default)
 
     def keys(self) -> Iterator[str]:
@@ -61,9 +61,9 @@ class ConfigUpdater(ABC):
     def name(self) -> str:
         """
         Name of custom config.
-        If not an empty string, this name will be appended to the default config filename when the config file is saved, i.e.:
+        If not an empty string, this name will be appended to the default_AU config filename when the config file is saved, i.e.:
 
-        `config.default.<prior-update-names>.{self.name}.<post-update-names>.yaml`
+        `config.default_AU.<prior-update-names>.{self.name}.<post-update-names>.yaml`
         """
 
     @property
@@ -104,7 +104,7 @@ class ConfigUpdater(ABC):
         """
         Helper function to apply updates to a pydantic model.
 
-        Updates should come in the form of a type (can be another pydantic model) and a pydantic.Field with at least a default value.
+        Updates should come in the form of a type (can be another pydantic model) and a pydantic.Field with at least a default_AU value.
 
         Parameters
         ----------

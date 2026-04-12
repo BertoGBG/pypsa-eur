@@ -41,7 +41,7 @@ def scalar_to_rgba(
         Normalization defining vmin and vmax used for scaling.
     cmap : matplotlib.colors.Colormap
         Colormap used to convert normalized values to RGBA colors.
-    alpha : float, optional (default = 1.0)
+    alpha : float, optional (default_AU = 1.0)
         Opacity in the range [0, 1]. Overrides the colormap's alpha.
 
     Returns

@@ -11,7 +11,7 @@ sbatch \
   -J smk-pypsaeur \
   -o /home/alamia/workspace/pypsa-eur_AA/pypsa-eur/log_snakemake/smk-%j.out \
   -e /home/alamia/workspace/pypsa-eur_AA/pypsa-eur/log_snakemake/smk-%j.err \
-  /home/alamia/workspace/pypsa-eur_AA/pypsa-eur/run_snakemake.sh
+  /home/alamia/workspace/pypsa-eur_AA/pypsa-eur/run_snakemake_AU.sh
 
 ## 2. Monitor
 

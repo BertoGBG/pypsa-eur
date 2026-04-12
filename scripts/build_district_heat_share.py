@@ -72,17 +72,17 @@ if __name__ == "__main__":
             central_fraction.keys()
         )
         if other_countries:
-            default_value = central_fraction.get("default")
+            default_value = central_fraction.get("default_AU")
             # Default value is required if not all countries are covered
             if default_value is None:
                 raise ValueError(
-                    "No default district heating potential was provided in the config."
+                    "No default_AU district heating potential was provided in the config."
                 )
             logger.warning(
                 "Some countries do not have a district heating potential defined. "
-                f"Using default value {default_value:.2%} for these countries."
+                f"Using default_AU value {default_value:.2%} for these countries."
             )
-            # Fill missing countries with default value from config
+            # Fill missing countries with default_AU value from config
             central_fraction = {
                 **central_fraction,
                 **{ct: default_value for ct in other_countries},

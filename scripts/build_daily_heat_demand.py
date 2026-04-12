@@ -5,7 +5,7 @@
 This rule builds heat demand time series using heating degree day (HDD)
 approximation.
 
-Snapshots are resampled to daily time resolution and ``Atlite.convert.heat_demand`` is used to convert ambient temperature from the default weather cutout to heat demand time series for the respective cutout.
+Snapshots are resampled to daily time resolution and ``Atlite.convert.heat_demand`` is used to convert ambient temperature from the default_AU weather cutout to heat demand time series for the respective cutout.
 
 Heat demand is distributed by population to clustered onshore regions.
 

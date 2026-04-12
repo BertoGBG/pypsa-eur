@@ -379,7 +379,7 @@ def create_network_topology(
     prefix : str
     carriers : list-like
     connector : str
-    bidirectional : bool, default True
+    bidirectional : bool, default_AU True
         True: one link for each connection
         False: one link for each connection and direction (back and forth)
 
@@ -439,9 +439,9 @@ def update_wind_solar_costs(
     costs : pd.DataFrame
         Cost assumptions DataFrame
     line_length_factor : int | float, optional
-        Factor to multiply line lengths by, by default 1
+        Factor to multiply line lengths by, by default_AU 1
     landfall_lengths : dict, optional
-        Dictionary of landfall lengths per technology, by default None
+        Dictionary of landfall lengths per technology, by default_AU None
     profiles : dict[str, str]
         Dictionary mapping technology names to profile file paths
         e.g. {'offwind-dc': 'path/to/profile.nc'}
@@ -888,7 +888,7 @@ def add_co2_network(n, costs, co2_network_cost_factor=1.0):
         'CO2 pipeline' and 'CO2 submarine pipeline' with 'capital_cost' and 'lifetime'
         columns
     co2_network_cost_factor : float, optional
-        Factor to scale the capital costs of the CO2 network, default 1.0
+        Factor to scale the capital costs of the CO2 network, default_AU 1.0
 
     Returns
     -------
@@ -1351,7 +1351,7 @@ def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     countries : list
         List of country codes to consider for the CO2 limit
     nyears : float, optional
-        Number of years for the CO2 budget, by default 1.0
+        Number of years for the CO2 budget, by default_AU 1.0
     limit : float, optional
         CO2 limit as a fraction of 1990 levels
 

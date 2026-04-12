@@ -20,7 +20,7 @@ class _PostDiscretizationConfig(ConfigModel):
 
     enable: bool = Field(
         False,
-        description="Switch to enable post-discretization of the network. Disabled by default.",
+        description="Switch to enable post-discretization of the network. Disabled by default_AU.",
     )
     line_unit_size: float = Field(
         1700, description="Discrete unit size of lines in MW."
@@ -60,7 +60,7 @@ class _LoadSheddingConfig(ConfigModel):
     )
     default_cost: PositiveFloat = Field(
         100000,
-        description="The default cost for load-shedding in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). Must be positive.",
+        description="The default_AU cost for load-shedding in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). Must be positive.",
     )
     all_carriers: bool = Field(
         True,
@@ -68,7 +68,7 @@ class _LoadSheddingConfig(ConfigModel):
     )
     carriers: dict[str, PositiveFloat] = Field(
         {},
-        description="Dictionary of carriers and their specific load shedding cost in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). If load shedding is enabled for all carriers, the default cost is assumed for non-listed carriers.",
+        description="Dictionary of carriers and their specific load shedding cost in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). If load shedding is enabled for all carriers, the default_AU cost is assumed for non-listed carriers.",
     )
 
     @model_validator(mode="after")
@@ -91,7 +91,7 @@ class _LoadSinksConfig(ConfigModel):
     )
     default_cost: PositiveFloat = Field(
         100000,
-        description="The default cost for load sinks in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). Must be positive.",
+        description="The default_AU cost for load sinks in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). Must be positive.",
     )
     all_carriers: bool = Field(
         False,
@@ -99,7 +99,7 @@ class _LoadSinksConfig(ConfigModel):
     )
     carriers: dict[str, PositiveFloat] = Field(
         {},
-        description="Dictionary of carriers and their specific load sink cost in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). If load sinks are added for all carriers, the default cost is assumed for non-listed carriers.",
+        description="Dictionary of carriers and their specific load sink cost in the unit of the bus carrier (e.g. EUR/MWh for electricity, EUR/t_CO2 for CO2). If load sinks are added for all carriers, the default_AU cost is assumed for non-listed carriers.",
     )
 
     @model_validator(mode="after")
@@ -255,7 +255,7 @@ class _SolverConfig(BaseModel):
         description="Solver to use for optimisation problems in the workflow; e.g. clustering and linear optimal power flow.",
     )
     options: str = Field(
-        "gurobi-default", description="Link to specific parameter settings."
+        "gurobi-default_AU", description="Link to specific parameter settings."
     )
 
 
@@ -322,7 +322,7 @@ class SolvingConfig(BaseModel):
     )
     solver_options: dict[str, dict[str, Any]] = Field(
         default_factory=lambda: {
-            "highs-default": {
+            "highs-default_AU": {
                 "threads": 1,
                 "solver": "ipm",
                 "run_crossover": "off",
@@ -341,7 +341,7 @@ class SolvingConfig(BaseModel):
                 "dual_feasibility_tolerance": 1e-5,
                 "random_seed": 123,
             },
-            "gurobi-default": {
+            "gurobi-default_AU": {
                 "threads": 32,
                 "method": 2,
                 "crossover": 0,
@@ -373,14 +373,14 @@ class SolvingConfig(BaseModel):
                 "Seed": 123,
                 "threads": 8,
             },
-            "cplex-default": {
+            "cplex-default_AU": {
                 "threads": 4,
                 "lpmethod": 4,
                 "solutiontype": 2,
                 "barrier.convergetol": 1e-5,
                 "feasopt.tolerance": 1e-6,
             },
-            "copt-default": {
+            "copt-default_AU": {
                 "Threads": 8,
                 "LpMethod": 2,
                 "Crossover": 0,
@@ -393,7 +393,7 @@ class SolvingConfig(BaseModel):
                 "PDLPTol": 1e-5,
                 "Crossover": 0,
             },
-            "xpress-default": {
+            "xpress-default_AU": {
                 "threads": 8,
                 "lpflags": 4,
                 "crossover": 0,
@@ -407,8 +407,8 @@ class SolvingConfig(BaseModel):
                 "barhggpu": 1,
                 "barhgreltol": 1e-5,
             },
-            "cbc-default": {},
-            "glpk-default": {},
+            "cbc-default_AU": {},
+            "glpk-default_AU": {},
         },
         description="Dictionaries with solver-specific parameter settings.",
     )

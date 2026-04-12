@@ -36,7 +36,7 @@ def heat_dsm_profile(nodes, options):
     based on the smartEn/DNV methodology for residential heat DSM.
 
     The checkpoint approach operationally enforces the constraint that heat
-    consumption requirements must be met within each perio (by default 12-hour periods,
+    consumption requirements must be met within each perio (by default_AU 12-hour periods,
     preventing the building thermal mass from acting as long-term seasonal storage while
     allowing short-term load shifting for demand-side flexibility.
 

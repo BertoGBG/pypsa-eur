@@ -107,7 +107,7 @@ def add_everywhere_powerplants(ppl, substations, everywhere_powerplants):
         columns={"x": "lon", "y": "lat", "country": "Country"}
     )
 
-    # Add default values for the powerplants
+    # Add default_AU values for the powerplants
     everywhere_ppl["Name"] = (
         "Automatically added everywhere-powerplant " + everywhere_ppl.Fueltype
     )

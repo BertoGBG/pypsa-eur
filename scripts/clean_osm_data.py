@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 GEO_CRS = "EPSG:4326"
 DISTANCE_CRS = "EPSG:3035"
 BUS_TOL = (
-    500  # unit: meters, default 5000 - Buses within this distance are grouped together
+    500  # unit: meters, default_AU 5000 - Buses within this distance are grouped together
 )
 
 

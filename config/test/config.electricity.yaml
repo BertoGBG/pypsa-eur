@@ -77,7 +77,7 @@ lines:
 solving:
   solver:
     name: highs
-    options: highs-default
+    options: highs-default_AU
 
   check_objective:
     enable: false

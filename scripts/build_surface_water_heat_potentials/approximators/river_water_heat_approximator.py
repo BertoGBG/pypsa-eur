@@ -96,7 +96,7 @@ class RiverWaterHeatApproximator(SurfaceWaterHeatApproximator):
         ambient_temperature : xr.DataArray
             DataArray containing ambient temperature in river areas
         moving_average_num_days : int, optional
-            Number of days for moving average, by default 13
+            Number of days for moving average, by default_AU 13
         k1, k2, k3, k4 : float, optional
             Regression coefficients for the approximation of the river temperature
 

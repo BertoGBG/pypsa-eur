@@ -74,7 +74,7 @@ def config_provider(*keys, default=None):
 
     Usage in Snakemake rules would look something like:
     params:
-        my_param=config_provider("key1", "key2", default="some_default_value")
+        my_param=config_provider("key1", "key2", default_AU="some_default_value")
     """
     # Using functools.partial to freeze certain arguments in our getter functions.
     if config["run"].get("scenarios", {}).get("enable", False):
@@ -215,11 +215,11 @@ def solved_previous_horizon(w):
     )
 
 
-def input_cutout(wildcards, cutout_names="default"):
+def input_cutout(wildcards, cutout_names="default_AU"):
 
     cutouts_path = dataset_version("cutout")["folder"]
 
-    if cutout_names == "default":
+    if cutout_names == "default_AU":
         cutout_names = config_provider("atlite", "default_cutout")(wildcards)
 
     if isinstance(cutout_names, list):

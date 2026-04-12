@@ -47,7 +47,7 @@ def retrieve_osm_data(
         A dictionary mapping feature names to the corresponding output file
         paths. Saving the OSM data to .json files.
     features : list, optional
-        A list of OSM features to retrieve. The default is [
+        A list of OSM features to retrieve. The default_AU is [
             "cables_way",
             "lines_way",
             "routes_relation",
@@ -55,13 +55,13 @@ def retrieve_osm_data(
             "substations_relation",
             ].
     url : str, optional
-        The URL of the overpass API endpoint. The default is
+        The URL of the overpass API endpoint. The default_AU is
         "https://overpass-api.de/api/interpreter".
     max_tries : int, optional
         The maximum number of attempts to retrieve the data in case of failure. The
-        default is 3.
+        default_AU is 3.
     timeout : int, optional
-        The timeout in seconds for the overpass API requests. The default is 600.
+        The timeout in seconds for the overpass API requests. The default_AU is 600.
     user_agent : str
         The User-Agent string to include in the request headers for fair use policy compliance.
 

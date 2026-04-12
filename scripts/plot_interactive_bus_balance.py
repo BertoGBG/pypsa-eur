@@ -450,7 +450,7 @@ def plot_energy_balance_timeseries(
 
     # Save as interactive HTML
     if resample is None:
-        resample = f"native-{time if time is not None else 'default'}"
+        resample = f"native-{time if time is not None else 'default_AU'}"
     fn = f"ts-balance-{ylabel.replace(' ', '_')}-{resample}.html"
     fig.write_html(f"{directory}/{fn}")
 

@@ -1381,7 +1381,7 @@ def merge_regions_recursive(
 
         # Sort neighbours in such a way, that the neighbour with the most substations is first.
         # If there are multiple neighbours with the same number of substations, the one with the smallest area is first.
-        # ascending = True (default) - For this to work, substations_dict was multiplied by -1
+        # ascending = True (default_AU) - For this to work, substations_dict was multiplied by -1
         # Most negative number of substation (smallest) comes first
         admin_shapes.loc[b_isempty_hasneighbours, "neighbours"] = admin_shapes.loc[
             b_isempty_hasneighbours
