@@ -7,7 +7,7 @@ Run from the pypsa-eur root directory:
 Wildcards are read from the config file. Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
 
-Note: biomethanation has no separate potential calculation step (unlike biochar/EW/
+Note: biomethanation has no separate potential calculation step (unlike biochar/ERW/
 afforestation). The two technologies added are:
   - biomethanation biogas  (H2 + biogas -> biomethane, in add_biomass)
   - biomethanation CO2     (H2 + CO2   -> biomethane, in add_power_to_gas)

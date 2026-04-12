@@ -1283,43 +1283,43 @@ def add_methanol_reforming_cc(n, costs):
 
 
 def add_EW(n, costs):
-    logger.info("Adding Enhanced Weathering (EW).")
+    logger.info("Adding Enhanced Weathering (ERW).")
 
     EW_potentials = pd.read_csv(snakemake.input.EW_potentials, index_col=0)
     potentials = (
-        EW_potentials["potential [t]"] * snakemake.config["EW"]["max_land_usage"]
+        EW_potentials["potential [t]"] * snakemake.config["ERW"]["max_land_usage"]
     )
 
     electricity_input = costs.at["Enhanced Weathering", "electricity-input"]
 
-    n.add("Carrier", "EW")
-    n.add("Carrier", "EW store")
+    n.add("Carrier", "ERW")
+    n.add("Carrier", "ERW store")
 
     n.add(
         "Bus",
-        spatial.nodes + " EW co2 store",
+        spatial.nodes + " ERW co2 store",
         location=spatial.nodes,
-        carrier="EW",
+        carrier="ERW",
         unit="t_co2",
     )
 
     n.add(
         "Store",
         spatial.nodes,
-        suffix=" EW co2 store",
-        bus=spatial.nodes + " EW co2 store",
+        suffix=" ERW co2 store",
+        bus=spatial.nodes + " ERW co2 store",
         e_nom=potentials,
-        carrier="EW store",
+        carrier="ERW store",
     )
 
     n.add(
         "Link",
         spatial.nodes,
-        suffix=" EW",
+        suffix=" ERW",
         bus0=spatial.nodes.values,
         bus1="co2 atmosphere",
-        bus2=spatial.nodes + " EW co2 store",
-        carrier="EW",
+        bus2=spatial.nodes + " ERW co2 store",
+        carrier="ERW",
         marginal_cost=costs.at["Enhanced Weathering", "VOM"] / electricity_input,
         efficiency=-1 / electricity_input,
         efficiency2=1 / electricity_input,
@@ -6847,7 +6847,7 @@ if __name__ == "__main__":
     if options.get("biochar", {}).get("enable"):
         add_biochar(n, costs)
 
-    if options.get("EW"):
+    if options.get("ERW"):
         add_EW(n, costs)
 
     if options.get("afforestation"):

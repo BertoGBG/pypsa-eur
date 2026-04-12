@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: MIT
 
 """
-Build Enhanced Weathering (EW) CO2 sequestration potentials per network node.
+Build Enhanced Weathering (ERW) CO2 sequestration potentials per network node.
 
-Intersects CORINE Land Cover data with bioclimatic zone data for each EW
+Intersects CORINE Land Cover data with bioclimatic zone data for each ERW
 subclass (e.g. EW_hot, EW_temperate) defined in the config. Each subclass
 specifies its own CORINE land-use codes, bioclimatic zone codes, and
 sequestration rate (potential_per_sqkm). Potentials from all subclasses are
@@ -48,7 +48,7 @@ def build_EW_potentials(
     excluder = None
 
     for comp, cfg in subclasses.items():
-        logger.info("Calculating potentials for EW subclass '%s'", comp)
+        logger.info("Calculating potentials for ERW subclass '%s'", comp)
         excluder = ExclusionContainer(crs=3035, res=resolution)
         excluder.add_raster(corine_dataset, codes=cfg["corine"], invert=True, crs=3035)
         excluder.add_raster(
@@ -75,14 +75,14 @@ def build_EW_potentials(
     )
     df.index.name = "node"
 
-    logger.info("Total EW potential: %.2f Mt CO2", df["potential [t]"].sum() / 1e6)
+    logger.info("Total ERW potential: %.2f Mt CO2", df["potential [t]"].sum() / 1e6)
 
     if csv_file is not None:
-        logger.info("Saving EW potentials to '%s'", csv_file)
+        logger.info("Saving ERW potentials to '%s'", csv_file)
         df.to_csv(csv_file)
 
     if png_file is not None:
-        logger.info("Saving EW potentials map to '%s'", png_file)
+        logger.info("Saving ERW potentials map to '%s'", png_file)
         shape = nodes_geojson.to_crs(excluder.crs).geometry
         band, transform = shape_availability(shape, excluder)
         fig, ax = plt.subplots(figsize=(20, 23))
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         network_geojson=snakemake.input["network_geojson"],
         corine_dataset=snakemake.input["corine_dataset"],
         bioclimate_dataset=snakemake.input["bioclimate_dataset"],
-        ew_config=snakemake.config["EW"],
+        ew_config=snakemake.config["ERW"],
         resolution=snakemake.params["resolution"],
         csv_file=snakemake.output["csv_file"],
         png_file=snakemake.output.get("png_file"),

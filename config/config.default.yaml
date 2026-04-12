@@ -1096,7 +1096,7 @@ EW:
     corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
     potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
     climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
-  max_land_usage: 0.2 # maximum fraction of suitable area used for EW
+  max_land_usage: 0.2 # maximum fraction of suitable area used for ERW
 
 afforestation:
   corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)

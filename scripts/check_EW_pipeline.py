@@ -1,5 +1,5 @@
 """
-Check script for the Enhanced Weathering (EW) pipeline in pypsa-eur.
+Check script for the Enhanced Weathering (ERW) pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
     python scripts/check_EW_pipeline.py --config config/config.CDRs.yaml
@@ -63,14 +63,14 @@ section("0. INPUT DATA")
 bioclimate_tif = BASE_DIR / "data" / "World_Ecological_BioVal_cluster.tif"
 check_file(bioclimate_tif, "Bioclimate TIF (World_Ecological_BioVal_cluster.tif)")
 
-# ── 1. BUILD: EW potentials (build_EW_potentials) ─────────────────────────────
-section("1. BUILD: EW CO2 sequestration potentials (CORINE + bioclimate)")
+# ── 1. BUILD: ERW potentials (build_EW_potentials) ─────────────────────────────
+section("1. BUILD: ERW CO2 sequestration potentials (CORINE + bioclimate)")
 
 ew_csv = RES_RUN / f"EW_potentials_s_{CLUSTERS}.csv"
 ew_png = RES_RUN / f"EW_potentials_s_{CLUSTERS}.png"
 
-ew_ok = check_file(ew_csv, f"EW potentials CSV  s_{CLUSTERS}")
-check_file(ew_png, f"EW potentials PNG  s_{CLUSTERS}")
+ew_ok = check_file(ew_csv, f"ERW potentials CSV  s_{CLUSTERS}")
+check_file(ew_png, f"ERW potentials PNG  s_{CLUSTERS}")
 
 if ew_ok:
     df_ew = pd.read_csv(ew_csv, index_col=0)
@@ -78,12 +78,12 @@ if ew_ok:
     if "potential [t]" in df_ew.columns:
         total_t  = df_ew["potential [t]"].sum()
         total_Mt = total_t / 1e6
-        print(f"        Total EW potential: {total_t:,.0f} t CO2  ({total_Mt:.2f} Mt CO2)")
+        print(f"        Total ERW potential: {total_t:,.0f} t CO2  ({total_Mt:.2f} Mt CO2)")
         print(f"        Per-node [t CO2] — min: {df_ew['potential [t]'].min():,.0f}, "
               f"mean: {df_ew['potential [t]'].mean():,.0f}, "
               f"max: {df_ew['potential [t]'].max():,.0f}")
     if df_ew.isnull().any().any():
-        print(f"{WARN}  NaN values detected in EW potentials CSV.")
+        print(f"{WARN}  NaN values detected in ERW potentials CSV.")
 
 # ── 2. Pre-network (prepare_sector_network) ────────────────────────────────────
 section("2. PRE-NETWORK: sector-coupled (prepare_sector_network)")
@@ -98,27 +98,27 @@ if prenet_ok:
         n = pypsa.Network(str(prenet_path))
 
         # --- Carriers ---
-        ew_carriers = [c for c in n.carriers.index if "EW" in c or "ew" in c.lower()]
-        print(f"\n  Carriers with 'EW': {ew_carriers}")
-        for expected_carrier in ["EW", "EW store"]:
+        ew_carriers = [c for c in n.carriers.index if "ERW" in c or "ew" in c.lower()]
+        print(f"\n  Carriers with 'ERW': {ew_carriers}")
+        for expected_carrier in ["ERW", "ERW store"]:
             if expected_carrier in n.carriers.index:
                 print(f"    {OK}  Carrier '{expected_carrier}' present.")
             else:
                 print(f"    {WARN}  Carrier '{expected_carrier}' NOT found!")
 
         # --- Buses ---
-        ew_buses = n.buses[n.buses.carrier.str.contains("EW", case=True, na=False)]
-        print(f"\n  Buses (carrier contains 'EW'): {len(ew_buses)}")
+        ew_buses = n.buses[n.buses.carrier.str.contains("ERW", case=True, na=False)]
+        print(f"\n  Buses (carrier contains 'ERW'): {len(ew_buses)}")
         if not ew_buses.empty:
             print(f"    Carriers present: {ew_buses['carrier'].unique().tolist()}")
             cols = [c for c in ["location", "carrier", "unit"] if c in ew_buses.columns]
             print(ew_buses[cols].head(5).to_string())
         if len(ew_buses) != int(CLUSTERS):
-            print(f"    {WARN}  Expected ~{CLUSTERS} EW buses, found {len(ew_buses)}")
+            print(f"    {WARN}  Expected ~{CLUSTERS} ERW buses, found {len(ew_buses)}")
 
         # --- Links ---
-        ew_links = n.links[n.links.carrier.str.contains("EW", case=True, na=False)]
-        print(f"\n  Links (carrier contains 'EW'): {len(ew_links)}")
+        ew_links = n.links[n.links.carrier.str.contains("ERW", case=True, na=False)]
+        print(f"\n  Links (carrier contains 'ERW'): {len(ew_links)}")
         if not ew_links.empty:
             cols = [c for c in ["bus0", "bus1", "bus2", "carrier",
                                  "p_nom_extendable", "efficiency", "efficiency2",
@@ -126,16 +126,16 @@ if prenet_ok:
             print(ew_links[cols].head(10).to_string())
             if "p_nom_extendable" in ew_links.columns:
                 if not ew_links["p_nom_extendable"].all():
-                    print(f"    {WARN}  Some EW links are NOT extendable — check add_EW()!")
-            # check bus2 points to EW co2 store
+                    print(f"    {WARN}  Some ERW links are NOT extendable — check add_EW()!")
+            # check bus2 points to ERW co2 store
             if "bus2" in ew_links.columns:
-                wrong_bus2 = ew_links[~ew_links["bus2"].str.contains("EW co2 store", na=False)]
+                wrong_bus2 = ew_links[~ew_links["bus2"].str.contains("ERW co2 store", na=False)]
                 if not wrong_bus2.empty:
-                    print(f"    {WARN}  Some EW links have unexpected bus2: {wrong_bus2['bus2'].tolist()}")
+                    print(f"    {WARN}  Some ERW links have unexpected bus2: {wrong_bus2['bus2'].tolist()}")
 
         # --- Stores ---
-        ew_stores = n.stores[n.stores.carrier.str.contains("EW", case=True, na=False)]
-        print(f"\n  Stores (carrier contains 'EW'): {len(ew_stores)}")
+        ew_stores = n.stores[n.stores.carrier.str.contains("ERW", case=True, na=False)]
+        print(f"\n  Stores (carrier contains 'ERW'): {len(ew_stores)}")
         if not ew_stores.empty:
             cols = [c for c in ["bus", "carrier", "e_nom", "e_nom_extendable"] if c in ew_stores.columns]
             print(ew_stores[cols].head(10).to_string())
@@ -146,7 +146,7 @@ if prenet_ok:
                       f"mean: {ew_stores['e_nom'].mean():,.0f}, "
                       f"max: {ew_stores['e_nom'].max():,.0f}")
                 print(f"    Total e_nom: {total_enoms:,.0f} t CO2  ({total_enoms/1e6:.2f} Mt CO2)")
-                # cross-check against EW potentials CSV
+                # cross-check against ERW potentials CSV
                 if ew_ok and "potential [t]" in df_ew.columns:
                     expected_total = df_ew["potential [t]"].sum() * 0.2  # default max_land_usage=0.2
                     if abs(total_enoms - expected_total) / max(expected_total, 1) > 0.01:
@@ -154,11 +154,11 @@ if prenet_ok:
                               f"expected ({expected_total:,.0f} t, assuming max_land_usage=0.2)")
 
         if not ew_carriers:
-            print(f"\n{WARN}  No EW carriers found — add_EW may NOT have run!")
+            print(f"\n{WARN}  No ERW carriers found — add_EW may NOT have run!")
         elif ew_links.empty or ew_stores.empty:
-            print(f"\n{WARN}  Missing EW links or stores — check add_EW() execution!")
+            print(f"\n{WARN}  Missing ERW links or stores — check add_EW() execution!")
         else:
-            print(f"\n{OK}  EW components present in pre-network.")
+            print(f"\n{OK}  ERW components present in pre-network.")
 
     except Exception as e:
         print(f"\n{WARN}  Could not load pre-network: {e}")
@@ -177,27 +177,27 @@ if opt_ok:
 
         n_opt = pypsa.Network(str(opt_path))
 
-        ew_links  = n_opt.links [n_opt.links .carrier.str.contains("EW", case=True, na=False)]
-        ew_stores = n_opt.stores[n_opt.stores.carrier.str.contains("EW", case=True, na=False)]
+        ew_links  = n_opt.links [n_opt.links .carrier.str.contains("ERW", case=True, na=False)]
+        ew_stores = n_opt.stores[n_opt.stores.carrier.str.contains("ERW", case=True, na=False)]
 
         # --- Links optimal ---
-        print(f"\n  Links (carrier contains 'EW'): {len(ew_links)}")
+        print(f"\n  Links (carrier contains 'ERW'): {len(ew_links)}")
         if not ew_links.empty and "p_nom_opt" in ew_links.columns:
             active = ew_links[ew_links["p_nom_opt"] > 0]
             total  = ew_links["p_nom_opt"].sum()
             print(f"  Links with p_nom_opt > 0: {len(active)}")
-            print(f"  Total p_nom_opt (all EW links): {total:,.2f} MW_el")
+            print(f"  Total p_nom_opt (all ERW links): {total:,.2f} MW_el")
             if active.empty:
-                print(f"{WARN}  All EW links have p_nom_opt = 0 (not deployed).")
+                print(f"{WARN}  All ERW links have p_nom_opt = 0 (not deployed).")
             else:
-                print(f"{OK}  EW links deployed in optimal solution.")
+                print(f"{OK}  ERW links deployed in optimal solution.")
                 cols = [c for c in ["bus0", "bus1", "bus2", "carrier", "p_nom_opt"] if c in active.columns]
                 print(active[cols].to_string())
 
         # --- Stores optimal ---
-        print(f"\n  Stores (carrier contains 'EW'): {len(ew_stores)}")
+        print(f"\n  Stores (carrier contains 'ERW'): {len(ew_stores)}")
         if not ew_stores.empty:
-            # EW stores are fixed capacity (e_nom, not e_nom_extendable)
+            # ERW stores are fixed capacity (e_nom, not e_nom_extendable)
             # check the dispatch: how much CO2 was actually sequestered
             if "e_nom" in ew_stores.columns:
                 total_cap = ew_stores["e_nom"].sum()
@@ -215,12 +215,12 @@ if opt_ok:
                         utilisation = (final_e / ew_stores["e_nom"]).mean() * 100
                         print(f"  Mean store utilisation: {utilisation:.1f}%")
                     if total_stored == 0:
-                        print(f"{WARN}  No CO2 sequestered — EW not utilised in solution.")
+                        print(f"{WARN}  No CO2 sequestered — ERW not utilised in solution.")
                     else:
-                        print(f"{OK}  EW CO2 sequestration active in optimal solution.")
+                        print(f"{OK}  ERW CO2 sequestration active in optimal solution.")
 
         if ew_links.empty and ew_stores.empty:
-            print(f"\n{WARN}  No EW components in optimal network!")
+            print(f"\n{WARN}  No ERW components in optimal network!")
 
     except Exception as e:
         print(f"\n{WARN}  Could not load optimal network: {e}")

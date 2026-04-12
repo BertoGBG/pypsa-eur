@@ -97,7 +97,7 @@ if corine_ok:
     if df_corine.isnull().any().any():
         print(f"{WARN}  NaN values detected in CORINE potentials CSV.")
 
-# ── 3. Afforestation potentials (build_afforestation_potentials) ───────────────
+# ── 3. afforestation potentials (build_afforestation_potentials) ───────────────
 section("3. BUILD: afforestation CO2 potentials (clustered)")
 
 affo_pot = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.csv"
