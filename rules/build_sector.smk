@@ -986,6 +986,7 @@ rule build_afforestation_potentials:
         seasonal_profile_csv_file=resources(
             "afforestation_seasonal_profile_s_{clusters}.csv"
         ),
+        png_file=resources("afforestation_potentials_s_{clusters}.png"),
     log:
         logs("build_afforestation_potentials_s_{clusters}.log"),
     resources:

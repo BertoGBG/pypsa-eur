@@ -23,6 +23,8 @@ Output: CSV with columns [node, potential [t/ha]] (density mode also includes
 import logging
 
 import geopandas
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
 import pandas
 from scripts._helpers import configure_logging
 
@@ -31,6 +33,71 @@ logger = logging.getLogger(__name__)
 
 MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def plot_afforestation_map(network, potential_type, data_frame, monthly_weights_rows, output_png):
+    """
+    Save a map of afforestation CO2 sequestration rates per clustered node.
+
+    Growth mode: 12-panel map of monthly rates [tCO2/(ha·month)].
+    Density mode: single-panel map of annual rate [tCO2/(ha·y)].
+    """
+    gdf = network[["name", "geometry"]].set_index("name").to_crs(4326)
+    gdf = gdf.join(data_frame)
+
+    if potential_type == "growth" and monthly_weights_rows:
+        mw = pandas.DataFrame(monthly_weights_rows).set_index("node")
+        # monthly rate [tCO2/(ha·month)] = annual_rate × monthly_weight
+        monthly_rates = mw[MONTH_NAMES].multiply(
+            gdf["CO2 seq rate tCO2/(ha y)"], axis=0
+        )
+        gdf = gdf.join(monthly_rates)
+
+        vmax = monthly_rates.values.max()
+        fig, axes = plt.subplots(3, 4, figsize=(18, 10))
+        axes = axes.ravel()
+        cmap = "YlGn"
+
+        for m_name, ax in zip(MONTH_NAMES, axes):
+            gdf.plot(
+                column=m_name, ax=ax, cmap=cmap,
+                vmin=0, vmax=vmax,
+                linewidth=0.3, edgecolor="white",
+                missing_kwds={"color": "lightgrey"},
+            )
+            ax.set_title(m_name, fontsize=10)
+            ax.set_xlim(-25, 45)
+            ax.set_ylim(34, 72)
+            ax.axis("off")
+
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=mcolors.Normalize(vmin=0, vmax=vmax))
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=axes, fraction=0.02, pad=0.02)
+        cbar.set_label("CO₂ sequestration rate (tCO₂ ha⁻¹ month⁻¹)", fontsize=9)
+        fig.suptitle(
+            "Monthly afforestation CO₂ sequestration rates per node\n"
+            "(rotation-averaged MAI from Pilli et al. 2024, seasonalised with FluxCom GPP)",
+            fontsize=11, y=1.01,
+        )
+    else:  # density mode — single-panel annual rate
+        fig, ax = plt.subplots(figsize=(10, 7))
+        col = "biomass density [t/ha]" if "biomass density [t/ha]" in gdf.columns else gdf.columns[0]
+        gdf.plot(
+            column=col, ax=ax, cmap="YlGn",
+            linewidth=0.3, edgecolor="white",
+            legend=True,
+            legend_kwds={"label": col, "shrink": 0.6},
+            missing_kwds={"color": "lightgrey"},
+        )
+        ax.set_xlim(-25, 45)
+        ax.set_ylim(34, 72)
+        ax.axis("off")
+        ax.set_title("Afforestation biomass density per node (Pilli et al. 2024)", fontsize=11)
+
+    fig.tight_layout()
+    logger.info("Saving afforestation map to '%s'" % output_png)
+    fig.savefig(output_png, dpi=150, bbox_inches="tight")
+    plt.close(fig)
 
 
 def build_afforestation_potentials(
@@ -44,6 +111,7 @@ def build_afforestation_potentials(
     output_monthly_weights_csv=None,
     snapshot_config=None,
     output_seasonal_profile_csv=None,
+    output_png=None,
 ):
     network = geopandas.read_file(network_geojson)
     corine_potentials = pandas.read_csv(corine_potentials_csv).set_index("node")
@@ -222,6 +290,9 @@ def build_afforestation_potentials(
                 output_seasonal_profile_csv
             )
 
+    if output_png is not None:
+        plot_afforestation_map(network, potential_type, data_frame, monthly_weights_rows, output_png)
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -249,4 +320,5 @@ if __name__ == "__main__":
         output_monthly_weights_csv=snakemake.output["monthly_weights_csv_file"],
         snapshot_config=snakemake.params.get("snapshots"),
         output_seasonal_profile_csv=snakemake.output["seasonal_profile_csv_file"],
+        output_png=snakemake.output["png_file"],
     )
