@@ -1262,7 +1262,7 @@ def add_afforestation(n, costs):
         AGB = afforestation_potentials["AGB [t]"].values
         potentials = AGB / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage
 
-        # capital cost calculated from total CO2 removal during lifetime
+        # capital cost calculated from total CO2 removal during lifetime from per-hectar capital cost
         investment_cost = costs.at["Afforestation", "investment"]
         maintenance_cost = (
             investment_cost
@@ -1272,11 +1272,22 @@ def add_afforestation(n, costs):
         capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
 
     else:  # growth
-        potentials = afforestation_potentials["potential [t/y]"].values * co2_per_tonne * max_land_usage
-        growth_rate = afforestation_potentials["growth rate [t/ha]"].values
+        potentials = afforestation_potentials["potential [tCO2/y]"].values  * max_land_usage
+        growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
-        # capital cost calculated from annual CO2 removal rates
-        capital_cost = costs.at["Afforestation", "capital_cost"] / (growth_rate * co2_per_tonne)
+        # capital cost calculated from annual CO2 removal rates from per-hectare capital cost
+        capital_cost = costs.at["Afforestation", "capital_cost"] / growth_rate
+
+        # Load pre-computed hourly seasonal profile (snapshots × nodes)
+        profile_full = pd.read_csv(
+            snakemake.input.afforestation_seasonal_profile, index_col="snapshot", parse_dates=True
+        )
+        dates = pd.DatetimeIndex(
+            n.snapshots.get_level_values(1) if isinstance(n.snapshots, pd.MultiIndex)
+            else n.snapshots
+        )
+        profile_full.columns = spatial.nodes + " afforestation"
+        monthly_rate = profile_full.reindex(dates).set_axis(n.snapshots)
 
     n.add("Carrier", "co2 afforestation")
 
@@ -1306,11 +1317,22 @@ def add_afforestation(n, costs):
         bus1=spatial.nodes + " co2 afforestation",
         carrier="co2 afforestation",
         efficiency=1.0,
+        p_nom_extendable=True,
         p_min_pu=1.0,
         p_max_pu=1.0,
-        p_nom_extendable=True,
         lifetime=costs.at["Afforestation", "lifetime"],
     )
+
+    if potential_type == "growth":
+        # growth mode: override with time-varying seasonal profile
+        n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
+            columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
+        )
+        n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
+            columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
+        )
+        n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
+        n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
 
 
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):

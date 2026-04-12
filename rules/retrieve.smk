@@ -1697,19 +1697,23 @@ rule retrieve_aCDRs_data:
         zip_file=storage("https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"),
     output:
         afforestation_nuts_biomass_densities=resources("afforestation_nuts_biomass_densities.xlsx"),
-        afforestation_nuts2_growth_rates=resources("afforestation_nuts2_growth_rates.csv"),
+        afforestation_nuts2_afforestation_rates=resources("afforestation_rates_nuts2_full.csv"),
+        afforestation_nuts2_monthly_weights=resources("nuts2_monthly_weights.csv"),
         eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
         eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
+        ERW_BioVal_cluster=resources("World_Ecological_BioVal_cluster.tif"),
     resources:
         mem_mb=4000,
     retries: 2
     run:
         with ZipFile(input.zip_file) as z:
             for src_path, dest in [
-                ("outputs/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
-                ("outputs/afforestation_nuts2_growth_rates.csv", output.afforestation_nuts2_growth_rates),
-                ("outputs/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
-                ("outputs/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+                ("outputs/afforestation/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
+                ("outputs/afforestation/afforestation_rates_nuts2_full.csv", output.afforestation_nuts2_afforestation_rates),
+                ("outputs/afforestation/nuts2_monthly_weights.csv",output.afforestation_nuts2_monthly_weights),
+                ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
+                ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+                ("outputs/ERW/World_Ecological_BioVal_cluster.tif", output.ERW_BioVal_cluster),
             ]:
                 with z.open(src_path) as src, open(dest, "wb") as dst:
                     dst.write(src.read())

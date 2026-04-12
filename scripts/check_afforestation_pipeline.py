@@ -64,8 +64,10 @@ if POTENTIAL_TYPE == "density":
     nuts_file = RES / "afforestation_nuts_biomass_densities.xlsx"
     check_file(nuts_file, "NUTS0 biomass densities (Excel, density mode)")
 else:
-    nuts_file = RES / "afforestation_nuts2_growth_rates.csv"
+    nuts_file = RES / "afforestation_rates_nuts2_full.csv"
     check_file(nuts_file, "NUTS2 growth rates (CSV, growth mode)")
+    weights_file = RES / "nuts2_monthly_weights.csv"
+    check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
 
 # ── 2. CORINE potentials (build_afforestation_corine_potentials) ───────────────
 section("2. BUILD: CORINE afforestation land area")
@@ -92,12 +94,19 @@ affo_pot = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.csv"
 pot_ok = check_file(affo_pot, f"Afforestation potentials  s_{CLUSTERS}")
 
 if pot_ok:
-    df_pot = pd.read_csv(affo_pot)
+    df_pot = pd.read_csv(affo_pot, index_col="node")
     print(f"        Rows: {len(df_pot)}  |  Columns: {list(df_pot.columns)}")
-    if "potential [t/ha]" in df_pot.columns:
-        print(f"        Potential [t/ha] — min: {df_pot['potential [t/ha]'].min():.2f}, "
-              f"mean: {df_pot['potential [t/ha]'].mean():.2f}, "
-              f"max: {df_pot['potential [t/ha]'].max():.2f}")
+    if POTENTIAL_TYPE == "density" and "AGB [t]" in df_pot.columns:
+        print(f"        AGB [t] — min: {df_pot['AGB [t]'].min():,.0f}, "
+              f"mean: {df_pot['AGB [t]'].mean():,.0f}, "
+              f"max: {df_pot['AGB [t]'].max():,.0f}")
+    elif POTENTIAL_TYPE == "growth" and "potential [tCO2/y]" in df_pot.columns:
+        print(f"        Potential [tCO2/y] — min: {df_pot['potential [tCO2/y]'].min():.1f}, "
+              f"mean: {df_pot['potential [tCO2/y]'].mean():.1f}, "
+              f"max: {df_pot['potential [tCO2/y]'].max():.1f}")
+        print(f"        CO2 seq rate [tCO2/(ha y)] — min: {df_pot['CO2 seq rate tCO2/(ha y)'].min():.2f}, "
+              f"mean: {df_pot['CO2 seq rate tCO2/(ha y)'].mean():.2f}, "
+              f"max: {df_pot['CO2 seq rate tCO2/(ha y)'].max():.2f}")
     if df_pot.isnull().any().any():
         print(f"{WARN}  NaN values detected in afforestation potentials CSV.")
 
