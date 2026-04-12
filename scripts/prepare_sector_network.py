@@ -1272,7 +1272,7 @@ def add_afforestation(n, costs):
         capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
 
     else:  # growth
-        potentials = afforestation_potentials["potential [tCO2/y]"].values  * max_land_usage
+        potentials = afforestation_potentials["potential [tCO2/y]"].values
         growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
         # capital cost calculated from annual CO2 removal rates from per-hectare capital cost
