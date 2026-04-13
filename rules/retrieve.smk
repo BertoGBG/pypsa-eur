@@ -1712,7 +1712,7 @@ rule retrieve_aCDRs_data:
             for src_path, dest in [
                 ("outputs/afforestation/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
                 ("outputs/afforestation/afforestation_rates_nuts2_full.csv", output.afforestation_nuts2_afforestation_rates),
-                ("outputs/afforestation/nuts2_monthly_weights.csv",output.afforestation_nuts2_monthly_weights),
+                ("outputs/afforestation/nuts2_monthly_weights.csv", output.afforestation_nuts2_monthly_weights),
                 ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
                 ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
                 ("outputs/ERW/World_Ecological_BioVal_cluster.tif", output.ERW_BioVal_cluster),
