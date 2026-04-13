@@ -230,7 +230,7 @@ def get_regional_result(
         District heating areas to intersect with the region.
     snapshots : pd.DatetimeIndex
         Time snapshots, used for loading data and for regions without dh_areas
-    enable_heat_source_maps : bool, default False
+    enable_heat_source_maps : bool, default_AU False
         Whether to enable heat source mapping.
 
     Returns

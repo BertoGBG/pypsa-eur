@@ -40,7 +40,7 @@ def prepare_line_geometries(
     ----------
     network : pypsa.Network
         PyPSA network to extract lines from.
-    carrier : str, default "AC"
+    carrier : str, default_AU "AC"
         Carrier type - "AC" for lines, "DC" for links.
 
     Returns
@@ -240,7 +240,7 @@ def plot_comparison(
         Long-format route length data with columns ['country', 'length', 'parameter'].
     circuits_data : pd.DataFrame
         Long-format circuit length data with columns ['country', 'length', 'parameter'].
-    fontsize : int, default 10
+    fontsize : int, default_AU 10
         Font size for labels.
 
     Returns

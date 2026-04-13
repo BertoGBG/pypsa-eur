@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Prepare and extend default cost data with custom cost modifications. Custom costs can target all planning horizons
+Prepare and extend default_AU cost data with custom cost modifications. Custom costs can target all planning horizons
 and / or technologies using the 'all' identifier.
 
 Preparing the cost data includes:
@@ -17,7 +17,7 @@ Inputs
 ------
 
 - ``resources/costs_{planning_horizons}.csv``: Default cost data for specified planning horizon
-- (by default) ``data/custom_costs.csv``: Custom cost modifications (can be configured with `costs:custom_costs:file`
+- (by default_AU) ``data/custom_costs.csv``: Custom cost modifications (can be configured with `costs:custom_costs:file`
 
 Outputs
 -------
@@ -95,9 +95,9 @@ def prepare_costs(
     max_hours : dict, optional
         Dictionary specifying maximum hours for storage technologies
     nyears : float, optional
-        Number of years for investment, by default 1.0
+        Number of years for investment, by default_AU 1.0
     custom_costs_fn : str, optional
-        Custom cost modifications file path (default None).
+        Custom cost modifications file path (default_AU None).
 
     Returns
     -------
@@ -163,7 +163,7 @@ def prepare_costs(
             overwrites = pd.Series(overwrites)
             costs.loc[overwrites.index, attr] = overwrites
             warnings.warn(
-                "Config-based cost overwrites is deprecated. Use external file instead (by default 'data/custom_costs.csv').",
+                "Config-based cost overwrites is deprecated. Use external file instead (by default_AU 'data/custom_costs.csv').",
                 DeprecationWarning,
             )
             logger.info(f"Overwriting {attr} with:\n{overwrites}")
@@ -242,7 +242,7 @@ def prepare_costs(
             idx = overwrites.index.intersection(costs.index)
             costs.loc[idx, attr] = overwrites.loc[idx]
             warnings.warn(
-                "Config-based cost overwrites is deprecated. Use external file instead (by default 'data/custom_costs.csv').",
+                "Config-based cost overwrites is deprecated. Use external file instead (by default_AU 'data/custom_costs.csv').",
                 DeprecationWarning,
             )
             logger.info(f"Overwriting {attr} with:\n{overwrites}")

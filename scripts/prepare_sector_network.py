@@ -381,7 +381,7 @@ def create_network_topology(
     prefix : str
     carriers : list-like
     connector : str
-    bidirectional : bool, default True
+    bidirectional : bool, default_AU True
         True: one link for each connection
         False: one link for each connection and direction (back and forth)
 
@@ -441,9 +441,9 @@ def update_wind_solar_costs(
     costs : pd.DataFrame
         Cost assumptions DataFrame
     line_length_factor : int | float, optional
-        Factor to multiply line lengths by, by default 1
+        Factor to multiply line lengths by, by default_AU 1
     landfall_lengths : dict, optional
-        Dictionary of landfall lengths per technology, by default None
+        Dictionary of landfall lengths per technology, by default_AU None
     profiles : dict[str, str]
         Dictionary mapping technology names to profile file paths
         e.g. {'offwind-dc': 'path/to/profile.nc'}
@@ -890,7 +890,7 @@ def add_co2_network(n, costs, co2_network_cost_factor=1.0):
         'CO2 pipeline' and 'CO2 submarine pipeline' with 'capital_cost' and 'lifetime'
         columns
     co2_network_cost_factor : float, optional
-        Factor to scale the capital costs of the CO2 network, default 1.0
+        Factor to scale the capital costs of the CO2 network, default_AU 1.0
 
     Returns
     -------
@@ -1510,13 +1510,14 @@ def add_afforestation(n, costs):
     potential_type = snakemake.params.afforestation_potential_type
     co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
+    crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
 
     if potential_type == "density":
         densities = afforestation_potentials["biomass density [t/ha]"].values
         AGB = afforestation_potentials["AGB [t]"].values
         potentials = AGB / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage
 
-        # capital cost calculated from total CO2 removal during lifetime
+        # capital cost calculated from total CO2 removal during lifetime from per-hectar capital cost
         investment_cost = costs.at["Afforestation", "investment"]
         maintenance_cost = (
             investment_cost
@@ -1526,11 +1527,22 @@ def add_afforestation(n, costs):
         capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
 
     else:  # growth
-        potentials = afforestation_potentials["potential [t/y]"].values * co2_per_tonne * max_land_usage
-        growth_rate = afforestation_potentials["growth rate [t/ha]"].values
+        potentials = afforestation_potentials["potential [tCO2/y]"].values
+        growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
-        # capital cost calculated from annual CO2 removal rates
-        capital_cost = costs.at["Afforestation", "capital_cost"] / (growth_rate * co2_per_tonne)
+        # capital cost calculated from annual CO2 removal rates from per-hectare capital cost
+        capital_cost = costs.at["Afforestation", "capital_cost"] / growth_rate
+
+        # Load pre-computed hourly seasonal profile (snapshots × nodes)
+        profile_full = pd.read_csv(
+            snakemake.input.afforestation_seasonal_profile, index_col="snapshot", parse_dates=True
+        )
+        dates = pd.DatetimeIndex(
+            n.snapshots.get_level_values(1) if isinstance(n.snapshots, pd.MultiIndex)
+            else n.snapshots
+        )
+        profile_full.columns = spatial.nodes + " afforestation"
+        monthly_rate = profile_full.reindex(dates).set_axis(n.snapshots)
 
     n.add("Carrier", "co2 afforestation")
 
@@ -1559,12 +1571,24 @@ def add_afforestation(n, costs):
         bus0="co2 atmosphere",
         bus1=spatial.nodes + " co2 afforestation",
         carrier="co2 afforestation",
-        efficiency=1.0,
+        efficiency=crcf_efficiency,
+        p_nom_extendable=True,
         p_min_pu=1.0,
         p_max_pu=1.0,
-        p_nom_extendable=True,
         lifetime=costs.at["Afforestation", "lifetime"],
     )
+
+    if potential_type == "growth":
+        # growth mode: override with time-varying seasonal profile
+        n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
+            columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
+        )
+        n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
+            columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
+        )
+        n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
+        n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
+
 
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     """
@@ -1582,7 +1606,7 @@ def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     countries : list
         List of country codes to consider for the CO2 limit
     nyears : float, optional
-        Number of years for the CO2 budget, by default 1.0
+        Number of years for the CO2 budget, by default_AU 1.0
     limit : float, optional
         CO2 limit as a fraction of 1990 levels
 

@@ -37,7 +37,7 @@ network with **zero** initial capacity:
   The energy and power capacities are linked through a parameter that specifies
   the energy capacity as maximum hours at full dispatch power and is configured
   in ``electricity: max_hours:``. This linkage leads to one investment variable
-  per storage unit. The default ``max_hours`` lead to long-term hydrogen and
+  per storage unit. The default_AU ``max_hours`` lead to long-term hydrogen and
   short-term battery storage units.
 
 - ``Stores`` of carrier 'H2' and/or 'battery' in combination with ``Links``. If
@@ -396,7 +396,7 @@ def attach_load(
     busmap_fn : str
         Path to the busmap file.
     scaling : float, optional
-        Scaling factor for the load data, by default 1.0.
+        Scaling factor for the load data, by default_AU 1.0.
     """
     load = (
         xr.open_dataarray(load_fn).to_dataframe().squeeze(axis=1).unstack(level="time")
@@ -430,9 +430,9 @@ def set_transmission_costs(
     costs : pd.DataFrame
         DataFrame containing the cost data.
     line_length_factor : float, optional
-        Factor to scale the line length, by default 1.0.
+        Factor to scale the line length, by default_AU 1.0.
     link_length_factor : float, optional
-        Factor to scale the link length, by default 1.0.
+        Factor to scale the link length, by default_AU 1.0.
     """
     n.lines["capital_cost"] = (
         n.lines["length"]
@@ -489,9 +489,9 @@ def attach_wind_and_solar(
     extendable_carriers : list | set
         List of extendable renewable energy carriers.
     line_length_factor : float, optional
-        Factor to scale the line length, by default 1.0.
+        Factor to scale the line length, by default_AU 1.0.
     landfall_lengths : dict, optional
-        Dictionary containing the landfall lengths for offshore wind, by default None.
+        Dictionary containing the landfall lengths for offshore wind, by default_AU None.
     """
     add_missing_carriers(n, carriers)
 
@@ -605,9 +605,9 @@ def attach_conventional_generators(
     conventional_inputs : dict
         Dictionary of conventional generator inputs.
     unit_commitment : pd.DataFrame, optional
-        DataFrame containing unit commitment data, by default None.
+        DataFrame containing unit commitment data, by default_AU None.
     fuel_price : pd.DataFrame, optional
-        DataFrame containing fuel price data, by default None.
+        DataFrame containing fuel price data, by default_AU None.
     """
     carriers = list(
         set(conventional_carriers)
@@ -624,7 +624,7 @@ def attach_conventional_generators(
     if unit_commitment is not None:
         committable_attrs = ppl.carrier.isin(unit_commitment).to_frame("committable")
         for attr in unit_commitment.index:
-            default = n.components["Generator"].defaults.loc[attr, "default"]
+            default = n.components["Generator"].defaults.loc[attr, "default_AU"]
             committable_attrs[attr] = ppl.carrier.map(unit_commitment.loc[attr]).fillna(
                 default
             )

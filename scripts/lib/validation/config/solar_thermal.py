@@ -40,6 +40,6 @@ class SolarThermalConfig(BaseModel):
         description="Panel orientation with slope and azimuth.",
     )
     cutout: str = Field(
-        "default",
+        "default_AU",
         description="Name of the cutout to use for solar thermal calculations.",
     )

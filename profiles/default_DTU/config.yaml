@@ -4,7 +4,7 @@
 
 # See https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
 
-# profiles/default/config.yaml
+# profiles/default_DTU/config.yaml
 logger: pypsa
 
 # Submit jobs to SLURM

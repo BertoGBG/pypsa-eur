@@ -66,7 +66,7 @@ def replace_country(
     tolerance_dict : dict of dict, optional
         A nested dictionary specifying custom tolerances (in degrees) for snapping between specific zone pairs.
         Format: {zone_name: {neighbor_zone_name: tolerance}}.
-        If not provided, the default tolerance value is used.
+        If not provided, the default_AU tolerance value is used.
 
     Returns
     -------

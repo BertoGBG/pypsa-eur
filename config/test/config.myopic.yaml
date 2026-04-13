@@ -109,7 +109,7 @@ industry:
 solving:
   solver:
     name: highs
-    options: highs-default
+    options: highs-default_AU
   mem: 4000
 
 plotting:

@@ -14,7 +14,7 @@ echo "Working directory: $(pwd)"
 conda activate pypsa-eur
 
 # Run workflow
-snakemake --profile profiles/default \
+snakemake --profile profiles/default_AU \
   --configfile config/config.default.yaml \
   --rerun-incomplete \
   all

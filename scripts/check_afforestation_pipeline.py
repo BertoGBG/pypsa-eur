@@ -73,11 +73,13 @@ def section(title: str):
 section("1. RETRIEVE: afforestation NUTS data")
 
 if POTENTIAL_TYPE == "density":
-    nuts_file = RES / "afforestation_nuts_biomass_densities.xlsx"
+    nuts_file = RES_RUN / "afforestation_nuts_biomass_densities.xlsx"
     check_file(nuts_file, "NUTS0 biomass densities (Excel, density mode)")
 else:
-    nuts_file = RES / "afforestation_nuts2_growth_rates.csv"
+    nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"   # from retrieve_aCDRs_data output
     check_file(nuts_file, "NUTS2 growth rates (CSV, growth mode)")
+    weights_file = RES_RUN / "nuts2_monthly_weights.csv"         # from retrieve_aCDRs_data output
+    check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
 
 # ── 2. CORINE potentials (build_afforestation_corine_potentials) ───────────────
 section("2. BUILD: CORINE afforestation land area")
@@ -104,14 +106,47 @@ affo_pot = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.csv"
 pot_ok = check_file(affo_pot, f"Afforestation potentials  s_{CLUSTERS}")
 
 if pot_ok:
-    df_pot = pd.read_csv(affo_pot)
+    df_pot = pd.read_csv(affo_pot, index_col="node")
     print(f"        Rows: {len(df_pot)}  |  Columns: {list(df_pot.columns)}")
-    if "potential [t/ha]" in df_pot.columns:
-        print(f"        Potential [t/ha] — min: {df_pot['potential [t/ha]'].min():.2f}, "
-              f"mean: {df_pot['potential [t/ha]'].mean():.2f}, "
-              f"max: {df_pot['potential [t/ha]'].max():.2f}")
+    if POTENTIAL_TYPE == "density" and "AGB [t]" in df_pot.columns:
+        print(f"        AGB [t] — min: {df_pot['AGB [t]'].min():,.0f}, "
+              f"mean: {df_pot['AGB [t]'].mean():,.0f}, "
+              f"max: {df_pot['AGB [t]'].max():,.0f}")
+    elif POTENTIAL_TYPE == "growth" and "potential [tCO2/y]" in df_pot.columns:
+        print(f"        Potential [tCO2/y] — min: {df_pot['potential [tCO2/y]'].min():.1f}, "
+              f"mean: {df_pot['potential [tCO2/y]'].mean():.1f}, "
+              f"max: {df_pot['potential [tCO2/y]'].max():.1f}")
+        print(f"        CO2 seq rate [tCO2/(ha y)] — min: {df_pot['CO2 seq rate tCO2/(ha y)'].min():.2f}, "
+              f"mean: {df_pot['CO2 seq rate tCO2/(ha y)'].mean():.2f}, "
+              f"max: {df_pot['CO2 seq rate tCO2/(ha y)'].max():.2f}")
     if df_pot.isnull().any().any():
         print(f"{WARN}  NaN values detected in afforestation potentials CSV.")
+
+# ── 3b. Clustered monthly weights + seasonal profile (growth mode only) ───────
+if POTENTIAL_TYPE == "growth":
+    section("3b. BUILD: node-level monthly weights and seasonal profile (growth mode)")
+
+    mw_csv = RES_RUN / f"afforestation_monthly_weights_s_{CLUSTERS}.csv"
+    sp_csv = RES_RUN / f"afforestation_seasonal_profile_s_{CLUSTERS}.csv"
+    pot_png = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.png"
+
+    mw_ok = check_file(mw_csv, f"Monthly weights CSV  s_{CLUSTERS}")
+    sp_ok = check_file(sp_csv, f"Seasonal profile CSV  s_{CLUSTERS}")
+    check_file(pot_png, f"Afforestation potentials PNG  s_{CLUSTERS}")
+
+    if mw_ok:
+        df_mw = pd.read_csv(mw_csv, index_col="node")
+        print(f"        Rows: {len(df_mw)}  |  Columns: {list(df_mw.columns)}")
+        row_sums = df_mw.sum(axis=1)
+        bad = row_sums[(row_sums - 1.0).abs() > 0.01]
+        if bad.empty:
+            print(f"        Monthly weights sum to ~1.0 for all nodes  {OK}")
+        else:
+            print(f"{WARN}  {len(bad)} nodes have weights not summing to 1: {bad.index.tolist()[:5]}")
+
+    if sp_ok:
+        df_sp = pd.read_csv(sp_csv, index_col="snapshot", nrows=5)
+        print(f"        Shape (first 5 rows): {df_sp.shape}  |  Nodes: {list(df_sp.columns[:3])} ...")
 
 # ── 4. Pre-network (prepare_sector_network) ───────────────────────────────────
 section("4. PRE-NETWORK: sector-coupled (prepare_sector_network)")
@@ -145,7 +180,14 @@ if prenet_ok:
         print(f"\n  Links (carrier contains 'afforestation'): {len(affo_links)}")
         if not affo_links.empty:
             print(affo_links[["bus0", "bus1", "carrier", "p_nom_extendable",
-                               "p_min_pu", "p_max_pu"]].head(10).to_string())
+                               "efficiency", "p_min_pu", "p_max_pu"]].head(10).to_string())
+            if "efficiency" in affo_links.columns:
+                eff_vals = affo_links["efficiency"].unique()
+                print(f"\n    efficiency values: {eff_vals}")
+                if any(abs(e - 1.0) < 1e-6 for e in eff_vals):
+                    print(f"{WARN}  efficiency = 1.0 detected — crcf_efficiency may not have been applied!")
+                else:
+                    print(f"{OK}  efficiency < 1.0 (CRCF discount applied).")
 
         # --- Stores ---
         affo_stores = n.stores[n.stores.carrier.str.contains("afforestation", case=False, na=False)]

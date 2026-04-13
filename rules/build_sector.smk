@@ -1012,6 +1012,7 @@ rule build_afforestation_potentials:
         network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
         nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
         afforestation_potential_type=config["afforestation"]["potential_type"],
+        snapshots=config["snapshots"],
     input:
         afforestation_corine_potentials_csv_file=resources(
             "afforestation_corine_potentials_s_{clusters}.csv"
@@ -1019,10 +1020,22 @@ rule build_afforestation_potentials:
         afforestation_nuts_file=lambda w: (
             rules.retrieve_aCDRs_data.output.afforestation_nuts_biomass_densities
             if config["afforestation"]["potential_type"] == "density"
-            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_growth_rates
+            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_afforestation_rates
+        ),
+        afforestation_monthly_weights_file=lambda w: (
+            []
+            if config["afforestation"]["potential_type"] == "density"
+            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_monthly_weights
         ),
     output:
         csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
+        monthly_weights_csv_file=resources(
+            "afforestation_monthly_weights_s_{clusters}.csv"
+        ),
+        seasonal_profile_csv_file=resources(
+            "afforestation_seasonal_profile_s_{clusters}.csv"
+        ),
+        png_file=resources("afforestation_potentials_s_{clusters}.png"),
     log:
         logs("build_afforestation_potentials_s_{clusters}.log"),
     resources:
@@ -1846,6 +1859,14 @@ rule prepare_sector_network:
         afforestation_potentials=lambda w: (
             resources("afforestation_potentials_s_{clusters}.csv")
             if config_provider("sector", "afforestation")(w)
+            else []
+        ),
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv")
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
             else []
         ),
         perennials_yields_1G_biofuels=lambda w: (

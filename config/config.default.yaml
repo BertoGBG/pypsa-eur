@@ -218,7 +218,7 @@ atlite:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#renewable
 renewable:
   onwind:
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -262,7 +262,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "offwind-ac":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -283,7 +283,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 20.0
   "offwind-dc":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -304,7 +304,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 30.0
   "offwind-float":
-    cutout: default
+    cutout: default_AU
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -325,7 +325,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 40.0
   solar:
-    cutout: default
+    cutout: default_AU
     resource:
       method: pv
       panel: CSi
@@ -365,7 +365,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "solar-hsat":
-    cutout: default
+    cutout: default_AU
     resource:
       method: pv
       panel: CSi
@@ -405,7 +405,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   hydro:
-    cutout: default
+    cutout: default_AU
     carriers:
     - ror
     - PHS
@@ -455,7 +455,7 @@ lines:
   under_construction: keep
   dynamic_line_rating:
     activate: false
-    cutout: default
+    cutout: default_AU
     correction_factor: 0.95
     max_voltage_difference: false
     max_line_rating: false
@@ -584,7 +584,7 @@ solar_thermal:
   orientation:
     slope: 45.0
     azimuth: 180.0
-  cutout: default
+  cutout: default_AU
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#existing_capacities
 existing_capacities:
@@ -728,7 +728,7 @@ sector:
       - 10
       - 22
   cluster_heat_buses: true
-  heat_demand_cutout: default
+  heat_demand_cutout: default_AU
   bev_dsm_restriction_value: 0.8
   bev_dsm_restriction_time: 7
   transport_heating_deadband_upper: 20.0
@@ -1100,9 +1100,15 @@ EW:
 
 afforestation:
   corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
-  potential_type: "density" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
+  potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
   co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
-  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation
+  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
+  crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
+                        # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
+                        # Accounts for mandatory uncertainty deduction (min 10%, eq.1 of the methodology)
+                        # and buffer-pool contribution (risk rate 8-17% for typical European mixed/broadleaf
+                        # forests at low-medium disturbance, Table 7 of the methodology).
+                        # Central estimate: (1-0.10)*(1-0.11) = 0.80; range 0.72-0.83.
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:

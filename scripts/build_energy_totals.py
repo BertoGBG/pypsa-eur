@@ -870,9 +870,9 @@ def build_eea_co2(
     input_co2 : str
         Path to the input CSV file with CO2 data.
     year : int, optional
-        Year for which to calculate emissions, by default 1990.
+        Year for which to calculate emissions, by default_AU 1990.
     emissions_scope : str, optional
-        Scope of the emissions to consider, by default "CO2".
+        Scope of the emissions to consider, by default_AU "CO2".
 
     Returns
     -------
@@ -949,7 +949,7 @@ def build_eurostat_co2(eurostat: pd.DataFrame, year: int = 1990) -> pd.Series:
     eurostat : pd.DataFrame
         DataFrame with Eurostat data.
     year : int, optional
-        Year for which to calculate emissions, by default 1990.
+        Year for which to calculate emissions, by default_AU 1990.
 
     Returns
     -------

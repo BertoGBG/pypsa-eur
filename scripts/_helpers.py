@@ -188,7 +188,7 @@ def get_opt(opts, expr, flags=None):
     """
     Return the first option matching the regular expression.
 
-    The regular expression is case-insensitive by default.
+    The regular expression is case-insensitive by default_AU.
     """
     if flags is None:
         flags = re.IGNORECASE
@@ -251,8 +251,8 @@ def configure_logging(snakemake, skip_handlers=False):
     ----------
     snakemake : snakemake object
         Your snakemake object containing a snakemake.config and snakemake.log.
-    skip_handlers : True | False (default)
-        Do (not) skip the default handlers created for redirecting output to STDERR and file.
+    skip_handlers : True | False (default_AU)
+        Do (not) skip the default_AU handlers created for redirecting output to STDERR and file.
     """
     import logging
     import sys
@@ -880,9 +880,9 @@ def get_snapshots(
     snapshots : dict
         Dictionary containing time range parameters. 'start' and 'end' can be
         strings or lists of strings for multiple date ranges.
-    drop_leap_day : bool, default False
+    drop_leap_day : bool, default_AU False
         If True, removes February 29th from the DateTimeIndex in leap years.
-    freq : str, default "h"
+    freq : str, default_AU "h"
         Frequency string indicating the time step interval (e.g., "h" for hourly)
     **kwargs : dict
         Additional keyword arguments passed to pd.date_range().
@@ -932,7 +932,7 @@ def sanitize_custom_columns(n: pypsa.Network):
         None
     """
     if "reversed" in n.links.columns:
-        # Replace NA values with default value False
+        # Replace NA values with default_AU value False
         n.links.loc[n.links.reversed.isna(), "reversed"] = False
         n.links.reversed = n.links.reversed.astype(bool)
 

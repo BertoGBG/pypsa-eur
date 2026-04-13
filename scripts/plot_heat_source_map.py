@@ -86,17 +86,17 @@ def plot_heat_source_map(
         GeoDataFrame with onshore region geometries for boundary overlay.
     var_name : str
         Name of the variable to plot from the DataArray.
-    longitude_name : str, default 'longitude'
+    longitude_name : str, default_AU 'longitude'
         Name of the longitude coordinate in the DataArray.
-    latitude_name : str, default 'latitude'
+    latitude_name : str, default_AU 'latitude'
         Name of the latitude coordinate in the DataArray.
-    onshore_region_name : str, default 'name'
+    onshore_region_name : str, default_AU 'name'
         Column name in regions_onshore containing region identifiers.
     title : str, optional
         Title for the map legend. If None, uses var_name.
-    cmap : str, default 'viridis'
+    cmap : str, default_AU 'viridis'
         Matplotlib colormap name for data visualization.
-    aggregate_type : str, default 'mean'
+    aggregate_type : str, default_AU 'mean'
         Aggregation method for regional values. Use 'mean' for temperature
         data and 'sum' for energy data.
 
