@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Contributors to PyPSA-Eur <https://github.com/pypsa/pypsa-eur>
+#
+# SPDX-License-Identifier: MIT
+
+# See https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles
+
+# profiles/default_AU/config.yaml
+logger: pypsa
+
+# Submit jobs to SLURM
+executor: slurm
+
+# Max number of submitted jobs at once
+jobs: 50
+
+# Robustness on shared filesystems
+latency-wait: 180
+rerun-incomplete: true
+keep-going: true
+printshellcmds: true
+
+# (Optional but useful) Put SLURM logs somewhere predictable
+slurm-logdir: slurm-logs
+
+use-conda: true
+conda-prefix: .snakemake/conda
+
+default-resources:
+  slurm_account: albal
+  slurm_partition: short
+  runtime: 12h
+  mem_mb: 96000
+  cpus_per_task: 8
