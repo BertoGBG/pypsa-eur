@@ -168,7 +168,14 @@ if prenet_ok:
         print(f"\n  Links (carrier contains 'afforestation'): {len(affo_links)}")
         if not affo_links.empty:
             print(affo_links[["bus0", "bus1", "carrier", "p_nom_extendable",
-                               "p_min_pu", "p_max_pu"]].head(10).to_string())
+                               "efficiency", "p_min_pu", "p_max_pu"]].head(10).to_string())
+            if "efficiency" in affo_links.columns:
+                eff_vals = affo_links["efficiency"].unique()
+                print(f"\n    efficiency values: {eff_vals}")
+                if any(abs(e - 1.0) < 1e-6 for e in eff_vals):
+                    print(f"{WARN}  efficiency = 1.0 detected — crcf_efficiency may not have been applied!")
+                else:
+                    print(f"{OK}  efficiency < 1.0 (CRCF discount applied).")
 
         # --- Stores ---
         affo_stores = n.stores[n.stores.carrier.str.contains("afforestation", case=False, na=False)]
