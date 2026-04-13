@@ -1070,6 +1070,12 @@ afforestation:
   potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
   co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
   max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
+  crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
+                        # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
+                        # Accounts for mandatory uncertainty deduction (min 10%, eq.1 of the methodology)
+                        # and buffer-pool contribution (risk rate 8-17% for typical European mixed/broadleaf
+                        # forests at low-medium disturbance, Table 7 of the methodology).
+                        # Central estimate: (1-0.10)*(1-0.11) = 0.80; range 0.72-0.83.
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:

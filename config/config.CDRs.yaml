@@ -1179,7 +1179,7 @@ solving:
     SAFE: false
   solver:
     name: gurobi
-    options: "gurobi-default_AU"
+    options: "gurobi-default"
   solver_options:
     "highs-default":
       threads: 1

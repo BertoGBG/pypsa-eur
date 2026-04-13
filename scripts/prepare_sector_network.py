@@ -1256,6 +1256,7 @@ def add_afforestation(n, costs):
     potential_type = snakemake.params.afforestation_potential_type
     co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
+    crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
 
     if potential_type == "density":
         densities = afforestation_potentials["biomass density [t/ha]"].values
@@ -1316,7 +1317,7 @@ def add_afforestation(n, costs):
         bus0="co2 atmosphere",
         bus1=spatial.nodes + " co2 afforestation",
         carrier="co2 afforestation",
-        efficiency=1.0,
+        efficiency=crcf_efficiency,
         p_nom_extendable=True,
         p_min_pu=1.0,
         p_max_pu=1.0,
