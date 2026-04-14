@@ -105,7 +105,7 @@ if __name__ == "__main__":
         network_geojson=snakemake.input["network_geojson"],
         corine_dataset=snakemake.input["corine_dataset"],
         bioclimate_dataset=snakemake.input["bioclimate_dataset"],
-        ew_config=snakemake.config["ERW"],
+        ew_config=snakemake.config["EW"],
         resolution=snakemake.params["resolution"],
         csv_file=snakemake.output["csv_file"],
         png_file=snakemake.output.get("png_file"),
