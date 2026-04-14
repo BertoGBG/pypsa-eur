@@ -27,7 +27,7 @@ conda-prefix: .snakemake/conda
 
 default-resources:
   slurm_account: alamia
-  slurm_partition: short
-  runtime: 12h
+  slurm_partition: normal
+  runtime: 48h
   mem_mb: 96000
   cpus_per_task: 8
