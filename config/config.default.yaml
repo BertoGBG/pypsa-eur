@@ -37,11 +37,11 @@ foresight: overnight
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 scenario:
   clusters:
-  - 50
+  - 90
   opts:
   - ""
   sector_opts:
-  - 168h
+  - 3h
   planning_horizons:
   - 2050
 
@@ -846,10 +846,11 @@ sector:
   dac: true
   biochar:
     enable: true
-    heat_output: false
+    heat_output: true
     transport: false
   EW: true
   afforestation: true
+  perennials: true
   co2_vent: false
   heat_vent:
     urban central: true
@@ -956,7 +957,6 @@ sector:
   biosng: false
   biosng_cc: false
   bioH2: false
-  perennials: true
   municipal_solid_waste: false
   limit_max_growth:
     enable: false
@@ -1164,7 +1164,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 168h
+    resolution_sector: 3h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
