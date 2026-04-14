@@ -12,7 +12,7 @@ sbatch \
   -e /home/albal/workspace/pypsa-eur_AA/pypsa-eur/log_snakemake/smk-%j.err \
   /home/albal/workspace/pypsa-eur_AA/pypsa-eur/run_snakemake_DTU.sh
 
-## 1. Submit controller job - long
+## 1. Submit controller job - long (normal partition, with email)
 sbatch \
   --partition=normal \
   --account=albal \
@@ -20,6 +20,8 @@ sbatch \
   --cpus-per-task=1 \
   --mem=4G \
   -J smk-pypsaeur \
+  --mail-type=END,FAIL \
+  --mail-user=albal@dtu.dk \
   -o /home/albal/workspace/pypsa-eur_AA/pypsa-eur/log_snakemake/smk-%j.out \
   -e /home/albal/workspace/pypsa-eur_AA/pypsa-eur/log_snakemake/smk-%j.err \
   /home/albal/workspace/pypsa-eur_AA/pypsa-eur/run_snakemake_DTU.sh
