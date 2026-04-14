@@ -1318,7 +1318,7 @@ solving:
     atol: 1000000
     rtol: 0.01
   oetc:
-  mem_mb: 192000
+  mem_mb: 500000
   memory_logging_frequency: 5
   runtime: 48h
 
