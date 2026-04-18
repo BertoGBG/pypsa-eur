@@ -78,7 +78,7 @@ if POTENTIAL_TYPE == "density":
 else:
     nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"   # from retrieve_aCDRs_data output
     check_file(nuts_file, "NUTS2 growth rates (CSV, growth mode)")
-    weights_file = RES_RUN / "nuts2_monthly_weights.csv"         # from retrieve_aCDRs_data output
+    weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"         # from retrieve_aCDRs_data output
     check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
 
 # ── 2. CORINE potentials (build_afforestation_corine_potentials) ───────────────

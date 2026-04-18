@@ -1694,7 +1694,7 @@ if (MOBILITY_PROFILES_DATASET := dataset_version("mobility_profiles"))["source"]
 
 rule retrieve_aCDRs_data:
     message:
-        "Downloading aCDRs data (afforestation and perennialisation inputs)"
+        "Downloading aCDRs data (afforestation, perennialisation and EW inputs)"
     input:
         zip_file=storage("https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"),
     output:
