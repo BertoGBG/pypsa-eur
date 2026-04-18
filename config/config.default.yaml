@@ -20,7 +20,7 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: ""
+  prefix: "affo_growth"
   name: "CDRs_2050"
   scenarios:
     enable: false
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - 3h
+  - 168h
   planning_horizons:
   - 2050
 
@@ -1164,7 +1164,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 3h
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
