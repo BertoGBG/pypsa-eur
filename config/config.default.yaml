@@ -20,7 +20,7 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "CDRs_2050"
+  prefix: "affo_comp_2050"
   name: "growth"
   scenarios:
     enable: false
@@ -534,7 +534,7 @@ energy:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#biomass
 biomass:
-  year: 2030
+  year: 2035
   scenario: ENS_Med
   classes:
     solid biomass:
