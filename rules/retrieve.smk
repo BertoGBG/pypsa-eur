@@ -1695,8 +1695,8 @@ if (MOBILITY_PROFILES_DATASET := dataset_version("mobility_profiles"))["source"]
 rule retrieve_aCDRs_data:
     message:
         "Downloading aCDRs data (afforestation, perennialisation and EW inputs)"
-    input:
-        zip_file=storage("https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip"),
+    params:
+        url="https://raw.githubusercontent.com/BertoGBG/CO2-stores-preprocessing/main/zenodo_aCDRs/outputs.zip",
     output:
         afforestation_nuts_biomass_densities=resources("afforestation_nuts_biomass_densities.xlsx"),
         afforestation_nuts2_afforestation_rates=resources("afforestation_rates_nuts2_full.csv"),
@@ -1710,7 +1710,10 @@ rule retrieve_aCDRs_data:
         "logs/retrieve_aCDRs_data.log",
     retries: 2
     run:
-        with ZipFile(input.zip_file) as z:
+        import io
+        resp = requests.get(params.url, timeout=120)
+        resp.raise_for_status()
+        with ZipFile(io.BytesIO(resp.content)) as z:
             for src_path, dest in [
                 ("outputs/afforestation/afforestation_nuts_biomass_densities.xlsx", output.afforestation_nuts_biomass_densities),
                 ("outputs/afforestation/afforestation_rates_nuts2_full.csv", output.afforestation_nuts2_afforestation_rates),
