@@ -1700,7 +1700,7 @@ rule retrieve_aCDRs_data:
     output:
         afforestation_nuts_biomass_densities=resources("afforestation_nuts_biomass_densities.xlsx"),
         afforestation_nuts2_afforestation_rates=resources("afforestation_rates_nuts2_full.csv"),
-        afforestation_nuts2_monthly_weights=resources("nuts2_monthly_weights.csv"),
+        afforestation_nuts2_monthly_weights=resources("afforestation_nuts2_monthly_weights.csv"),
         eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
         eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
         ERW_BioVal_cluster=resources("World_Ecological_BioVal_cluster.tif"),
