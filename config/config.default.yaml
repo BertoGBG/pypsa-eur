@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - 168h
+  - 3h
   planning_horizons:
   - 2050
 
