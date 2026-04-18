@@ -20,14 +20,14 @@ remote:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "affo_growth"
-  name: "CDRs_2050"
+  prefix: "CDRs_2050"
+  name: "growth"
   scenarios:
     enable: false
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
+    policy: "base"
     exclude: []
   use_shadow_directory: false
 
