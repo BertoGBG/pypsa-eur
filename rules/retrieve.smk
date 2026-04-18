@@ -1706,6 +1706,8 @@ rule retrieve_aCDRs_data:
         ERW_BioVal_cluster=resources("World_Ecological_BioVal_cluster.tif"),
     resources:
         mem_mb=4000,
+    log:
+        "logs/retrieve_aCDRs_data.log",
     retries: 2
     run:
         with ZipFile(input.zip_file) as z:
