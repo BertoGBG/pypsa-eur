@@ -1511,27 +1511,37 @@ def add_afforestation(n, costs):
     co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
     crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
+    # free_mode: fix p_nom to the peak physical rate and leave dispatch free (p_min_pu=0).
+    # Spikes are bounded: the link can never exceed the seasonal peak rate (growth) or
+    # the uniform rate (density). it Calls redistribute_afforestation_seasonal() from
+    # afforestation_postprocess.py before any temporal plotting.
+    free_mode = snakemake.config["afforestation"].get("free_mode", False)
 
     if potential_type == "density":
         densities = afforestation_potentials["biomass density [t/ha]"].values
         AGB = afforestation_potentials["AGB [t]"].values
         potentials = AGB / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage
+        # (tb * tCO2/tb) / y * 0.6 = tCO2 / y
 
         # capital cost calculated from total CO2 removal during lifetime from per-hectar capital cost
-        investment_cost = costs.at["Afforestation", "investment"]
+        investment_cost = costs.at["Afforestation", "investment"] # EUR / ha
         maintenance_cost = (
             investment_cost
             * (costs.at["Afforestation", "FOM"] / 100)
-            * costs.at["Afforestation", "lifetime"]
+            * costs.at["Afforestation", "lifetime"] # EUR/ha * (%)  * y = EUR * y /ha
         )
-        capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne)
+        capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne) # EUR/ ha + (EUR * y)/ha / (tb/ha * tCO2/tb) = EUR/tCO2 (1 + y/ha) !!!!!
+
+        if free_mode:
+            # cap: uniform hourly rate at full deployment (no seasonal info for density)
+            p_nom_cap = potentials / 8760.0
 
     else:  # growth
         potentials = afforestation_potentials["potential [tCO2/y]"].values
         growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
         # capital cost calculated from annual CO2 removal rates from per-hectare capital cost
-        capital_cost = costs.at["Afforestation", "capital_cost"] / growth_rate
+        capital_cost = costs.at["Afforestation", "capital_cost"] / growth_rate # (EUR / (y * ha)) * (ha * y)/tCO2 = EUR /tCO2
 
         # Load pre-computed hourly seasonal profile (snapshots × nodes)
         profile_full = pd.read_csv(
@@ -1543,6 +1553,16 @@ def add_afforestation(n, costs):
         )
         profile_full.columns = spatial.nodes + " afforestation"
         monthly_rate = profile_full.reindex(dates).set_axis(n.snapshots)
+
+        if free_mode:
+            # cap: peak seasonal rate at full deployment
+            # w_sum/w_max gives minimum hours needed to fill annual potential at peak rate,
+            # bounding how concentrated the solver can make the dispatch.
+            w_sum = monthly_rate.sum()   # total weight per node (indexed by "{node} afforestation")
+            w_max = monthly_rate.max()   # peak weight per node
+            # align with spatial.nodes order
+            node_cols = spatial.nodes + " afforestation"
+            p_nom_cap = (potentials * (w_max / w_sum).reindex(node_cols).values)
 
     n.add("Carrier", "co2 afforestation")
 
@@ -1565,29 +1585,50 @@ def add_afforestation(n, costs):
         lifetime=costs.at["Afforestation", "lifetime"],
     )
 
-    n.add(
-        "Link",
-        spatial.nodes + " afforestation",
-        bus0="co2 atmosphere",
-        bus1=spatial.nodes + " co2 afforestation",
-        carrier="co2 afforestation",
-        efficiency=crcf_efficiency,
-        p_nom_extendable=True,
-        p_min_pu=1.0,
-        p_max_pu=1.0,
-        lifetime=costs.at["Afforestation", "lifetime"],
-    )
+    if free_mode:
+        # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
+        # No capital cost on the link since investment is captured by the store.
+        n.add(
+            "Link",
+            spatial.nodes + " afforestation",
+            bus0="co2 atmosphere",
+            bus1=spatial.nodes + " co2 afforestation",
+            carrier="co2 afforestation",
+            efficiency=crcf_efficiency,
+            p_nom=p_nom_cap,
+            p_nom_extendable=False,
+            p_min_pu=0.0,
+            p_max_pu=1.0,
+            lifetime=costs.at["Afforestation", "lifetime"],
+        )
+        logger.info(
+            "Afforestation free_mode=True: p_nom fixed to peak rate, dispatch unconstrained. "
+            "Call redistribute_afforestation_seasonal() before temporal plotting."
+        )
+    else:
+        n.add(
+            "Link",
+            spatial.nodes + " afforestation",
+            bus0="co2 atmosphere",
+            bus1=spatial.nodes + " co2 afforestation",
+            carrier="co2 afforestation",
+            efficiency=crcf_efficiency,
+            p_nom_extendable=True,
+            p_min_pu=1.0,
+            p_max_pu=1.0,
+            lifetime=costs.at["Afforestation", "lifetime"],
+        )
 
-    if potential_type == "growth":
-        # growth mode: override with time-varying seasonal profile
-        n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
-            columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
-        )
-        n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
-            columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
-        )
-        n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
-        n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
+        if potential_type == "growth":
+            # growth mode: override with time-varying seasonal profile
+            n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
+                columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
+            )
+            n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
+                columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
+            )
+            n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
+            n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
 
 
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):

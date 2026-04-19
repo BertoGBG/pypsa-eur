@@ -227,6 +227,51 @@ def build_afforestation_potentials(
             agg["potential_contrib"] / node_area_ha.reindex(agg.index)
         )
 
+        # ── Fallback for nodes with poor NUTS2 overlay coverage ───────────────
+        # Nodes outside the EU NUTS2 GeoJSON (e.g. Western Balkans: AL, BA, RS, XK)
+        # only get tiny border-sliver intersections, making their weighted-average
+        # growth rate ~100x too small and capital costs ~100x too high.
+        # For these nodes, look up the country-level (NUTS0) entry that was added
+        # to the growth rates CSV (neighbour-mean fill from the preprocessing step).
+        COVERAGE_THRESHOLD = 0.10  # nodes with <10% area matched are flagged
+        node_coverage = overlay.groupby("name")["share"].sum()
+
+        for node_name in network["name"]:
+            cov = node_coverage.get(node_name, 0.0)
+            if cov >= COVERAGE_THRESHOLD:
+                continue
+
+            cc = node_name[:2]
+            nuts0_code = cc + "00"
+
+            if nuts0_code not in nuts2_growth_rates.index:
+                logger.warning(
+                    "Node '%s' has low NUTS2 overlay coverage (%.3f) and no NUTS0 "
+                    "fallback ('%s') in growth rates CSV — skipping." % (node_name, cov, nuts0_code)
+                )
+                continue
+
+            rate = nuts2_growth_rates.at[nuts0_code, "CO2 seq rate tCO2/(ha y)"]
+            corine_ha = node_area_ha.get(node_name, 0.0)
+            potential = corine_ha * rate
+
+            if nuts0_code in nuts2_monthly_weights.index:
+                w_monthly = nuts2_monthly_weights.loc[nuts0_code, MONTH_NAMES].tolist()
+            else:
+                w_monthly = [1.0 / 12] * 12
+
+            logger.warning(
+                "Node '%s': low NUTS2 overlay coverage (%.3f) — "
+                "using NUTS0 fallback '%s': rate=%.4f tCO2/(ha·y), potential=%.1f tCO2/y"
+                % (node_name, cov, nuts0_code, rate, potential)
+            )
+
+            agg.loc[node_name, "CO2 seq rate tCO2/(ha y)"] = rate
+            agg.loc[node_name, "potential_contrib"] = potential
+            for m_name, w in zip(MONTH_NAMES, w_monthly):
+                agg.loc[node_name, f"w_{m_name}"] = w
+        # ── End fallback ───────────────────────────────────────────────────────
+
         for node_name, row in agg.iterrows():
             logger.info(
                 "Node '%s': afforestation potential = %.1f tCO2/y  "

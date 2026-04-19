@@ -469,10 +469,20 @@ rule plot_balance_timeseries:
         plotting=config_provider("plotting"),
         snapshots=config_provider("snapshots"),
         drop_leap_day=config_provider("enable", "drop_leap_day"),
+        afforestation_free_mode=config_provider("afforestation", "free_mode"),
     input:
         network=RESULTS
         + "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc",
         rc="matplotlibrc",
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv".format(**w))
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"].get("free_mode", False)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
+            else []
+        ),
     threads: 16
     resources:
         mem_mb=10000,
@@ -498,10 +508,20 @@ rule plot_heatmap_timeseries:
         plotting=config_provider("plotting"),
         snapshots=config_provider("snapshots"),
         drop_leap_day=config_provider("enable", "drop_leap_day"),
+        afforestation_free_mode=config_provider("afforestation", "free_mode"),
     input:
         network=RESULTS
         + "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc",
         rc="matplotlibrc",
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv".format(**w))
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"].get("free_mode", False)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
+            else []
+        ),
     threads: 16
     resources:
         mem_mb=10000,

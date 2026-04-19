@@ -111,6 +111,11 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
 
+    # Redistribute afforestation seasonal signal if solved in free_mode
+    if snakemake.params.get("afforestation_free_mode", False):
+        from scripts.afforestation_postprocess import redistribute_afforestation_seasonal
+        redistribute_afforestation_seasonal(n, snakemake.input.afforestation_seasonal_profile)
+
     snapshots = get_snapshots(snakemake.params.snapshots, drop_leap_day)
     carriers = n.carriers
 
