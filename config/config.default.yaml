@@ -848,7 +848,7 @@ sector:
     enable: true
     heat_output: true
     transport: false
-  EW: true
+  ERW: true
   afforestation: true
   perennials: true
   co2_vent: false
@@ -1087,7 +1087,7 @@ biochar:
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
   number_years: 25 # aortisation period (years) for biochar CO2 storage
 
-EW:
+ERW:
   EW_hot:
     corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
     potential_per_sqkm: 839 # tonnes CO2 sequestered per sqkm (hot climate)
