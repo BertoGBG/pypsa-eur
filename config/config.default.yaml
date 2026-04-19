@@ -848,7 +848,7 @@ sector:
     enable: true
     heat_output: true
     transport: false
-  ERW: true
+  ERW: false
   afforestation: true
   perennials: true
   co2_vent: false

@@ -1585,6 +1585,9 @@ def add_afforestation(n, costs):
         lifetime=costs.at["Afforestation", "lifetime"],
     )
 
+    # CRCF efficiency discount applies only to the growth method
+    link_efficiency = crcf_efficiency if potential_type == "growth" else 1.0
+
     if free_mode:
         # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
         # No capital cost on the link since investment is captured by the store.
@@ -1594,7 +1597,7 @@ def add_afforestation(n, costs):
             bus0="co2 atmosphere",
             bus1=spatial.nodes + " co2 afforestation",
             carrier="co2 afforestation",
-            efficiency=crcf_efficiency,
+            efficiency=link_efficiency,
             p_nom=p_nom_cap,
             p_nom_extendable=False,
             p_min_pu=0.0,
@@ -1612,7 +1615,7 @@ def add_afforestation(n, costs):
             bus0="co2 atmosphere",
             bus1=spatial.nodes + " co2 afforestation",
             carrier="co2 afforestation",
-            efficiency=crcf_efficiency,
+            efficiency=link_efficiency,
             p_nom_extendable=True,
             p_min_pu=1.0,
             p_max_pu=1.0,
