@@ -1085,7 +1085,7 @@ biochar:
   potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
   co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
-  number_years: 25 # amortisation period (years) for biochar CO2 storage
+  number_years: 25 # aortisation period (years) for biochar CO2 storage
 
 EW:
   EW_hot:
