@@ -256,12 +256,22 @@ if opt_ok:
                 active_stores = affo_stores[affo_stores["e_nom_opt"] > 0]
                 total_e_nom_opt = affo_stores["e_nom_opt"].sum()
                 print(f"  Stores with e_nom_opt > 0: {len(active_stores)}")
-                print(f"  Total e_nom_opt (all afforestation stores): {total_e_nom_opt:,.2f} tCO2")
+                print(f"  Total e_nom_opt (all afforestation stores): {total_e_nom_opt:,.2f} tCO2"
+                      f"  ({total_e_nom_opt/1e6:.3f} MtCO2/yr)")
                 if active_stores.empty:
                     print(f"{WARN}  All afforestation stores have e_nom_opt = 0 (not deployed).")
                 else:
-                    print(f"{OK}  Afforestation stores deployed. Total CO2 stored: "
-                          f"{total_e_nom_opt/1e6:.3f} MtCO2")
+                    print(f"{OK}  Afforestation stores deployed.")
+
+            # total potential (e_nom_max) and utilisation
+            if "e_nom_max" in affo_stores.columns:
+                finite_max = affo_stores["e_nom_max"][affo_stores["e_nom_max"] < 1e18]
+                total_e_nom_max = finite_max.sum()
+                print(f"\n  Total e_nom_max (available potential): "
+                      f"{total_e_nom_max:,.0f} tCO2  ({total_e_nom_max/1e6:.3f} MtCO2/yr)")
+                if "e_nom_opt" in affo_stores.columns and total_e_nom_max > 0:
+                    utilisation = affo_stores["e_nom_opt"].sum() / total_e_nom_max * 100
+                    print(f"  Potential utilisation (e_nom_opt / e_nom_max): {utilisation:.1f}%")
 
         # --- Statistics ---------------------------------------------------------
         if not affo_stores.empty and "e_nom_opt" in affo_stores.columns:
@@ -276,9 +286,17 @@ if opt_ok:
             and "e_nom_opt" in affo_stores.columns
             and "capital_cost" in affo_stores.columns
         ):
+            node_costs = affo_stores[["capital_cost", "e_nom_opt", "e_nom_max"]].copy()
+            finite_mask = node_costs["e_nom_max"] < 1e18
+            node_costs["utilisation [%]"] = 0.0
+            node_costs.loc[finite_mask, "utilisation [%]"] = (
+                node_costs.loc[finite_mask, "e_nom_opt"]
+                / node_costs.loc[finite_mask, "e_nom_max"] * 100
+            )
             print(f"\n  Capital cost per node [€/tCO2]:")
-            node_costs = affo_stores[["capital_cost", "e_nom_opt"]].copy()
-            print(node_costs["capital_cost"].to_string())
+            print(node_costs[["capital_cost", "utilisation [%]"]].to_string(
+                float_format=lambda x: f"{x:.1f}"
+            ))
 
             total_weight = affo_stores["e_nom_opt"].sum()
             if total_weight > 0:
