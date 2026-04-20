@@ -635,6 +635,14 @@ sector:
   aviation: true
   agriculture: true
   fossil_fuels: true
+  fossil_limit: false  # set to true to activate the limits below
+  fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, T*=2040]
+    2025: 2600
+    2030: 1378
+    2035: 456
+    2040: 129
+    2045: 103
+    2050: 78
   district_heating:
     potential: 0.6
     progress:

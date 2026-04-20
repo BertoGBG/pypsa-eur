@@ -1634,6 +1634,83 @@ def add_afforestation(n, costs):
             n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
 
 
+def add_fossil_fuel_limit(n, costs, options, investment_year):
+    """
+    Add a global constraint limiting total fossil fuel consumption expressed in
+    MtCO₂-equivalent, independently of downstream carbon capture.
+
+    Unlike the CO₂ cap (which tracks net emissions at the co2 atmosphere bus and
+    gives CCS credit), this constraint is imposed at the SUPPLY side: it sums the
+    output of fossil supply generators (gas, oil, coal, lignite) weighted by their
+    CO₂ intensity. CCS downstream does not reduce this constraint — the fuel is
+    still burned regardless of whether the CO₂ is later captured.
+
+    Uses PyPSA's `primary_energy` GlobalConstraint type, which multiplies each
+    generator's production by n.carriers[carrier_attribute] / efficiency.  For
+    fossil supply generators efficiency = 1.0, so the constraint simply sums
+    fuel_output × CO₂_intensity ≤ F(t).
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    costs : pd.DataFrame
+        Technology costs table (must contain CO2 intensity for gas/oil/coal/lignite).
+    options : dict
+        Must contain `fossil_limit` sub-dict with keys:
+          enable   (bool)  — toggle the constraint
+          scenario (str)   — one of fast / medium / slow / very_slow
+          limits   (dict)  — nested {scenario: {year: MtCO2}}
+    investment_year : int
+        Planning horizon year (e.g. 2030, 2035, …).
+    """
+    if not options.get("fossil_limit", False):
+        return
+
+    limits = options.get("fossil_limit_values", {})
+    F_t = get(limits, investment_year)
+    if F_t is None:
+        logger.warning(
+            f"fossil_limit enabled but no value found in fossil_limit_values "
+            f"for year={investment_year}. Skipping constraint."
+        )
+        return
+
+    logger.info(
+        f"Adding fossil fuel supply limit: {F_t} MtCO₂-eq for {investment_year} "
+        f"(scenario: {scenario}). CCS provides no credit."
+    )
+
+    # Map carrier name → CO₂ intensity [tCO₂/MWh_th fuel input].
+    # "oil primary" is the carrier used when oil_refining_emissions > 0;
+    # plain "oil" covers the fallback case without the refining link.
+    fossil_carriers = {
+        "gas":         "gas",
+        "oil":         "oil",
+        "oil primary": "oil",
+        "coal":        "coal",
+        "lignite":     "lignite",
+    }
+
+    for carrier, costs_key in fossil_carriers.items():
+        if carrier not in n.carriers.index:
+            continue
+        if costs_key not in costs.index:
+            continue
+        n.carriers.at[carrier, "fossil_co2_eq"] = costs.at[costs_key, "CO2 intensity"]
+
+    # primary_energy sums: Generator-p × (carrier.fossil_co2_eq / efficiency)
+    # Cyclic stores are excluded automatically; non-fossil carriers are skipped
+    # (fossil_co2_eq = 0 or NaN for them).
+    n.add(
+        "GlobalConstraint",
+        "fossil_fuel_limit",
+        type="primary_energy",
+        carrier_attribute="fossil_co2_eq",
+        sense="<=",
+        constant=F_t * 1e6,  # MtCO₂ → tCO₂
+    )
+
+
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     """
     Add a global CO2 emissions constraint to the network.
@@ -7480,6 +7557,8 @@ if __name__ == "__main__":
         nyears,
         limit,
     )
+
+    add_fossil_fuel_limit(n, costs, options, investment_year)
 
     maxext = snakemake.params["lines"]["max_extension"]
     if maxext is not None:
