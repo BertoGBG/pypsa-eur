@@ -21,13 +21,13 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "affo_2050_growth"
+  name: "heat_industry_test"
   scenarios:
     enable: false
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
+    policy: "affo_2050_growth"
     exclude: []
   use_shadow_directory: false
 
@@ -951,6 +951,30 @@ sector:
   conventional_generation:
     OCGT: gas
     CCGT: gas
+  industry_t: # endogenous heat supply for industry
+    endogen: true  # if heat supply for industry should be endogenously optimised
+    must_run: 0.6 # industrial heat is supplied by discrete on-site plants that follow
+    # local demand and cannot be freely dispatched; p_min_pu reflects this.
+    # Shares of medium/high temperature from Agora EU27 Fig. 5:
+    # https://www.agora-industry.org/publications/direct-electrification-of-industrial-process-heat
+    # TODO: improve by splitting per country and sector
+    share_medium: 0.42
+    share_high: 0.58
+    low_T:
+      biomass: true
+      heat_pumps: false
+      electric_boiler: true
+      methane: true
+      methanol: true
+    medium_T:
+      biomass: true
+      methane: true
+      hydrogen: true
+      methanol: true
+      electric_boiler: false
+    high_T:
+      hydrogen: true
+      methane: true
   biomass_to_liquid: true
   biomass_to_liquid_cc: false
   electrobiofuels: true
