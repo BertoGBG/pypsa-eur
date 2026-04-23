@@ -27,7 +27,7 @@ run:
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: "affo_2050_growth"
+    policy: false
     exclude: []
   use_shadow_directory: false
 
