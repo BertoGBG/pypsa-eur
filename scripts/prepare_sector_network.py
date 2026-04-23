@@ -1634,7 +1634,7 @@ def add_afforestation(n, costs):
             n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
 
 
-def add_fossil_fuel_limit(n, costs, options, investment_year):
+def add_fossil_fuel_limit(n, costs, config, investment_year):
     """
     Add a global constraint limiting total fossil fuel consumption expressed in
     MtCO₂-equivalent, independently of downstream carbon capture.
@@ -1655,18 +1655,17 @@ def add_fossil_fuel_limit(n, costs, options, investment_year):
     n : pypsa.Network
     costs : pd.DataFrame
         Technology costs table (must contain CO2 intensity for gas/oil/coal/lignite).
-    options : dict
-        Must contain `fossil_limit` sub-dict with keys:
-          enable   (bool)  — toggle the constraint
-          scenario (str)   — one of fast / medium / slow / very_slow
-          limits   (dict)  — nested {scenario: {year: MtCO2}}
+    config : dict
+        Top-level snakemake config dict. Reads `fossil_limit` (bool) and
+        `fossil_limit_values` ({year: MtCO2}) from the top level, analogous
+        to co2_budget.
     investment_year : int
         Planning horizon year (e.g. 2030, 2035, …).
     """
-    if not options.get("fossil_limit", False):
+    if not config.get("fossil_limit", False):
         return
 
-    limits = options.get("fossil_limit_values", {})
+    limits = config.get("fossil_limit_values", {})
     F_t = get(limits, investment_year)
     if F_t is None:
         logger.warning(
@@ -1676,8 +1675,8 @@ def add_fossil_fuel_limit(n, costs, options, investment_year):
         return
 
     logger.info(
-        f"Adding fossil fuel supply limit: {F_t} MtCO₂-eq for {investment_year} "
-        f"(scenario: {scenario}). CCS provides no credit."
+        f"Adding fossil fuel supply limit: {F_t} MtCO₂-eq for {investment_year}. "
+        f"CCS provides no credit."
     )
 
     # Map carrier name → CO₂ intensity [tCO₂/MWh_th fuel input].
@@ -5113,7 +5112,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
             "Link",
             nodes,
             suffix=" electricity for lowT industry",
-            bus0=nodes + " low voltage",
+            bus0=nodes,
             bus1=nodes + " lowT industry",
             carrier="lowT industry electricity",
             p_nom_extendable=True,
@@ -5289,7 +5288,7 @@ def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
             "Link",
             nodes,
             suffix=" electricity for mediumT industry",
-            bus0=nodes + " low voltage",
+            bus0=nodes,
             bus1=nodes + " mediumT industry",
             carrier="electricity for mediumT industry",
             p_nom_extendable=True,
@@ -7558,7 +7557,7 @@ if __name__ == "__main__":
         limit,
     )
 
-    add_fossil_fuel_limit(n, costs, options, investment_year)
+    add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
 
     maxext = snakemake.params["lines"]["max_extension"]
     if maxext is not None:

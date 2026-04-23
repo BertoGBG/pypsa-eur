@@ -102,6 +102,17 @@ co2_budget:
   2045: 0.05
   2050: 0.0
 
+# Annual fossil fuel supply cap [MtCO₂-eq, at the wellhead].
+# Set fossil_limit: false to disable. Unlike co2_budget, CCS gives no credit here.
+fossil_limit: true  # set to true to activate the limits below
+fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, T*=2040]
+  2025: 2600
+  2030: 1378
+  2035: 456
+  2040: 129
+  2045: 103
+  2050: 78
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#electricity
 electricity:
   voltages:
@@ -635,14 +646,6 @@ sector:
   aviation: true
   agriculture: true
   fossil_fuels: true
-  fossil_limit: true  # set to true to activate the limits below
-  fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, T*=2040]
-    2025: 2600
-    2030: 1378
-    2035: 456
-    2040: 129
-    2045: 103
-    2050: 78
   district_heating:
     potential: 0.6
     progress:

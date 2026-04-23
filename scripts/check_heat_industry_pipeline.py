@@ -46,7 +46,7 @@ sector_cfg   = cfg.get("sector", {})
 industry_t   = sector_cfg.get("industry_t", {})
 ENDOGEN      = industry_t.get("endogen", False)
 MUST_RUN     = industry_t.get("must_run", 0.6)
-FOSSIL_LIMIT = sector_cfg.get("fossil_limit", False)
+FOSSIL_LIMIT = cfg.get("fossil_limit", False)  # top-level, like co2_budget
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 OK   = "  [OK]"
@@ -111,7 +111,7 @@ else:
     record(True, "Config: endogen=false (exogenous mode)")
 
 if FOSSIL_LIMIT:
-    fossil_values = sector_cfg.get("fossil_limit_values", {})
+    fossil_values = cfg.get("fossil_limit_values", {})
     print(f"\n  fossil_limit_values (MtCO2-eq): {fossil_values}")
     if PLANNING_HORIZON in [str(y) for y in fossil_values.keys()] or \
        int(PLANNING_HORIZON) in fossil_values:
