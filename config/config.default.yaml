@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "heat_industry_test"
+  name: "F_limit_H_ind_test"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -635,7 +635,7 @@ sector:
   aviation: true
   agriculture: true
   fossil_fuels: true
-  fossil_limit: false  # set to true to activate the limits below
+  fossil_limit: true  # set to true to activate the limits below
   fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, T*=2040]
     2025: 2600
     2030: 1378
