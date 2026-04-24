@@ -223,7 +223,7 @@ if prenet_ok:
                 "biomass":        ["solid biomass", "biomass"],
                 "methane":        ["gas", "methane", "CCGT", "boiler"],
                 "heat_pumps":     ["heat pump"],
-                "electric_boiler":["electric boiler"],
+                "electric_boiler":["electric boiler", "electricity"],
                 "methanol":       ["methanol"],
                 "hydrogen":       ["H2", "hydrogen"],
             }

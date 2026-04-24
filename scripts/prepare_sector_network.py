@@ -1679,23 +1679,36 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
         f"CCS provides no credit."
     )
 
-    # Map carrier name → CO₂ intensity [tCO₂/MWh_th fuel input].
+    # Set fossil_co2_eq [tCO₂/MWh_th] on each fossil carrier.
+    # Primary source: n.carriers.co2_emissions, which is already validated
+    # during network preparation (add_carrier_buses sets this from costs).
+    # Fallback to costs table only if co2_emissions is missing/zero.
     # "oil primary" is the carrier used when oil_refining_emissions > 0;
     # plain "oil" covers the fallback case without the refining link.
-    fossil_carriers = {
+    costs_key_map = {
         "gas":         "gas",
         "oil":         "oil",
         "oil primary": "oil",
         "coal":        "coal",
         "lignite":     "lignite",
     }
-
-    for carrier, costs_key in fossil_carriers.items():
+    import pandas as _pd
+    for carrier, costs_key in costs_key_map.items():
         if carrier not in n.carriers.index:
             continue
-        if costs_key not in costs.index:
-            continue
-        n.carriers.at[carrier, "fossil_co2_eq"] = costs.at[costs_key, "CO2 intensity"]
+        val = n.carriers.at[carrier, "co2_emissions"]
+        if _pd.isna(val) or val == 0:
+            # fallback: read from costs table
+            if costs_key in costs.index and "CO2 intensity" in costs.columns:
+                val = costs.at[costs_key, "CO2 intensity"]
+        if not _pd.isna(val) and val > 0:
+            n.carriers.at[carrier, "fossil_co2_eq"] = val
+        else:
+            logger.warning(
+                f"Could not find CO₂ intensity for carrier '{carrier}' "
+                f"(co2_emissions={n.carriers.at[carrier, 'co2_emissions']}, "
+                f"costs key='{costs_key}'). Carrier excluded from fossil limit."
+            )
 
     # primary_energy sums: Generator-p × (carrier.fossil_co2_eq / efficiency)
     # Cyclic stores are excluded automatically; non-fossil carriers are skipped
@@ -5134,6 +5147,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
             bus2="co2 atmosphere",
             carrier="lowT industry methanol",
             p_nom_extendable=True,
+            p_min_pu=must_run,
             efficiency=1.0,
             efficiency2=costs.at["methanol", "CO2 intensity"],
             capital_cost=costs.at["gas boiler steam", "capital_cost"],
@@ -5149,6 +5163,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
             bus3=spatial.co2.nodes,
             carrier="lowT industry CC methanol",
             p_nom_extendable=True,
+            p_min_pu=must_run,
             capital_cost=costs.at["cement capture", "capital_cost"]
                          * costs.at["methanol", "CO2 intensity"]
                          + costs.at["gas boiler steam", "capital_cost"],
@@ -5310,6 +5325,7 @@ def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
             bus2="co2 atmosphere",
             carrier="methanol for mediumT industry",
             p_nom_extendable=True,
+            p_min_pu=must_run,
             efficiency=1.0,
             efficiency2=costs.at["methanol", "CO2 intensity"],
             capital_cost=costs.at["gas boiler steam", "capital_cost"],
@@ -5325,6 +5341,7 @@ def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
             bus3=spatial.co2.nodes,
             carrier="methanol for mediumT industry CC",
             p_nom_extendable=True,
+            p_min_pu=must_run,
             capital_cost=costs.at["cement capture", "capital_cost"]
                          * costs.at["methanol", "CO2 intensity"]
                          + costs.at["gas boiler steam", "capital_cost"],
