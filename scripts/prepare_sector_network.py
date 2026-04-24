@@ -1680,11 +1680,22 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     )
 
     # Set fossil_co2_eq [tCO₂/MWh_th] on each fossil carrier.
-    # Primary source: n.carriers.co2_emissions, which is already validated
-    # during network preparation (add_carrier_buses sets this from costs).
-    # Fallback to costs table only if co2_emissions is missing/zero.
+    # Resolution order:
+    #   1. costs table  "CO2 intensity" column  (works for gas, coal, lignite)
+    #   2. n.carriers.co2_emissions             (rarely set for fossil carriers here)
+    #   3. hardcoded physical constants         (fallback for oil / oil primary)
     # "oil primary" is the carrier used when oil_refining_emissions > 0;
     # plain "oil" covers the fallback case without the refining link.
+    import pandas as _pd
+
+    # Physical CO₂ intensities [tCO₂/MWh_th] — from IEA / technology-data
+    HARDCODED = {
+        "gas":         0.198,
+        "oil":         0.261,
+        "oil primary": 0.261,
+        "coal":        0.338,
+        "lignite":     0.402,
+    }
     costs_key_map = {
         "gas":         "gas",
         "oil":         "oil",
@@ -1692,22 +1703,34 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
         "coal":        "coal",
         "lignite":     "lignite",
     }
-    import pandas as _pd
     for carrier, costs_key in costs_key_map.items():
         if carrier not in n.carriers.index:
             continue
-        val = n.carriers.at[carrier, "co2_emissions"]
-        if _pd.isna(val) or val == 0:
-            # fallback: read from costs table
-            if costs_key in costs.index and "CO2 intensity" in costs.columns:
-                val = costs.at[costs_key, "CO2 intensity"]
-        if not _pd.isna(val) and val > 0:
+        # 1. costs table
+        val = None
+        if costs_key in costs.index and "CO2 intensity" in costs.columns:
+            v = costs.at[costs_key, "CO2 intensity"]
+            if not _pd.isna(v) and v > 0:
+                val = v
+        # 2. carrier attribute
+        if val is None:
+            v = n.carriers.at[carrier, "co2_emissions"]
+            if not _pd.isna(v) and v > 0:
+                val = v
+        # 3. hardcoded fallback
+        if val is None:
+            val = HARDCODED.get(carrier)
+            if val is not None:
+                logger.warning(
+                    f"Using hardcoded CO₂ intensity {val} tCO₂/MWh for carrier "
+                    f"'{carrier}' (not found in costs table or carrier attributes)."
+                )
+        if val is not None:
             n.carriers.at[carrier, "fossil_co2_eq"] = val
         else:
             logger.warning(
-                f"Could not find CO₂ intensity for carrier '{carrier}' "
-                f"(co2_emissions={n.carriers.at[carrier, 'co2_emissions']}, "
-                f"costs key='{costs_key}'). Carrier excluded from fossil limit."
+                f"Could not determine CO₂ intensity for carrier '{carrier}'. "
+                f"Carrier excluded from fossil fuel limit."
             )
 
     # primary_energy sums: Generator-p × (carrier.fossil_co2_eq / efficiency)
