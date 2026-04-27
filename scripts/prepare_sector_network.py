@@ -7621,8 +7621,6 @@ if __name__ == "__main__":
         limit,
     )
 
-    add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
-
     maxext = snakemake.params["lines"]["max_extension"]
     if maxext is not None:
         limit_individual_line_extension(n, maxext)
@@ -7681,5 +7679,10 @@ if __name__ == "__main__":
 
     sanitize_carriers(n, snakemake.config)
     sanitize_locations(n)
+
+    # Must run after sanitize_carriers so that 'oil primary' (added by
+    # add_missing_carriers) is already in n.carriers before we assign
+    # fossil_co2_eq to it.
+    add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
 
     n.export_to_netcdf(snakemake.output[0])
