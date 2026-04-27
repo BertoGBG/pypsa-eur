@@ -444,20 +444,34 @@ if opt_ok:
         if FOSSIL_LIMIT:
             section("8c. SOLVED: actual fossil fuel use vs. cap")
             wt = n_opt.snapshot_weightings["generators"]
-            CO2_INTENSITY = {"gas": 0.198e-6, "oil primary": 0.276e-6,
-                             "coal": 0.341e-6, "lignite": 0.412e-6}
+            # Use the network's own fossil_co2_eq values (set by add_fossil_fuel_limit)
+            # so the check uses the same intensities as the constraint.
+            FALLBACK_INTENSITY = {"gas": 0.198e-6, "oil primary": 0.261e-6,
+                                  "oil": 0.261e-6, "coal": 0.338e-6, "lignite": 0.402e-6}
+            fossil_carriers = ["gas", "oil", "oil primary", "coal", "lignite"]
             total_mt = 0.0
-            for carrier, intensity in CO2_INTENSITY.items():
+            for carrier in fossil_carriers:
+                # resolve intensity: prefer network carrier attribute
+                if ("fossil_co2_eq" in n_opt.carriers.columns
+                        and carrier in n_opt.carriers.index):
+                    intensity = n_opt.carriers.at[carrier, "fossil_co2_eq"]
+                    if pd.isna(intensity) or intensity == 0:
+                        intensity = FALLBACK_INTENSITY.get(carrier, 0.0)
+                else:
+                    intensity = FALLBACK_INTENSITY.get(carrier, 0.0)
+                intensity_per_mt = intensity * 1e-6  # tCO2/MWh → MtCO2/MWh
                 gens = n_opt.generators[n_opt.generators.carrier == carrier].index
                 if gens.empty:
                     continue
                 if gens.isin(n_opt.generators_t.p.columns).any():
                     use = (n_opt.generators_t.p[gens.intersection(
-                        n_opt.generators_t.p.columns)].mul(wt, axis=0).sum().sum() * intensity)
+                        n_opt.generators_t.p.columns)].mul(wt, axis=0).sum().sum()
+                           * intensity_per_mt)
                 else:
                     use = 0.0
                 total_mt += use
-                print(f"  {carrier:<15} use: {use:.2f} MtCO2-eq/yr")
+                print(f"  {carrier:<15} use: {use:.2f} MtCO2-eq/yr  "
+                      f"(intensity={intensity:.4f} tCO2/MWh)")
 
             if "fossil_fuel_limit" in n_opt.global_constraints.index:
                 cap_mt = (n_opt.global_constraints.loc["fossil_fuel_limit", "constant"]

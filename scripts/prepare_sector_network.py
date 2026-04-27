@@ -1634,6 +1634,81 @@ def add_afforestation(n, costs):
             n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
 
 
+def _min_fossil_co2_from_exogenous(n, HARDCODED):
+    """
+    Estimate the minimum fossil CO₂ [MtCO₂-eq/yr] locked in by exogenous
+    (p_set) loads that have no non-fossil alternative in the network.
+
+    Returns a dict {label: MtCO₂} for logging / feasibility checks.
+
+    Carriers checked:
+    - naphtha for industry  → oil primary (via refining link); no alternative
+    - kerosene for aviation → oil primary; only counted when methanol-to-kerosene
+                              is absent from the network
+    - shipping oil          → oil primary; only counted when p_set > 0
+    - coal for industry     → coal; only counted when carrier present
+    """
+    import pandas as pd
+
+    wt = n.snapshot_weightings["generators"]
+    total_hours = wt.sum()
+
+    def annual_load_mwh(carrier):
+        loads = n.loads[n.loads.carrier == carrier]
+        if loads.empty:
+            return 0.0
+        dyn_cols = loads.index.intersection(n.loads_t.p_set.columns)
+        sta_cols = loads.index.difference(dyn_cols)
+        mwh = 0.0
+        if len(dyn_cols):
+            mwh += n.loads_t.p_set[dyn_cols].mul(wt, axis=0).sum().sum()
+        if len(sta_cols):
+            mwh += (loads.loc[sta_cols, "p_set"] * total_hours).sum()
+        return float(mwh)
+
+    def co2_intensity(carrier):
+        if "fossil_co2_eq" in n.carriers.columns and carrier in n.carriers.index:
+            v = n.carriers.at[carrier, "fossil_co2_eq"]
+            if not pd.isna(v) and v > 0:
+                return v
+        return HARDCODED.get(carrier, 0.0)
+
+    # Refining efficiency: oil primary → oil (accounts for refinery CO₂ loss)
+    refining = n.links[n.links.carrier.str.contains("oil refining", na=False)]
+    refining_eff = float(refining.efficiency.mean()) if not refining.empty else 1.0
+
+    def oil_primary_co2(oil_mwh):
+        """MtCO₂-eq for a given amount of refined oil [MWh], tracing back to primary."""
+        oil_primary_mwh = oil_mwh / refining_eff
+        return oil_primary_mwh * co2_intensity("oil primary") / 1e6
+
+    result = {}
+
+    # 1. Naphtha for HVC — no non-fossil alternative exists
+    mwh = annual_load_mwh("naphtha for industry")
+    if mwh > 0:
+        result["oil primary → naphtha/HVC"] = oil_primary_co2(mwh)
+
+    # 2. Kerosene for aviation — only if methanol-to-kerosene is absent
+    has_mtk = (n.links.carrier == "methanol-to-kerosene").any()
+    if not has_mtk:
+        mwh = annual_load_mwh("kerosene for aviation")
+        if mwh > 0:
+            result["oil primary → kerosene/aviation (no MtK)"] = oil_primary_co2(mwh)
+
+    # 3. Shipping oil — only if a non-zero oil share is fixed
+    mwh = annual_load_mwh("shipping oil")
+    if mwh > 0:
+        result["oil primary → shipping oil"] = oil_primary_co2(mwh)
+
+    # 4. Coal for industry — direct, no refining step
+    mwh = annual_load_mwh("coal for industry")
+    if mwh > 0 and "coal" in n.carriers.index:
+        result["coal → industry"] = mwh * co2_intensity("coal") / 1e6
+
+    return result
+
+
 def add_fossil_fuel_limit(n, costs, config, investment_year):
     """
     Add a global constraint limiting total fossil fuel consumption expressed in
@@ -1756,6 +1831,34 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
             "— these carriers will NOT be constrained by fossil_fuel_limit!",
             nan_carriers,
         )
+
+    # Feasibility check: warn if the cap is below the minimum fossil demand
+    # that is locked in by non-substitutable exogenous loads (naphtha/HVC etc.)
+    min_fossil = _min_fossil_co2_from_exogenous(n, HARDCODED)
+    total_min = sum(min_fossil.values())
+    if min_fossil:
+        logger.info("fossil_fuel_limit | minimum exogenous fossil CO₂ demand [MtCO₂-eq/yr]:")
+        for label, val in min_fossil.items():
+            logger.info("  %-45s %6.2f MtCO₂-eq/yr", label, val)
+        logger.info("  %-45s %6.2f MtCO₂-eq/yr", "TOTAL minimum", total_min)
+        logger.info("  %-45s %6.2f MtCO₂-eq/yr", "Cap (fossil_fuel_limit)", F_t)
+        if total_min > F_t:
+            logger.warning(
+                "fossil_fuel_limit | CAP (%.2f MtCO₂-eq) IS BELOW minimum exogenous "
+                "fossil demand (%.2f MtCO₂-eq) — constraint cannot be satisfied by "
+                "fuel switching alone and may render the problem infeasible or force "
+                "cap violation!",
+                F_t,
+                total_min,
+            )
+        else:
+            headroom = F_t - total_min
+            logger.info(
+                "fossil_fuel_limit | headroom above exogenous floor: %.2f MtCO₂-eq "
+                "(%.1f%% of cap)",
+                headroom,
+                100 * headroom / F_t,
+            )
 
     # primary_energy sums: Generator-p × (carrier.fossil_co2_eq / efficiency)
     # Cyclic stores are excluded automatically; non-fossil carriers are skipped
