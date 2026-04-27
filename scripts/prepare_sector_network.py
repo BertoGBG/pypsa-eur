@@ -7681,8 +7681,7 @@ if __name__ == "__main__":
     sanitize_locations(n)
 
     # Must run after sanitize_carriers so that 'oil primary' (added by
-    # add_missing_carriers) is already in n.carriers before we assign
-    # fossil_co2_eq to it.
+    # add_missing_carriers) is already in n.carriers before fossil_co2_eq is assigned to it.
     add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
 
     n.export_to_netcdf(snakemake.output[0])
