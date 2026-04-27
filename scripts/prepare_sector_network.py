@@ -1727,11 +1727,35 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
                 )
         if val is not None:
             n.carriers.at[carrier, "fossil_co2_eq"] = val
+            logger.info(
+                f"fossil_fuel_limit | carrier '{carrier}': "
+                f"fossil_co2_eq = {val:.4f} tCO₂/MWh"
+            )
         else:
             logger.warning(
-                f"Could not determine CO₂ intensity for carrier '{carrier}'. "
-                f"Carrier excluded from fossil fuel limit."
+                f"fossil_fuel_limit | carrier '{carrier}': "
+                f"could not determine CO₂ intensity — excluded from fossil limit."
             )
+
+    # Verification: log the full fossil_co2_eq column and warn if any
+    # expected carrier is still NaN (e.g. because pre-network was stale).
+    fossil_carriers_present = [c for c in costs_key_map if c in n.carriers.index]
+    if "fossil_co2_eq" in n.carriers.columns:
+        summary = n.carriers.loc[fossil_carriers_present, "fossil_co2_eq"]
+    else:
+        import pandas as _pd2
+        summary = _pd2.Series(_pd2.NA, index=fossil_carriers_present)
+    logger.info(
+        "fossil_fuel_limit | fossil_co2_eq summary [tCO₂/MWh]:\n%s",
+        summary.to_string(),
+    )
+    nan_carriers = summary[summary.isna()].index.tolist()
+    if nan_carriers:
+        logger.warning(
+            "fossil_fuel_limit | fossil_co2_eq is NaN for: %s  "
+            "— these carriers will NOT be constrained by fossil_fuel_limit!",
+            nan_carriers,
+        )
 
     # primary_energy sums: Generator-p × (carrier.fossil_co2_eq / efficiency)
     # Cyclic stores are excluded automatically; non-fossil carriers are skipped
