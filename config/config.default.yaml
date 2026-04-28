@@ -1140,6 +1140,7 @@ solving:
     skip_iterations: true
     rolling_horizon: false
     seed: 123
+    assign_all_duals: false
     custom_extra_functionality: ../data/custom_extra_functionality.py
     io_api:
     track_iterations: false

@@ -1548,6 +1548,26 @@ if __name__ == "__main__":
         n.model.print_infeasibilities()
         raise RuntimeError("Solving status 'infeasible'. Infeasibilities computed.")
 
+    # Assign scalar capacity duals (e.g. e_nom_max for stores) that assign_duals()
+    # skips for non-GlobalConstraint components because they have no snapshot dimension.
+    # Writes mu_<suffix> columns to the component's static dataframe before netcdf export.
+    if cf_solving.get("assign_all_duals", False) and hasattr(n, "model"):
+        for con_name, constraint in n.model.constraints.items():
+            dual = constraint.dual
+            if "snapshot" in dual.dims or "name" not in dual.dims:
+                continue
+            try:
+                prefix, suffix = con_name.split("-", 1)
+                c = n.components[prefix]
+            except (ValueError, KeyError):
+                continue
+            if c.name == "GlobalConstraint":
+                continue
+            attr = "mu_" + suffix.replace("-", "_")
+            dual_series = dual.to_series().dropna()
+            if not dual_series.empty:
+                c.static.loc[dual_series.index, attr] = dual_series
+
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output.network)
 
