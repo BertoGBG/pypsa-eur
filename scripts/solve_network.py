@@ -1551,7 +1551,7 @@ if __name__ == "__main__":
     # Assign scalar capacity duals (e.g. e_nom_max for stores) that assign_duals()
     # skips for non-GlobalConstraint components because they have no snapshot dimension.
     # Writes mu_<suffix> columns to the component's static dataframe before netcdf export.
-    if cf_solving.get("assign_all_duals", False) and hasattr(n, "model"):
+    if cf_solving.get("assign_capacity_duals", False) and hasattr(n, "model"):
         for con_name, constraint in n.model.constraints.items():
             dual = constraint.dual
             if "snapshot" in dual.dims or "name" not in dual.dims:
