@@ -21,7 +21,6 @@ SECTOR_OPTS      = "168h"
 PLANNING_HORIZON = "2050"
 
 # derived paths
-# derived paths
 RES     = BASE_DIR / "resources"
 RES_RUN = BASE_DIR / "resources" / RDIR
 RESULTS = BASE_DIR / "results"    / RDIR
@@ -96,9 +95,11 @@ if prenet_ok:
 
         if "co2 biochar" in n.carriers.index:
             co2_em = n.carriers.at["co2 biochar", "co2_emissions"]
-            print(f"    co2 biochar co2_emissions = {co2_em}  (expected -1.0)")
-            if abs(co2_em - (-1.0)) > 1e-6:
-                print(f"{WARN}  co2_emissions != -1.0 — check add_biochar()!")
+            # co2_emissions = 0.0 is correct: sequestration is modelled via the
+            # biochar link drawing from co2 atmosphere (bus0), not via carrier attribute.
+            print(f"    co2 biochar co2_emissions = {co2_em}  (expected 0.0 — sequestration via network flow)")
+            if abs(co2_em) > 1e-6:
+                print(f"{WARN}  co2_emissions != 0.0 — check add_biochar()!")
 
         # --- Buses ---
         bc_buses = n.buses[n.buses.carrier.str.contains("biochar", case=False, na=False)]
@@ -107,29 +108,39 @@ if prenet_ok:
             print(f"    Carriers present: {bc_buses['carrier'].unique().tolist()}")
             print(f"    Sample (first 5):\n{bc_buses[['location','carrier','unit']].head().to_string()}")
 
-        # --- Links ---
-        bc_links = n.links[n.links.carrier.str.contains("biochar", case=False, na=False)]
-        print(f"\n  Links (carrier contains 'biochar'): {len(bc_links)}")
-        if not bc_links.empty:
-            print(f"    Carriers present: {bc_links['carrier'].unique().tolist()}")
-            cols = [c for c in ["bus0","bus1","bus2","carrier","p_nom_extendable","capital_cost"] if c in bc_links.columns]
-            print(bc_links[cols].head(10).to_string())
+        # --- Links (co2 biochar only) ---
+        co2_bc_links = n.links[n.links.carrier == "co2 biochar"]
+        print(f"\n  Links (carrier == 'co2 biochar'): {len(co2_bc_links)}")
+        if not co2_bc_links.empty:
+            cols = [c for c in ["bus0", "bus1", "carrier", "p_nom_extendable", "capital_cost"] if c in co2_bc_links.columns]
+            print(co2_bc_links[cols].head(10).to_string())
 
-        # --- Stores ---
-        bc_stores = n.stores[n.stores.carrier.str.contains("biochar", case=False, na=False)]
-        print(f"\n  Stores (carrier contains 'biochar'): {len(bc_stores)}")
-        if not bc_stores.empty:
-            cols = [c for c in ["bus","carrier","e_nom_max","capital_cost","e_nom_extendable"] if c in bc_stores.columns]
-            print(bc_stores[cols].head(10).to_string())
-            if "e_nom_max" in bc_stores.columns:
-                finite = bc_stores["e_nom_max"][bc_stores["e_nom_max"] < 1e18]
+        # --- Stores (co2 biochar only) ---
+        co2_bc_stores = n.stores[n.stores.carrier == "co2 biochar"]
+        n_nodes = len(n.buses[n.buses.carrier == "AC"])
+        print(f"\n  Stores (carrier == 'co2 biochar'): {len(co2_bc_stores)}  (nodes: {n_nodes})")
+        # Note: stores with carrier 'biochar heat' (heat waste sinks) are separate
+        # and counted independently below.
+        if not co2_bc_stores.empty:
+            cols = [c for c in ["bus", "carrier", "e_nom_max", "capital_cost", "e_nom_extendable"] if c in co2_bc_stores.columns]
+            print(co2_bc_stores[cols].head(10).to_string())
+            if "e_nom_max" in co2_bc_stores.columns:
+                finite = co2_bc_stores["e_nom_max"][co2_bc_stores["e_nom_max"] < 1e18]
                 print(f"\n    e_nom_max (finite) [tCO2] — "
                       f"min: {finite.min():.0f}, mean: {finite.mean():.0f}, max: {finite.max():.0f}")
+                total_max = finite.sum()
+                print(f"    Total e_nom_max (max potential): {total_max:,.0f} tCO2  "
+                      f"({total_max / 1e6:.3f} MtCO2)")
+
+        # --- Stores (biochar heat waste sinks) ---
+        heat_bc_stores = n.stores[n.stores.carrier == "biochar heat"]
+        if not heat_bc_stores.empty:
+            print(f"\n  Stores (carrier == 'biochar heat', heat waste sinks): {len(heat_bc_stores)}")
 
         if not biochar_carriers:
             print(f"\n{WARN}  No biochar carriers found — add_biochar may NOT have run!")
-        elif bc_links.empty or bc_stores.empty:
-            print(f"\n{WARN}  Missing links or stores — check add_biochar() execution!")
+        elif co2_bc_links.empty or co2_bc_stores.empty:
+            print(f"\n{WARN}  Missing co2 biochar links or stores — check add_biochar() execution!")
         else:
             print(f"\n{OK}  Biochar components present in pre-network.")
 
@@ -150,40 +161,40 @@ if opt_ok:
 
         n_opt = pypsa.Network(str(opt_path))
 
-        bc_links  = n_opt.links [n_opt.links .carrier.str.contains("biochar", case=False, na=False)]
-        bc_stores = n_opt.stores[n_opt.stores.carrier.str.contains("biochar", case=False, na=False)]
+        co2_bc_links  = n_opt.links[n_opt.links.carrier == "co2 biochar"]
+        co2_bc_stores = n_opt.stores[n_opt.stores.carrier == "co2 biochar"]
 
-        # --- Links optimal ---
-        print(f"\n  Links (carrier contains 'biochar'): {len(bc_links)}")
-        if not bc_links.empty and "p_nom_opt" in bc_links.columns:
-            active = bc_links[bc_links["p_nom_opt"] > 0]
-            total  = bc_links["p_nom_opt"].sum()
+        # --- Links optimal (co2 biochar) ---
+        print(f"\n  Links (carrier == 'co2 biochar'): {len(co2_bc_links)}")
+        if not co2_bc_links.empty and "p_nom_opt" in co2_bc_links.columns:
+            active = co2_bc_links[co2_bc_links["p_nom_opt"] > 0]
+            total  = co2_bc_links["p_nom_opt"].sum()
             print(f"  Links with p_nom_opt > 0: {len(active)}")
-            print(f"  Total p_nom_opt (all biochar links): {total:,.2f} MW")
+            print(f"  Total p_nom_opt (co2 biochar links): {total:,.2f} MW")
             if active.empty:
-                print(f"{WARN}  All biochar links have p_nom_opt = 0 (not deployed).")
+                print(f"{WARN}  All co2 biochar links have p_nom_opt = 0 (not deployed).")
             else:
-                print(f"{OK}  Biochar links deployed in optimal solution.")
-                print(active[["bus0","bus1","carrier","p_nom_opt"]].to_string())
+                print(f"{OK}  co2 biochar links deployed in optimal solution.")
+                print(active[["bus0", "bus1", "carrier", "p_nom_opt"]].to_string())
 
-        # --- Stores optimal ---
-        print(f"\n  Stores (carrier contains 'biochar'): {len(bc_stores)}")
-        if not bc_stores.empty and "e_nom_opt" in bc_stores.columns:
-            active = bc_stores[bc_stores["e_nom_opt"] > 0]
-            total  = bc_stores["e_nom_opt"].sum()
+        # --- Stores optimal (co2 biochar only) ---
+        print(f"\n  Stores (carrier == 'co2 biochar'): {len(co2_bc_stores)}")
+        if not co2_bc_stores.empty and "e_nom_opt" in co2_bc_stores.columns:
+            active = co2_bc_stores[co2_bc_stores["e_nom_opt"] > 0]
+            total  = co2_bc_stores["e_nom_opt"].sum()
             print(f"  Stores with e_nom_opt > 0: {len(active)}")
             print(f"  Total e_nom_opt: {total:,.0f} tCO2  ({total/1e6:.3f} MtCO2)")
             if active.empty:
-                print(f"{WARN}  All biochar stores have e_nom_opt = 0 (not deployed).")
+                print(f"{WARN}  All co2 biochar stores have e_nom_opt = 0 (not deployed).")
             else:
                 print(f"{OK}  Biochar stores deployed. Total CO2 stored: {total/1e6:.3f} MtCO2")
                 print(f"\n  Per-node e_nom_opt [tCO2] stats:")
-                print(f"    min:  {bc_stores['e_nom_opt'].min():,.0f}")
-                print(f"    mean: {bc_stores['e_nom_opt'].mean():,.0f}")
-                print(f"    max:  {bc_stores['e_nom_opt'].max():,.0f}")
+                print(f"    min:  {co2_bc_stores['e_nom_opt'].min():,.0f}")
+                print(f"    mean: {co2_bc_stores['e_nom_opt'].mean():,.0f}")
+                print(f"    max:  {co2_bc_stores['e_nom_opt'].max():,.0f}")
 
-        if bc_links.empty and bc_stores.empty:
-            print(f"\n{WARN}  No biochar components in optimal network!")
+        if co2_bc_links.empty and co2_bc_stores.empty:
+            print(f"\n{WARN}  No co2 biochar components in optimal network!")
 
     except Exception as e:
         print(f"\n{WARN}  Could not load optimal network: {e}")
