@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from _check_utils import parse_check_args, load_check_params
 
@@ -29,6 +30,14 @@ WC               = _p["WC"]
 RES              = _p["RES"]
 RES_RUN          = _p["RES_RUN"]
 RESULTS          = _p["RESULTS"]
+
+# ── Read solving options from config ──────────────────────────────────────────
+_config_path = BASE_DIR / "config" / "config.default.yaml"
+_assign_capacity_duals = False
+if _config_path.exists():
+    with open(_config_path) as _f:
+        _cfg = yaml.safe_load(_f)
+    _assign_capacity_duals = _cfg.get("solving", {}).get("options", {}).get("assign_capacity_duals", False)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 OK   = "  [OK]"
@@ -161,6 +170,9 @@ if opt_ok:
     try:
         import pypsa
 
+        _dual_status = "enabled" if _assign_capacity_duals else "disabled (set assign_capacity_duals: true to enable)"
+        print(f"\n  assign_capacity_duals: {_dual_status}")
+
         n_opt = pypsa.Network(str(opt_path))
 
         co2_bc_links  = n_opt.links[n_opt.links.carrier == "co2 biochar"]
@@ -194,6 +206,23 @@ if opt_ok:
                 print(f"    min:  {co2_bc_stores['e_nom_opt'].min():,.0f}")
                 print(f"    mean: {co2_bc_stores['e_nom_opt'].mean():,.0f}")
                 print(f"    max:  {co2_bc_stores['e_nom_opt'].max():,.0f}")
+
+        # --- Shadow price of e_nom_max (assign_capacity_duals) ---
+        if _assign_capacity_duals:
+            if "mu_ext_e_nom_upper" in co2_bc_stores.columns:
+                mu = co2_bc_stores["mu_ext_e_nom_upper"].dropna()
+                binding = mu[mu.abs() > 1e-6]
+                print(f"\n  mu_ext_e_nom_upper (shadow price of e_nom_max) [{len(mu)} stores]:")
+                print(f"    non-zero (binding): {len(binding)}")
+                if not mu.empty:
+                    print(f"    min:  {mu.min():,.4f}")
+                    print(f"    mean: {mu.mean():,.4f}")
+                    print(f"    max:  {mu.max():,.4f}")
+                if not binding.empty:
+                    print(f"\n    Binding nodes (top 10):")
+                    print(binding.sort_values().tail(10).to_string())
+            else:
+                print(f"\n{WARN}  mu_ext_e_nom_upper not found in stores — was assign_capacity_duals: true when solving?")
 
         if co2_bc_links.empty and co2_bc_stores.empty:
             print(f"\n{WARN}  No co2 biochar components in optimal network!")
