@@ -1102,6 +1102,7 @@ afforestation:
   corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
   potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
   free_mode: false  # (growth mode only) fix p_nom to seasonal peak rate, dispatch unconstrained;  call redistribute_afforestation_seasonal() before temporal plotting
+  use_discount_rate: true  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
   co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
   max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
   crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF

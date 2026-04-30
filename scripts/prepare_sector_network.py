@@ -1540,8 +1540,17 @@ def add_afforestation(n, costs):
         potentials = afforestation_potentials["potential [tCO2/y]"].values
         growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
-        # capital cost calculated from annual CO2 removal rates from per-hectare capital cost
-        capital_cost = costs.at["Afforestation", "capital_cost"] / growth_rate # (EUR / (y * ha)) * (ha * y)/tCO2 = EUR /tCO2
+        # capital cost from annuity formula: I*(annuity(T*, r) + FOM) / MAI [EUR/tCO2]
+        use_discount_rate = snakemake.config["afforestation"].get("use_discount_rate", True)
+        investment_cost = costs.at["Afforestation", "investment"]
+        fom = costs.at["Afforestation", "FOM"] / 100
+        rotation_age = afforestation_potentials["rotation_age_years"].values
+        discount_rate = (
+            snakemake.config["costs"]["fill_values"]["discount rate"]
+            if use_discount_rate else 0.0
+        )
+        forest_annuity = calculate_annuity(rotation_age, discount_rate)
+        capital_cost = investment_cost * (forest_annuity + fom) / growth_rate  # [EUR/tCO2]
 
         # Load pre-computed hourly seasonal profile (snapshots × nodes)
         profile_full = pd.read_csv(

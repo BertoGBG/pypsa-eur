@@ -172,9 +172,57 @@ def build_afforestation_potentials(
         nuts2_growth_rates.index = harmonize_idx(nuts2_growth_rates.index)
         nuts2_monthly_weights.index = harmonize_idx(nuts2_monthly_weights.index)
 
-        # Build NUTS2 GeoDataFrame with rates and monthly weights joined
+        # Supplement nuts2 GeoDataFrame with pseudo-NUTS2 codes (e.g. RS00, AL00,
+        # BA00, XK00) present in the rates CSV but absent from the Eurostat GeoJSON.
+        # Use dissolved network-node geometry for the matching country prefix so
+        # the subsequent overlay assigns the correct rate to every Balkan node.
+        missing_codes = sorted(set(nuts2_growth_rates.index) - set(nuts2["NUTS_ID"]))
+        if missing_codes:
+            logger.info(
+                "Supplementing NUTS2 GDF with %d pseudo-regions absent from GeoJSON: %s"
+                % (len(missing_codes), missing_codes)
+            )
+            network_4326 = network.to_crs(4326)
+            extra_rows = []
+            for code in missing_codes:
+                country_prefix = code[:2]
+                country_nodes = network_4326[
+                    network_4326["name"].str.startswith(country_prefix)
+                ]
+                if not country_nodes.empty:
+                    geom = country_nodes.geometry.union_all()
+                    extra_rows.append({"NUTS_ID": code, "geometry": geom})
+                    logger.info(
+                        "  %s: geometry from %d node(s): %s"
+                        % (code, len(country_nodes), country_nodes["name"].tolist())
+                    )
+                else:
+                    logger.warning(
+                        "  %s: no network nodes found for country prefix '%s' — skipping"
+                        % (code, country_prefix)
+                    )
+            if extra_rows:
+                extra_gdf = geopandas.GeoDataFrame(extra_rows, crs="EPSG:4326")
+                nuts2 = geopandas.GeoDataFrame(
+                    pandas.concat([nuts2, extra_gdf], ignore_index=True), crs=nuts2.crs
+                )
+
+        # Build NUTS2 GeoDataFrame with rates and monthly weights joined.
+        # Also join density and rotation_age for node-specific cost calculation.
         nuts2_gdf = nuts2[["NUTS_ID", "geometry"]].set_index("NUTS_ID")
-        nuts2_gdf = nuts2_gdf.join(nuts2_growth_rates[["CO2 seq rate tCO2/(ha y)"]])
+        rate_cols = ["CO2 seq rate tCO2/(ha y)"]
+        has_density_cols = all(
+            c in nuts2_growth_rates.columns for c in ["density tCO2/ha", "rotation_age_years"]
+        )
+        if has_density_cols:
+            rate_cols += ["density tCO2/ha", "rotation_age_years"]
+        else:
+            logger.warning(
+                "Columns 'density tCO2/ha' and 'rotation_age_years' missing from rates CSV "
+                "— node-specific capital costs unavailable; use potential_type='growth' "
+                "with an up-to-date afforestation_rates_nuts2_full.csv"
+            )
+        nuts2_gdf = nuts2_gdf.join(nuts2_growth_rates[rate_cols])
         nuts2_gdf = nuts2_gdf.join(nuts2_monthly_weights[MONTH_NAMES])
 
         # Warn about NUTS2 regions missing monthly weights; fill with uniform 1/12 - it should not happen
@@ -207,81 +255,57 @@ def build_afforestation_potentials(
             corine_potentials["potential [sqkm]"] * 100
         )
 
-        # Weighted potential and monthly weight contributions per intersection
+        # Weighted contributions per intersection fragment
         overlay["potential_contrib"] = (
             overlay["total_area_ha"] * overlay["CO2 seq rate tCO2/(ha y)"] * overlay["share"]
         )
+        if has_density_cols:
+            overlay["density_contrib"] = overlay["density tCO2/ha"] * overlay["share"]
+            overlay["rotage_contrib"]  = overlay["rotation_age_years"] * overlay["share"]
         for m in MONTH_NAMES:
             overlay[f"w_{m}"] = overlay[m] * overlay["share"]
 
         # Aggregate per node
         w_cols = [f"w_{m}" for m in MONTH_NAMES]
-        agg = overlay.groupby("name").agg({"potential_contrib": "sum", **{c: "sum" for c in w_cols}})
+        extra_agg = {}
+        if has_density_cols:
+            extra_agg = {"density_contrib": "sum", "rotage_contrib": "sum", "share": "sum"}
+        agg = overlay.groupby("name").agg(
+            {"potential_contrib": "sum", **extra_agg, **{c: "sum" for c in w_cols}}
+        )
 
         # Normalise monthly weights to sum to 1
         agg[w_cols] = agg[w_cols].div(agg[w_cols].sum(axis=1), axis=0)
 
-        # Weighted-average growth rate [tCO2/(ha·y)] — used for capital cost
+        # Weighted-average growth rate [tCO2/(ha·y)]
         node_area_ha = corine_potentials["potential [sqkm]"] * 100
         agg["CO2 seq rate tCO2/(ha y)"] = (
             agg["potential_contrib"] / node_area_ha.reindex(agg.index)
         )
 
-        # ── Fallback for nodes with poor NUTS2 overlay coverage ───────────────
-        # Nodes outside the EU NUTS2 GeoJSON (e.g. Western Balkans: AL, BA, RS, XK)
-        # only get tiny border-sliver intersections, making their weighted-average
-        # growth rate ~100x too small and capital costs ~100x too high.
-        # For these nodes, look up the country-level (NUTS0) entry that was added
-        # to the growth rates CSV (neighbour-mean fill from the preprocessing step).
-        COVERAGE_THRESHOLD = 0.10  # nodes with <10% area matched are flagged
-        node_coverage = overlay.groupby("name")["share"].sum()
-
-        for node_name in network["name"]:
-            cov = node_coverage.get(node_name, 0.0)
-            if cov >= COVERAGE_THRESHOLD:
-                continue
-
-            cc = node_name[:2]
-            nuts0_code = cc + "00"
-
-            if nuts0_code not in nuts2_growth_rates.index:
-                logger.warning(
-                    "Node '%s' has low NUTS2 overlay coverage (%.3f) and no NUTS0 "
-                    "fallback ('%s') in growth rates CSV — skipping." % (node_name, cov, nuts0_code)
-                )
-                continue
-
-            rate = nuts2_growth_rates.at[nuts0_code, "CO2 seq rate tCO2/(ha y)"]
-            corine_ha = node_area_ha.get(node_name, 0.0)
-            potential = corine_ha * rate
-
-            if nuts0_code in nuts2_monthly_weights.index:
-                w_monthly = nuts2_monthly_weights.loc[nuts0_code, MONTH_NAMES].tolist()
-            else:
-                w_monthly = [1.0 / 12] * 12
-
-            logger.warning(
-                "Node '%s': low NUTS2 overlay coverage (%.3f) — "
-                "using NUTS0 fallback '%s': rate=%.4f tCO2/(ha·y), potential=%.1f tCO2/y"
-                % (node_name, cov, nuts0_code, rate, potential)
-            )
-
-            agg.loc[node_name, "CO2 seq rate tCO2/(ha y)"] = rate
-            agg.loc[node_name, "potential_contrib"] = potential
-            for m_name, w in zip(MONTH_NAMES, w_monthly):
-                agg.loc[node_name, f"w_{m_name}"] = w
-        # ── End fallback ───────────────────────────────────────────────────────
+        # Area-weighted density and rotation age (normalised by actual share coverage)
+        if has_density_cols:
+            agg["density tCO2/ha"]    = agg["density_contrib"] / agg["share"]
+            agg["rotation_age_years"] = agg["rotage_contrib"]  / agg["share"]
 
         for node_name, row in agg.iterrows():
-            logger.info(
+            msg = (
                 "Node '%s': afforestation potential = %.1f tCO2/y  "
                 "(CO2 seq rate = %.3f tCO2/(ha y))"
                 % (node_name, row["potential_contrib"], row["CO2 seq rate tCO2/(ha y)"])
             )
+            if has_density_cols:
+                msg += "  density = %.1f tCO2/ha  T* = %.1f yr" % (
+                    row["density tCO2/ha"], row["rotation_age_years"]
+                )
+            logger.info(msg)
 
         # Build data_frame with "node" as column (set_index called in shared save block below)
         agg.index.name = "node"
-        data_frame = agg[["CO2 seq rate tCO2/(ha y)", "potential_contrib"]].rename(
+        out_cols = ["CO2 seq rate tCO2/(ha y)", "potential_contrib"]
+        if has_density_cols:
+            out_cols += ["density tCO2/ha", "rotation_age_years"]
+        data_frame = agg[out_cols].rename(
             columns={"potential_contrib": "potential [tCO2/y]"}
         ).reset_index()
 
