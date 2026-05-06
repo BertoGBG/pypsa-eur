@@ -2,10 +2,12 @@
 Check script for the Enhanced Weathering (ERW) pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
-    python scripts/check_EW_pipeline.py --config config/config.CDRs.yaml
+    python scripts/check_EW_pipeline.py EW_2050
 
-Wildcards are read from the config file. Override any value on the CLI:
+Wildcards are read from the saved run config automatically.
+Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
+    --config PATH    (direct path to a saved config YAML)
 """
 
 from pathlib import Path

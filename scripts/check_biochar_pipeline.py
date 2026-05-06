@@ -2,21 +2,22 @@
 Check script for the biochar pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
-    python scripts/check_biochar_pipeline.py --config config/config.CDRs.yaml
+    python scripts/check_biochar_pipeline.py biochar_2050
 
-Wildcards are read from the config file. Override any value on the CLI:
+Wildcards are read from the saved run config automatically.
+Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
+    --config PATH    (direct path to a saved config YAML)
 """
 
 import sys
 from pathlib import Path
 
 import pandas as pd
-import yaml
 
 from _check_utils import parse_check_args, load_check_params
 
-# ── Configuration (from config file + CLI overrides) ──────────────────────────
+# ── Configuration (from saved run config) ────────────────────────────────────
 _args = parse_check_args()
 _p    = load_check_params(_args)
 
@@ -31,13 +32,7 @@ RES              = _p["RES"]
 RES_RUN          = _p["RES_RUN"]
 RESULTS          = _p["RESULTS"]
 
-# ── Read solving options from config ──────────────────────────────────────────
-_config_path = BASE_DIR / "config" / "config.default.yaml"
-_assign_capacity_duals = False
-if _config_path.exists():
-    with open(_config_path) as _f:
-        _cfg = yaml.safe_load(_f)
-    _assign_capacity_duals = _cfg.get("solving", {}).get("options", {}).get("assign_capacity_duals", False)
+_assign_capacity_duals = _p["cfg"].get("solving", {}).get("options", {}).get("assign_capacity_duals", False)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 OK   = "  [OK]"

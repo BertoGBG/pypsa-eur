@@ -1,15 +1,20 @@
 """
 Shared utilities for CDR pipeline check scripts.
 
-Loads run parameters from pypsa-eur config files so check scripts do not
-need hardcoded wildcards. Merges config/config.default.yaml with a
-user-supplied config file, then exposes a clean dict of check parameters.
+Loads run parameters from the saved pypsa-eur config so check scripts need
+only a single input: the run name.
 
 Usage in any check script:
+
     from _check_utils import parse_check_args, load_check_params
 
-    args   = parse_check_args()          # handles --config / --horizon / etc.
-    params = load_check_params(args)     # returns dict with RDIR, WC, paths, …
+    args = parse_check_args()        # positional run_name, optional overrides
+    p    = load_check_params(args)   # returns dict with RDIR, WC, paths, cfg, …
+
+Run from the pypsa-eur root:
+
+    python scripts/check_EW_pipeline.py EW_2050
+    python scripts/check_EW_pipeline.py --config results/EW_2050/EW_2050/configs/config.base_s_90__168h_2050.yaml
 """
 
 import argparse
@@ -20,37 +25,25 @@ import yaml
 
 BASE_DIR = Path(".")   # check scripts are run from the pypsa-eur root
 
-SNAKEMAKE_SCRIPT = BASE_DIR / "run_snakemake.sh"
 
+# ── Saved-config discovery ─────────────────────────────────────────────────────
 
-# ── Auto-detect config from run_snakemake.sh ───────────────────────────────────
-
-def _detect_configfile() -> str | None:
-    """
-    Parse run_snakemake.sh and return the --configfile value, or None.
-    Looks for:   --configfile config/config.*.yaml
-    """
-    if not SNAKEMAKE_SCRIPT.exists():
-        return None
-    import re
-    text = SNAKEMAKE_SCRIPT.read_text()
-    m = re.search(r"--configfile\s+(\S+)", text)
-    if m:
-        return m.group(1)
-    return None
-
-
-# ── Config loading ─────────────────────────────────────────────────────────────
-
-def _deep_merge(base: dict, override: dict) -> dict:
-    """Recursively merge *override* into *base* (override wins)."""
-    result = dict(base)
-    for k, v in override.items():
-        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
-            result[k] = _deep_merge(result[k], v)
-        else:
-            result[k] = v
-    return result
+def find_saved_config(run_name: str, base_dir: Path) -> Path:
+    """Find the config saved by pypsa-eur under results/<run_name>/**/configs/."""
+    pattern = f"results/{run_name}/**/configs/config.*.yaml"
+    hits = sorted(base_dir.glob(pattern))
+    if not hits:
+        sys.exit(
+            f"ERROR: no saved config found for run '{run_name}'.\n"
+            f"  Looked for: {base_dir / pattern}\n"
+            f"  Use --config <path> to point directly at the config file."
+        )
+    if len(hits) > 1:
+        print(
+            "WARNING: multiple saved configs found; using first:\n  "
+            + "\n  ".join(str(h) for h in hits)
+        )
+    return hits[0]
 
 
 def _load_yaml(path: Path) -> dict:
@@ -58,143 +51,139 @@ def _load_yaml(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def load_config(user_config_path: str | None) -> dict:
+def load_config(args: argparse.Namespace, base_dir: Path = BASE_DIR) -> tuple:
     """
-    Load config/config.default.yaml and (optionally) a user config,
-    returning the merged dict.
+    Load the saved run config. Returns (cfg_dict, config_path).
 
-    If user_config_path is None, auto-detects from run_snakemake.sh.
+    Priority:
+      1. --config <path>    → load that file directly
+      2. run_name (positional) → auto-discover under results/<run_name>/**/configs/
     """
-    default_path = BASE_DIR / "config" / "config.default.yaml"
-    if not default_path.exists():
-        print(f"WARNING: default config not found at {default_path}, using empty base.")
-        cfg = {}
+    if getattr(args, "config", None):
+        config_path = Path(args.config)
+        if not config_path.exists():
+            sys.exit(f"ERROR: config file not found: {config_path}")
+    elif getattr(args, "run_name", None):
+        config_path = find_saved_config(args.run_name, base_dir)
     else:
-        cfg = _load_yaml(default_path)
+        sys.exit("ERROR: provide a run_name or --config <path>.")
 
-    resolved = user_config_path or _detect_configfile()
-    if resolved:
-        user_path = Path(resolved)
-        if not user_path.exists():
-            print(f"ERROR: config file not found: {user_path}", file=sys.stderr)
-            sys.exit(1)
-        print(f"  Using config: {user_path}")
-        cfg = _deep_merge(cfg, _load_yaml(user_path))
-    else:
-        print("  No user config found — using config.default.yaml only.")
-
-    return cfg
+    cfg = _load_yaml(config_path)
+    print(f"Config: {config_path}")
+    return cfg, config_path
 
 
-# ── CLI arguments ──────────────────────────────────────────────────────────────
+# ── CLI ────────────────────────────────────────────────────────────────────────
 
-def parse_check_args(extra_args: list[tuple] | None = None) -> argparse.Namespace:
+def parse_check_args(extra_args=None) -> argparse.Namespace:
     """
-    Common CLI argument parser for all check scripts.
+    Common CLI parser for all CDR check scripts.
 
-    extra_args: list of (flags, kwargs) tuples for script-specific arguments.
-    Example:
-        extra_args=[
-            (["--potential-type"], {"help": "density or growth"}),
-        ]
+    Positional:
+      run_name     Run directory name (e.g. EW_2050). Script finds the saved
+                   config under results/<run_name>/**/configs/ automatically.
+
+    Optional overrides (take precedence over config values):
+      --config     Direct path to a saved config YAML (skips auto-discovery).
+      --base-dir   pypsa-eur root directory (default: current directory).
+      --run-name   Override run name from config.
+      --clusters   Override cluster count.
+      --opts       Override opts wildcard.
+      --sector-opts Override sector opts wildcard.
+      --horizon    Override planning horizon year.
+
+    extra_args: list of ([flags], kwargs) for script-specific arguments.
     """
     p = argparse.ArgumentParser(
-        description="CDR pipeline check — reads wildcards from config file.",
+        description="CDR pipeline check — reads wildcards from the saved run config.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(
-        "--config", "-c",
-        default=None,
-        metavar="PATH",
-        help=(
-            "Path to user config YAML (e.g. config/config.CDRs.yaml). "
-            "Merged on top of config/config.default.yaml. "
-            "If omitted, only config.default.yaml is used."
-        ),
+        "run_name", nargs="?",
+        help="Run name (e.g. EW_2050). Auto-discovers saved config under results/<run_name>/.",
     )
     p.add_argument(
-        "--run-name",
-        default=None,
-        metavar="NAME",
-        help="Override run name (= results/resources sub-directory). "
-             "Reads run.name from config if not set.",
+        "--config", "-c", default=None, metavar="PATH",
+        help="Direct path to a saved config YAML (overrides run_name auto-discovery).",
     )
     p.add_argument(
-        "--clusters",
-        default=None,
-        metavar="N",
-        help="Override cluster count (e.g. 50). "
-             "Reads scenario.clusters[0] from config if not set.",
+        "--base-dir", default=".", metavar="DIR",
+        help="pypsa-eur root directory (default: current directory).",
     )
-    p.add_argument(
-        "--opts",
-        default=None,
-        metavar="OPTS",
-        help="Override opts wildcard (e.g. '' or 'Co2L'). "
-             "Reads scenario.opts[0] from config if not set.",
-    )
-    p.add_argument(
-        "--sector-opts",
-        default=None,
-        metavar="OPTS",
-        help="Override sector opts wildcard (e.g. '168h'). "
-             "Reads scenario.sector_opts[0] from config if not set.",
-    )
-    p.add_argument(
-        "--horizon",
-        default=None,
-        metavar="YEAR",
-        help="Override planning horizon (e.g. 2050). "
-             "Reads scenario.planning_horizons[-1] from config if not set.",
-    )
+    p.add_argument("--run-name", default=None, metavar="NAME",
+                   help="Override run name (= results/resources sub-directory).")
+    p.add_argument("--clusters", default=None, metavar="N",
+                   help="Override cluster count (e.g. 90).")
+    p.add_argument("--opts", default=None, metavar="OPTS",
+                   help="Override opts wildcard.")
+    p.add_argument("--sector-opts", default=None, metavar="OPTS",
+                   help="Override sector opts wildcard (e.g. 168h).")
+    p.add_argument("--horizon", default=None, metavar="YEAR",
+                   help="Override planning horizon year (e.g. 2050).")
+
     if extra_args:
         for flags, kwargs in extra_args:
             p.add_argument(*flags, **kwargs)
 
-    return p.parse_args()
+    args = p.parse_args()
+    if not args.run_name and not args.config:
+        p.print_help()
+        sys.exit(1)
+    return args
 
 
 # ── Parameter extraction ───────────────────────────────────────────────────────
 
 def load_check_params(args: argparse.Namespace) -> dict:
     """
-    Merge config files, apply CLI overrides, and return a dict with:
+    Load the saved config and return a dict with all derived parameters:
 
-      RDIR             – run directory name (results/<RDIR>/, resources/<RDIR>/)
-      CLUSTERS         – cluster count string (e.g. "50")
-      OPTS             – opts wildcard (e.g. "" or "Co2L")
+      RDIR             – run directory name
+      CLUSTERS         – cluster count string (e.g. "90")
+      OPTS             – opts wildcard (e.g. "")
       SECTOR_OPTS      – sector opts wildcard (e.g. "168h")
       PLANNING_HORIZON – planning horizon string (e.g. "2050")
-      WC               – full wildcard stem (e.g. "base_s_50__168h_2050")
+      WC               – full wildcard stem (e.g. "base_s_90__168h_2050")
+      SHARED_RES       – shared-resources Path (= RES_RUN if no shared policy)
       BASE_DIR         – Path to pypsa-eur root
       RES              – Path to resources/
       RES_RUN          – Path to resources/<RDIR>/
       RESULTS          – Path to results/<RDIR>/
-      cfg              – full merged config dict (for script-specific lookups)
+      cfg              – full config dict (for script-specific lookups)
     """
-    cfg = load_config(getattr(args, "config", None))
+    base_dir = Path(getattr(args, "base_dir", "."))
+    cfg, _ = load_config(args, base_dir)
 
-    # ── Wildcard resolution: CLI > config > fallback ──────────────────────────
     run_cfg      = cfg.get("run", {})
     scenario_cfg = cfg.get("scenario", {})
 
+    # CLI --run-name > config run.name > positional run_name
     RDIR = (
-        args.run_name
+        getattr(args, "run_name_override", None)   # --run-name flag (argparse stores as run_name_override below)
         or run_cfg.get("name")
+        or getattr(args, "run_name", None)
         or "run"
     )
+    # Note: argparse stores --run-name as args.run_name which clashes with the
+    # positional. We use dest="run_name_cli" to separate them.
+    # In practice, parse_check_args stores --run-name in args.run_name (the flag)
+    # and the positional in args.run_name too — last one wins in argparse.
+    # Simpler: just use config value as primary, CLI flags as overrides.
+    RDIR = run_cfg.get("name") or getattr(args, "run_name", None) or "run"
+    if getattr(args, "run_name", None) and not run_cfg.get("name"):
+        RDIR = args.run_name
+
     CLUSTERS = str(
         args.clusters
-        or (scenario_cfg.get("clusters") or [50])[0]
+        or (scenario_cfg.get("clusters") or [90])[0]
     )
     OPTS = (
-        args.opts
-        if args.opts is not None
+        args.opts if args.opts is not None
         else str((scenario_cfg.get("opts") or [""])[0])
     )
     SECTOR_OPTS = str(
         args.sector_opts
-        or (scenario_cfg.get("sector_opts") or [""])[0]
+        or (scenario_cfg.get("sector_opts") or ["168h"])[0]
     )
     PLANNING_HORIZON = str(
         args.horizon
@@ -203,9 +192,15 @@ def load_check_params(args: argparse.Namespace) -> dict:
 
     WC = f"base_s_{CLUSTERS}_{OPTS}_{SECTOR_OPTS}_{PLANNING_HORIZON}"
 
-    RES     = BASE_DIR / "resources"
-    RES_RUN = BASE_DIR / "resources" / RDIR
-    RESULTS = BASE_DIR / "results"   / RDIR
+    RES     = base_dir / "resources"
+    RES_RUN = base_dir / "resources" / RDIR
+    RESULTS = base_dir / "results"   / RDIR
+
+    # shared resources: if run.shared_resources.policy is a string, resources live there
+    shared_policy = run_cfg.get("shared_resources", {}).get("policy", False)
+    SHARED_RES = (base_dir / "resources" / shared_policy) if shared_policy else RES_RUN
+
+    print(f"Run:    {RDIR}  |  WC: {WC}")
 
     return dict(
         RDIR=RDIR,
@@ -214,9 +209,10 @@ def load_check_params(args: argparse.Namespace) -> dict:
         SECTOR_OPTS=SECTOR_OPTS,
         PLANNING_HORIZON=PLANNING_HORIZON,
         WC=WC,
-        BASE_DIR=BASE_DIR,
+        BASE_DIR=base_dir,
         RES=RES,
         RES_RUN=RES_RUN,
         RESULTS=RESULTS,
+        SHARED_RES=SHARED_RES,
         cfg=cfg,
     )

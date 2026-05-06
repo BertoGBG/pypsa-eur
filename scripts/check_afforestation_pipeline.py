@@ -2,11 +2,13 @@
 Check script for the afforestation pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
-    python scripts/check_afforestation_pipeline.py --config config/config.CDRs.yaml
+    python scripts/check_afforestation_pipeline.py affo_2050_growth
 
-Wildcards are read from the config file. Override any value on the CLI:
+Wildcards are read from the saved run config automatically.
+Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
     --potential-type density|growth
+    --config PATH    (direct path to a saved config YAML)
 """
 
 import sys

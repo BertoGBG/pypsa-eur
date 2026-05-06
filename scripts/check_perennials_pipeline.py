@@ -1,12 +1,14 @@
 """
 Check script for the perennials pipeline in pypsa-eur.
-Run from the pypsa-eur root directory on the cluster:
+Run from the pypsa-eur root directory:
 
-    python scripts/check_perennials_pipeline.py --config config/config.CDRs.yaml
+    python scripts/check_perennials_pipeline.py peren_2050
 
-Wildcards are read from the config file. Override any value on the CLI:
+Wildcards are read from the saved run config automatically.
+Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
     --shared-resources NAME
+    --config PATH    (direct path to a saved config YAML)
 """
 
 import sys
