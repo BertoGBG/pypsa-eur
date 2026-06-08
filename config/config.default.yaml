@@ -851,12 +851,12 @@ sector:
   coal_cc: false
   dac: true
   biochar:
-    enable: true
+    enable: false
     heat_output: true
     transport: false
   ERW: false
   afforestation: true
-  perennials: true
+  perennials: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1108,8 +1108,8 @@ afforestation:
   corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
   potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
   free_mode: false  # (growth mode only) fix p_nom to seasonal peak rate, dispatch unconstrained;  call redistribute_afforestation_seasonal() before temporal plotting
-  use_discount_rate: true  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
-  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
+  use_discount_rate: false  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12) ONLY with potential growth set to "density"
   max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
   crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
                         # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
