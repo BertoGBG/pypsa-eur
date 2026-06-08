@@ -1,0 +1,9 @@
+#!/bin/bash
+snakemake --rerun-incomplete --latency-wait 100 \
+  --executor cluster-generic \
+  --cluster-generic-submit-cmd "sbatch --parsable -p fatq -n 1 \
+    --exclusive=user \
+    --output=slurm_logs/slurm-%j.out \
+    --error=slurm_logs/slurm-%j.err \
+    --time=12:00:00 \
+    --cpus-per-task=16" "$@"
