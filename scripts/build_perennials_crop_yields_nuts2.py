@@ -9,6 +9,12 @@ NUTS2021 region definitions used by PyPSA-Eur.
 
 Outputs a single CSV with columns for each crop class (cereals, sugar beet,
 rapeseed, perennials) indexed by NUTS2 region.
+
+Biofuel conversion efficiencies (t_biofuel / t_feedstock) are read from
+``config["perennials"]["biofuel_conversion"]`` and sourced from:
+
+    Banja et al. (2013), "Biofuels in the European Union - A general overview",
+    JRC Technical Report, doi:10.2760/69179, Tables 93, 133, 155, 159.
 """
 
 import logging
@@ -259,13 +265,14 @@ if __name__ == "__main__":
         PERENNIALS=perennial_codes,
     )
 
-    LHV_fuels = dict(ethanol=26.81 / 3.6, biodiesel=36.7 / 3.6)
+    conv = snakemake.params.biofuel_conversion
+    LHV_fuels = {"ethanol": conv["LHV_ethanol"], "biodiesel": conv["LHV_biodiesel"]}
 
-    biofuel_yields = dict(
-        MINBIOCRP11=0.295 * LHV_fuels["ethanol"],
-        MINBIOCRP21=0.07777 * LHV_fuels["ethanol"],
-        MINBIORPS1=0.420 / 1.0063 * LHV_fuels["biodiesel"],
-    )
+    biofuel_yields = {
+        "MINBIOCRP11": conv["MINBIOCRP11"] * LHV_fuels["ethanol"],
+        "MINBIOCRP21": conv["MINBIOCRP21"] * LHV_fuels["ethanol"],
+        "MINBIORPS1":  conv["MINBIORPS1"]  * LHV_fuels["biodiesel"],
+    }
 
     other_crops_codes = [
         item
