@@ -1285,8 +1285,7 @@ def add_biochar(n, costs):
         e_nom_max=(
             biochar_potentials["potential [sqkm]"].values
             * co2_per_tonne
-            * snakemake.config["biochar"]["co2_per_tonne_multiplier"]
-            * snakemake.config["biochar"]["potential_per_sqkm"]
+            * snakemake.config["biochar"]["application_per_sqkm"]
             * snakemake.config["biochar"]["max_land_usage"]
             / snakemake.config["biochar"]["number_years"]
         ),

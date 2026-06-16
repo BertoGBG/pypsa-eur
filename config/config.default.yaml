@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "biochar_2050"
+  name: ""
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -1075,8 +1075,7 @@ industry:
 
 biochar:
   corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
-  potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
-  co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
+  application_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
   number_years: 25 # amortisation period (years) for biochar CO2 storage
 
