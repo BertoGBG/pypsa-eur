@@ -1689,6 +1689,11 @@ rule prepare_sector_network:
             if config_provider("sector", "district_heating", "ates", "enable")(w)
             else []
         ),
+        biochar_potentials=lambda w: (
+            resources("biochar_potentials_s_{clusters}.csv")
+            if config_provider("sector", "biochar")(w)
+            else []
+        ),
     output:
         resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -1741,3 +1746,22 @@ rule prepare_sector_network:
         "Preparing integrated sector-coupled energy network for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizon, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
     script:
         scripts("prepare_sector_network.py")
+
+
+rule build_biochar_potentials:
+    params:
+        component="biochar",
+        resolution=250,
+        corine_codes=config["biochar"]["corine"],
+    input:
+        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+    output:
+        csv_file=resources("biochar_potentials_s_{clusters}.csv"),
+        png_file=resources("biochar_potentials_s_{clusters}.png"),
+    log:
+        logs("build_biochar_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=32000,
+    script:
+        scripts("build_corine_potentials.py")
