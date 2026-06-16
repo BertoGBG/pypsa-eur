@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: ""
+  name: "EW_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - ""
+  - 168h
   planning_horizons:
   - 2050
 
@@ -836,6 +836,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
+  EW: true
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1069,9 +1070,20 @@ industry:
   reference_year: 2023
   oil_refining_emissions: 0.013
 
+EW:
+  EW_hot:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 839 # tonnes CO2 sequestered per sqkm (hot climate)
+    climate: [23, 24, 28, 33, 34, 36] # bioclimatic zone codes for hot regions
+  EW_temperate:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
+    climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
+  max_land_usage: 0.2 # maximum fraction of suitable area used for EW
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1124,7 +1136,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: false
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1415,8 +1427,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
