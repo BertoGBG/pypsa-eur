@@ -854,9 +854,9 @@ sector:
     enable: true
     heat_output: true
     transport: false
-  ERW: true
-  afforestation: true
-  perennials: true
+  ERW: false
+  afforestation: false
+  perennials: false
   co2_vent: false
   heat_vent:
     urban central: true
