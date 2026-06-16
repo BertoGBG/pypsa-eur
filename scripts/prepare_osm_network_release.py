@@ -118,7 +118,7 @@ def export_clean_csv(
     rename_idx : str
         Name to use for the renamed index column.
     export : bool, optional
-        Whether to perform store the cleaned CSV in the output directory, by default_AU True.
+        Whether to perform store the cleaned CSV in the output directory, by default True.
 
     Returns
     -------

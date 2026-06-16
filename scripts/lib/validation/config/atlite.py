@@ -111,7 +111,7 @@ class AtliteConfig(BaseModel):
 
     default_cutout: str | list[str] = Field(
         "europe-2013-sarah3-era5",
-        description="Defines a default_AU cutout. Can refer to a single cutout or a list of cutouts.",
+        description="Defines a default cutout. Can refer to a single cutout or a list of cutouts.",
     )
     nprocesses: int = Field(
         16,

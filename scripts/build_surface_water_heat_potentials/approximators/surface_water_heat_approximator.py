@@ -50,13 +50,13 @@ class SurfaceWaterHeatApproximator(ABC):
         region : Union[shapely.geometry.polygon.Polygon, gpd.GeoSeries]
             Region of interest geometry
         max_relative_volume_flow : float, optional
-            Maximum relative volume flow, by default_AU 1.0
+            Maximum relative volume flow, by default 1.0
         delta_t_max : float, optional
-            Maximum temperature difference, by default_AU 4
+            Maximum temperature difference, by default 4
         min_outlet_temperature : float, optional
-            Minimum outlet temperature, by default_AU 1
+            Minimum outlet temperature, by default 1
         min_distance_meters : int, optional
-            Minimum distance between projects in meters, by default_AU 2000
+            Minimum distance between projects in meters, by default 2000
         """
         # Set instance variables
         self.volume_flow = volume_flow

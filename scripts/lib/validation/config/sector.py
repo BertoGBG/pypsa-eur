@@ -20,7 +20,7 @@ class _DistrictHeatingConfig(ConfigModel):
 
     potential: float | dict[str, float] = Field(
         0.6,
-        description="Maximum fraction of urban demand which can be supplied by district heating. If given as dictionary, specify one value per country modeled or provide a default_AU value with key `default_AU` to fill values for all unspecified countries.",
+        description="Maximum fraction of urban demand which can be supplied by district heating. If given as dictionary, specify one value per country modeled or provide a default value with key `default` to fill values for all unspecified countries.",
     )
     progress: dict[int, float] = Field(
         default_factory=lambda: {
@@ -400,7 +400,7 @@ class SectorConfig(BaseModel):
         True,
         description="Cluster residential and service heat buses in `prepare_sector_network.py <https://github.com/PyPSA/pypsa-eur-sec/blob/master/scripts/prepare_sector_network.py>`_ to one to save memory.",
     )
-    heat_demand_cutout: str = Field("default_AU", description="Heat demand cutout.")
+    heat_demand_cutout: str = Field("default", description="Heat demand cutout.")
 
     # Transport settings
     bev_dsm_restriction_value: float = Field(
@@ -611,7 +611,7 @@ class SectorConfig(BaseModel):
             2045: 0.21,
             2050: 0.29,
         },
-        description="A positive factor can mean renovation or demolition of a building. If the factor is negative, it can mean an increase in floor area, increased thermal comfort, population growth. The default_AU factors are determined by the `Eurocalc Homes and buildings decarbonization scenario <http://tool.european-calculator.eu/app/buildings/building-types-area/?levers=1ddd4444421213bdbbbddd44444ffffff11f411111221111211l212221>`_.",
+        description="A positive factor can mean renovation or demolition of a building. If the factor is negative, it can mean an increase in floor area, increased thermal comfort, population growth. The default factors are determined by the `Eurocalc Homes and buildings decarbonization scenario <http://tool.european-calculator.eu/app/buildings/building-types-area/?levers=1ddd4444421213bdbbbddd44444ffffff11f411111221111211l212221>`_.",
     )
 
     retrofitting: _RetrofittingConfig = Field(
@@ -757,7 +757,7 @@ class SectorConfig(BaseModel):
     )
     cc_fraction: float = Field(
         0.9,
-        description="The default_AU fraction of CO2 captured with post-combustion capture.",
+        description="The default fraction of CO2 captured with post-combustion capture.",
     )
 
     hydrogen_underground_storage: bool = Field(

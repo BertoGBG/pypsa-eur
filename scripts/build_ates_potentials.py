@@ -78,9 +78,9 @@ def mwh_ates_per_m2(
     cold_well_temperature : float
         Temperature of the cold well in degrees Celsius
     kwh_per_kj : float, optional
-        Conversion factor from kJ to kWh, by default_AU 1/3600
+        Conversion factor from kJ to kWh, by default 1/3600
     mwh_per_kwh : float, optional
-        Conversion factor from kWh to MWh, by default_AU 1/1000
+        Conversion factor from kWh to MWh, by default 1/1000
 
     Returns
     -------

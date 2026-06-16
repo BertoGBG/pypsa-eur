@@ -469,7 +469,7 @@ def get_efficiency(
     Notes
     -----
     - For residential and services sectors, efficiency is mapped based on the nodes.
-    - For other sectors, the default_AU boiler efficiency is retrieved from the `costs` database.
+    - For other sectors, the default boiler efficiency is retrieved from the `costs` database.
     """
 
     if heat_system.value == "urban central":

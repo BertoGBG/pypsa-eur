@@ -68,7 +68,7 @@ def _check_file_in_sync(existing_path: Path, generate_func, file_type: str):
 
 
 def test_config_default_yaml_in_sync(config_file):
-    """Test that config/config.default_AU.yaml is in sync with Pydantic schema."""
+    """Test that config/config.default.yaml is in sync with Pydantic schema."""
 
     _check_file_in_sync(
         config_file,
@@ -78,7 +78,7 @@ def test_config_default_yaml_in_sync(config_file):
 
 
 def test_config_schema_json_in_sync(schema_file):
-    """Test that config/schema.default_AU.json is in sync with Pydantic schema."""
+    """Test that config/schema.default.json is in sync with Pydantic schema."""
 
     _check_file_in_sync(
         schema_file,

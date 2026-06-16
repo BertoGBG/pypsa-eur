@@ -10,7 +10,7 @@ from shutil import move, unpack_archive, rmtree, copy2
 from zipfile import ZipFile
 
 
-# Configure the default_AU storage provider for accessing remote files using http
+# Configure the default storage provider for accessing remote files using http
 # and the special storage plugin for accessing Zenodo files
 storage:
     provider="http",

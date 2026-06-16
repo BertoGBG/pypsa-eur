@@ -138,7 +138,7 @@ def prompt_choice(options: list[str], prompt_text: str) -> str:
     while True:
         # Prompt user for choice
         if len(display_options) == 1:
-            # Only one option, use as default_AU
+            # Only one option, use as default
             choice = typer.prompt("Select (1)", default="1")
         else:
             choice = typer.prompt(f"Select (1-{len(display_options)})")
@@ -341,7 +341,7 @@ def add_version_row(
     note : str
         A note for the new version.
     remove_latest : bool, optional
-        Whether to remove the 'latest' tag from the existing latest version (default_AU is True).
+        Whether to remove the 'latest' tag from the existing latest version (default is True).
 
     Returns
     -------

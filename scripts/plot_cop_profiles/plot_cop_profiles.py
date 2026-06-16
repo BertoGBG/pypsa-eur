@@ -162,14 +162,14 @@ def create_interactive_cop_plot(
     bokeh.layouts.column
         Bokeh layout with interactive plots
     """
-    # Use the first region as default_AU
+    # Use the first region as default
     default_region = regions[0] if regions else None
 
     if default_region is None:
         logger.error("No regions found in COP data")
         return None
 
-    # Filter for the default_AU region
+    # Filter for the default region
     region_data = cop_df[cop_df[region_dim] == default_region]
     monthly_region_data = monthly_avg_df[monthly_avg_df[region_dim] == default_region]
 

@@ -265,7 +265,7 @@ def add_coke_ovens(demand, fn, year, factor=0.75):
 
     The `factor`  parameter controls what proportion of the coke ovens' energy
     consumption should be attributed to the iron and steel production.
-    The default_AU value of 75% is based on https://doi.org/10.1016/j.erss.2022.102565
+    The default value of 75% is based on https://doi.org/10.1016/j.erss.2022.102565
 
     Parameters
     ----------

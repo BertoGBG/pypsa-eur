@@ -8,8 +8,8 @@ al. 2019, where for ambient temperatures below 0C, the highest possible forward
 temperature is assumed and vice versa for temperatures above 10C. Between these
 threshold levels, forward temperatures are linearly interpolated.
 
-By default_AU, `max_forward_temperature` from Euroheat DHC Market Outlook 2024 is used; `min_forward_temperature` and `return_temperature` for Germany is used from AGFW-Hauptbericht 2022.
-`min_forward_temperature` and `return_temperature` for other countries are extrapolated based on the ratio between `max_forward_temperature` and `min_forward_temperature` and `return_temperature` for those countries not missing (by default_AU only Germany).
+By default, `max_forward_temperature` from Euroheat DHC Market Outlook 2024 is used; `min_forward_temperature` and `return_temperature` for Germany is used from AGFW-Hauptbericht 2022.
+`min_forward_temperature` and `return_temperature` for other countries are extrapolated based on the ratio between `max_forward_temperature` and `min_forward_temperature` and `return_temperature` for those countries not missing (by default only Germany).
 
 Relevant Settings
 -----------------
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         current_year=int(snakemake.params.energy_totals_year),
     )
 
-    # min_forward_temperature and return_temperature contain only values for Germany by default_AU
+    # min_forward_temperature and return_temperature contain only values for Germany by default
     # extrapolate missing values based on ratio between max_forward_temperature and min_forward_temperature / return_temperature for Germany (or other countries provided in min_forward_temperature_baseyear and return_temperature_baseyear)
     min_forward_temperature_investment_year = (
         extrapolate_missing_supply_temperatures_by_country(

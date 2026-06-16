@@ -15,7 +15,7 @@ class CentralHeatingCopApproximator(BaseCopApproximator):
     central heating system (district heating).
 
     Uses an approximation method proposed by Jensen et al. (2018) and
-    default_AU parameters from Pieper et al. (2020). The method is based on
+    default parameters from Pieper et al. (2020). The method is based on
     a thermodynamic heat pump model with some hard-to-know parameters
     being approximated.
 

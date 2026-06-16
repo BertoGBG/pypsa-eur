@@ -70,7 +70,7 @@ class _OnwindConfig(BaseModel):
     """Configuration for onshore wind."""
 
     cutout: str | list[str] = Field(
-        "default_AU", description="Specifies the weather data cutout file(s) to use."
+        "default", description="Specifies the weather data cutout file(s) to use."
     )
     resource: _WindResourceConfig = Field(
         default_factory=lambda: _WindResourceConfig(turbine="Vestas_V112_3MW"),
@@ -133,7 +133,7 @@ class _OffwindConfig(BaseModel):
     """Configuration for offshore wind."""
 
     cutout: str | list[str] = Field(
-        "default_AU", description="Specifies the weather data cutout file(s) to use."
+        "default", description="Specifies the weather data cutout file(s) to use."
     )
     resource: _WindResourceConfig = Field(
         default_factory=lambda: _WindResourceConfig(
@@ -196,7 +196,7 @@ class _SolarConfig(BaseModel):
     """Configuration for solar PV."""
 
     cutout: str | list[str] = Field(
-        "default_AU", description="Specifies the weather data cutout file(s) to use."
+        "default", description="Specifies the weather data cutout file(s) to use."
     )
     resource: _SolarResourceConfig = Field(
         default_factory=_SolarResourceConfig,
@@ -262,7 +262,7 @@ class _HydroConfig(BaseModel):
     """Configuration for hydropower."""
 
     cutout: str | list[str] = Field(
-        "default_AU", description="Specifies the weather data cutout file(s) to use."
+        "default", description="Specifies the weather data cutout file(s) to use."
     )
     carriers: list[str] = Field(
         default_factory=lambda: ["ror", "PHS", "hydro"],

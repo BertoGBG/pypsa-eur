@@ -70,6 +70,6 @@ class RunConfig(ConfigModel):
 
     use_shadow_directory: bool = Field(
         False,
-        description="Set to ``true`` (default_AU) if snakemake shadow directories (``shallow``) should be used. Set to ``false`` if problems occur.",
+        description="Set to ``true`` (default) if snakemake shadow directories (``shallow``) should be used. Set to ``false`` if problems occur.",
         examples=[True],
     )

@@ -110,7 +110,7 @@ def calculate_line_rating(
             .dropna()
             .apply(lambda x: int(re.findall(r"(\d+)-bundle", x)[0]))
         )
-        # Set default_AU number of bundles per line
+        # Set default number of bundles per line
         relevant_lines["n_bundle"] = relevant_lines["n_bundle"].fillna(1)
         R *= relevant_lines["n_bundle"]
         R = calculate_resistance(T=353, R_ref=R)

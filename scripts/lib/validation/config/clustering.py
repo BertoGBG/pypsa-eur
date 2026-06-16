@@ -140,7 +140,7 @@ class ClusteringConfig(BaseModel):
     )
     consider_efficiency_classes: bool | list[float] = Field(
         False,
-        description="Aggregate each carrier into efficiency classes defined by quantile boundaries. If True, uses [0.1, 0.9] as default_AU quantiles (labels: Q0, Q10, Q90). If a list of floats, defines custom quantile boundaries, e.g. [0.1, 0.5, 0.9].",
+        description="Aggregate each carrier into efficiency classes defined by quantile boundaries. If True, uses [0.1, 0.9] as default quantiles (labels: Q0, Q10, Q90). If a list of floats, defines custom quantile boundaries, e.g. [0.1, 0.5, 0.9].",
     )
     aggregation_strategies: _AggregationStrategiesConfig = Field(
         default_factory=_AggregationStrategiesConfig,
