@@ -50,6 +50,7 @@ preferred_order = pd.Index(
         "gas",
         "natural gas",
         "methanation",
+        "biomethantion biogas"
         "ammonia",
         "hydrogen storage",
         "power-to-gas",
