@@ -1,0 +1,12 @@
+#!/bin/bash
+# Solve on the regular (non-fat) Sophia nodes — for small/low-resolution runs
+# (e.g. weekly) that do not need the 256 GB fat nodes.
+# For large runs use snakemake_solve_fat instead.
+snakemake --rerun-incomplete --latency-wait 100 \
+  --executor cluster-generic \
+  --cluster-generic-submit-cmd "sbatch --parsable -p rome,workq -n 1 \
+    --output=slurm_logs/slurm-%j.out \
+    --error=slurm_logs/slurm-%j.err \
+    --time=12:00:00 \
+    --mem=64G \
+    --cpus-per-task=16" "$@"

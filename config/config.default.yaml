@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "affo_2050_growth"
+  name: "CDRs_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -851,12 +851,12 @@ sector:
   coal_cc: false
   dac: true
   biochar:
-    enable: false
+    enable: true
     heat_output: true
     transport: false
-  ERW: false
+  ERW: true
   afforestation: true
-  perennials: false
+  perennials: true
   co2_vent: false
   heat_vent:
     urban central: true
