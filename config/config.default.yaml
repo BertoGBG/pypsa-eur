@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "EW_2050"
+  name: ""
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - 168h
+  - ""
   planning_horizons:
   - 2050
 
@@ -836,7 +836,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
-  EW: true
+  EW: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1083,7 +1083,7 @@ EW:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2030
+  year: 2050
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1136,7 +1136,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 168h
+    resolution_sector: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1427,8 +1427,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: primary
-    version: pypsa-eur_AA
+    source: archive
+    version: latest
   country_runoff:
     source: archive
     version: latest
