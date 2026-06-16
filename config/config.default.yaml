@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "affo_2050_growth"
+  name: ""
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -37,11 +37,11 @@ foresight: overnight
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 scenario:
   clusters:
-  - 90
+  - 50
   opts:
   - ""
   sector_opts:
-  - 168h
+  - ""
   planning_horizons:
   - 2050
 
@@ -1086,7 +1086,7 @@ afforestation:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2030
+  year: 2050
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1139,7 +1139,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 168h
+    resolution_sector: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1432,8 +1432,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: primary
-    version: pypsa-eur_AA
+    source: archive
+    version: latest
   country_runoff:
     source: archive
     version: latest
