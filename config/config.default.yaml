@@ -837,7 +837,7 @@ sector:
   coal_cc: false
   dac: true
   biochar:
-    enable: true
+    enable: false
     heat_output: false
     transport: false
   co2_vent: false
