@@ -21,14 +21,15 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: ""
+  name: "peren_2050"
   scenarios:
     enable: false
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
-    exclude: []
+    policy: "biochar_2050"
+    exclude:
+      - retrieve_perennial_crop_yields
   use_shadow_directory: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
@@ -41,7 +42,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - ""
+  - 168h
   planning_horizons:
   - 2050
 
@@ -419,6 +420,10 @@ renewable:
     eia_correct_by_capacity: false
     eia_approximate_missing: false
 
+# alternative CDRs
+perennials:
+  potential_co2: 2 # tCO2e/(ha y) sequestered
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
   unit_commitment: false
@@ -540,15 +545,18 @@ biomass:
     - Sawdust
     - Residues from landscape care
     not included:
-    - Sugar from sugar beet
-    - Rape seed
-    - 'Sunflower, soya seed '
-    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Miscanthus, switchgrass, RCG
     - Willow
     - Poplar
     - FuelwoodRW
     - "C&P_RW"
+    biofuels_1G_bioethanol_cereals:
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
+    biofuels_1G_bioethanol_sugar:
+    - Sugar from sugar beet
+    biofuels_1G_biodiesel:
+    - Rape seed
+    - 'Sunflower, soya seed '
     biogas:
     - Manure solid, liquid
     - Sludge
@@ -946,6 +954,7 @@ sector:
   biosng: false
   biosng_cc: false
   bioH2: false
+  perennials: true
   municipal_solid_waste: false
   limit_max_growth:
     enable: false
@@ -1071,7 +1080,7 @@ industry:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
-  year: 2050
+  year: 2030
   social_discountrate: 0.02
   fill_values:
     FOM: 0
@@ -1124,7 +1133,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: false
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:
@@ -1279,7 +1288,7 @@ solving:
     atol: 1000000
     rtol: 0.01
   oetc:
-  mem_mb: 128000
+  mem_mb: 192000
   memory_logging_frequency: 5
   runtime: 48h
 
@@ -1415,8 +1424,8 @@ data:
     source: archive
     version: latest
   costs:
-    source: archive
-    version: latest
+    source: primary
+    version: pypsa-eur_AA
   country_runoff:
     source: archive
     version: latest
