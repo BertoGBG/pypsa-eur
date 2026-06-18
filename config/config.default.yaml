@@ -848,12 +848,12 @@ sector:
   coal_cc: false
   dac: true
   biochar:
-    enable: true
+    enable: false
     heat_output: true
     transport: false
   ERW: false
   afforestation: false
-  perennials: false
+  perennials: true
   co2_vent: false
   heat_vent:
     urban central: true
