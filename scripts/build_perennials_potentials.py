@@ -10,7 +10,7 @@ import logging
 
 import geopandas as gpd
 import pandas as pd
-from _helpers import configure_logging, set_scenario_config
+from _helpers import configure_logging, resolve_biomass_classes, set_scenario_config
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,10 @@ if __name__ == "__main__":
 
     params = snakemake.params.biomass
 
-    grouper = {v: k for k, vv in params["classes"].items() for v in vv}
+    classes = resolve_biomass_classes(
+        params["classes"], snakemake.config["sector"].get("perennials", False)
+    )
+    grouper = {v: k for k, vv in classes.items() for v in vv}
 
     # keep the column 'perennials' which is otherwise dropped
     for col in df.columns:

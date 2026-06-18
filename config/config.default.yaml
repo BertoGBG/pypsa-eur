@@ -550,18 +550,15 @@ biomass:
     - Sawdust
     - Residues from landscape care
     not included:
+    - Sugar from sugar beet
+    - Rape seed
+    - 'Sunflower, soya seed '
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Miscanthus, switchgrass, RCG
     - Willow
     - Poplar
     - FuelwoodRW
     - "C&P_RW"
-    biofuels_1G_bioethanol_cereals:
-    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
-    biofuels_1G_bioethanol_sugar:
-    - Sugar from sugar beet
-    biofuels_1G_biodiesel:
-    - Rape seed
-    - 'Sunflower, soya seed '
     biogas:
     - Manure solid, liquid
     - Sludge
