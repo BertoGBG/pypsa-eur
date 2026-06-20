@@ -266,7 +266,8 @@ if __name__ == "__main__":
     )
 
     conv = snakemake.params.biofuel_conversion
-    LHV_fuels = {"ethanol": conv["LHV_ethanol"], "biodiesel": conv["LHV_biodiesel"]}
+    # LHV values are fixed physical constants, not parameters: JRC Technical Report doi:10.2760/69179
+    LHV_fuels = {"ethanol": 7.447, "biodiesel": 10.194}  # MWh/t (26.81 MJ/kg, 36.7 MJ/kg)
 
     biofuel_yields = {
         "MINBIOCRP11": conv["MINBIOCRP11"] * LHV_fuels["ethanol"],
