@@ -1019,14 +1019,13 @@ def add_perennials(n, costs):
     perennials_potentials_spatial = perennials_area_spatial * snakemake.config["perennials"]["potential_co2"]  # (tCO2seq)  =  (ha) * (tCO2 seq/ha)
 
     nodes = pop_layout.index
-    n.add("Carrier", "perennial")
-    n.add("Carrier", "perennial store")
+    n.add("Carrier", "co2 perennials")
 
     n.add(
        "Bus",
        nodes + " perennials co2 store",
        location=nodes,
-       carrier="perennial store",
+       carrier="co2 perennials",
        unit="t_co2",
     )
 
@@ -1048,7 +1047,7 @@ def add_perennials(n, costs):
        efficiency=1,
        efficiency2=-costs.at["perennials gbr", "electricity-input"] * perennial_CO2_seq,
        efficiency3=costs.at["perennials gbr", "biogas-output"] * perennial_CO2_seq,
-       carrier="perennial",
+       carrier="co2 perennials",
        p_nom_extendable=True,
        p_max_pu=p_max_pu,
        capital_cost=costs.at["perennials gbr", "capital_cost"] * perennial_CO2_seq,
@@ -1063,7 +1062,7 @@ def add_perennials(n, costs):
        bus=nodes + " perennials co2 store",
        e_nom_extendable=True,
        e_nom_max=perennials_potentials_spatial.values,
-       carrier="perennial store",
+       carrier="co2 perennials",
        e_cyclic=False,
     )
 
@@ -1364,16 +1363,7 @@ def add_biochar(n, costs):
 
     biochar_potentials = pd.read_csv(snakemake.input.biochar_potentials).set_index("node")
 
-    n.add("Carrier", "biochar")
     n.add("Carrier", "co2 biochar")
-
-    n.add(
-        "Bus",
-        spatial.nodes + " biochar",
-        location=spatial.nodes,
-        carrier="biochar",
-        unit="t_biochar",
-    )
 
     n.add(
         "Bus",
@@ -1402,16 +1392,6 @@ def add_biochar(n, costs):
             * snakemake.config["biochar"]["max_land_usage"]
             / snakemake.config["biochar"]["number_years"]
         ),
-    )
-
-    n.add(
-        "Link",
-        spatial.nodes + " co2 biochar",
-        bus0=spatial.nodes + " biochar",
-        bus1=spatial.nodes + " co2 biochar",
-        carrier="co2 biochar",
-        efficiency=1.0,
-        p_nom_extendable=True,
     )
 
     if len(spatial.biomass.nodes) == 1:
@@ -1462,11 +1442,11 @@ def add_biochar(n, costs):
         "Link",
         spatial.nodes + " biochar",
         bus0="co2 atmosphere",
-        bus1=spatial.nodes + " biochar",
+        bus1=spatial.nodes + " co2 biochar",
         bus2=biomass_buses,
         bus3=spatial.nodes,
         bus4=biochar_heat_buses,
-        carrier="biochar",
+        carrier="co2 biochar",
         capital_cost=costs.at["biochar pyrolysis", "capital_cost"],
         marginal_cost=costs.at["biochar pyrolysis", "VOM"],
         efficiency=1.0,
@@ -1475,29 +1455,6 @@ def add_biochar(n, costs):
         efficiency4=costs.at["biochar pyrolysis", "heat-output"],
         p_nom_extendable=True,
     )
-
-    if snakemake.config["sector"]["biochar"]["transport"]:
-        logger.info("Adding biochar transport links.")
-        transport_costs = pd.read_csv(
-            snakemake.input.biomass_transport_costs, index_col=0
-        ).squeeze()
-        biochar_transport = create_network_topology(
-            n, "biochar transport ", bidirectional=False
-        )
-        bus0_costs = biochar_transport.bus0.apply(lambda x: transport_costs[x[:2]])
-        bus1_costs = biochar_transport.bus1.apply(lambda x: transport_costs[x[:2]])
-        biochar_transport["costs"] = pd.concat([bus0_costs, bus1_costs], axis=1).mean(axis=1)
-        n.add(
-            "Link",
-            biochar_transport.index,
-            bus0=biochar_transport.bus0 + " biochar",
-            bus1=biochar_transport.bus1 + " biochar",
-            p_nom_extendable=False,
-            p_nom=5e4,
-            length=biochar_transport.length.values,
-            marginal_cost=biochar_transport.costs * biochar_transport.length.values,
-            carrier="biochar transport",
-        )
 
 
 def add_afforestation(n, costs):
