@@ -71,11 +71,11 @@ def section(title: str):
 section("1. RETRIEVE: eurostat crops + perennial yields")
 
 check_file(
-    BASE_DIR / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts2.csv",
+    SHARED_RES / "eurostat_apro_cpshr_nuts2_raw.csv",
     "Eurostat NUTS2 crops"
 )
 check_file(
-    BASE_DIR / "resources" / "eurostat_crops" / "estat_apro_cpshr_filtered_en_nuts0.csv",
+    SHARED_RES / "eurostat_apro_cpshr_nuts0_raw.csv",
     "Eurostat NUTS0 crops"
 )
 check_file(
