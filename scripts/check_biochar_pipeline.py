@@ -62,14 +62,12 @@ def section(title: str):
     print("=" * 60)
 
 
-# ── 1. BUILD: biochar CORINE potentials (build_biochar_potentials) ─────────────
-section("1. BUILD: biochar CORINE land potentials")
+# ── 1. BUILD: biochar available land (determine_CDR_availability_matrix + build_available_land) ──
+section("1. BUILD: biochar available land")
 
-biochar_csv = RES_RUN / f"biochar_potentials_s_{CLUSTERS}.csv"
-biochar_png = RES_RUN / f"biochar_potentials_s_{CLUSTERS}.png"
+biochar_csv = RES_RUN / f"biochar_available_land_s_{CLUSTERS}.csv"
 
-csv_ok = check_file(biochar_csv, f"Biochar potentials CSV  s_{CLUSTERS}")
-check_file(biochar_png, f"Biochar potentials PNG  s_{CLUSTERS}")
+csv_ok = check_file(biochar_csv, f"Biochar available land CSV  s_{CLUSTERS}")
 
 if csv_ok:
     df = pd.read_csv(biochar_csv)

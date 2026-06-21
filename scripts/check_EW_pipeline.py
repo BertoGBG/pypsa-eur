@@ -20,7 +20,6 @@ from _check_utils import parse_check_args, load_check_params
 _args = parse_check_args()
 _p    = load_check_params(_args)
 
-BASE_DIR         = _p["BASE_DIR"]
 RDIR             = _p["RDIR"]
 CLUSTERS         = _p["CLUSTERS"]
 OPTS             = _p["OPTS"]
@@ -30,6 +29,7 @@ WC               = _p["WC"]
 RES              = _p["RES"]
 RES_RUN          = _p["RES_RUN"]
 RESULTS          = _p["RESULTS"]
+CFG              = _p["cfg"]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 OK   = "  [OK]"
@@ -59,33 +59,29 @@ def section(title: str):
     print("=" * 60)
 
 
-# ── 0. INPUT DATA ──────────────────────────────────────────────────────────────
-section("0. INPUT DATA")
+# ── 1. BUILD: ERW available land (determine_ERW_availability_matrix + build_available_land) ──
+section("1. BUILD: ERW available land (CORINE + mean-temperature exclusion)")
 
-bioclimate_tif = BASE_DIR / "data" / "World_Ecological_BioVal_cluster.tif"
-check_file(bioclimate_tif, "Bioclimate TIF (World_Ecological_BioVal_cluster.tif)")
+ew_csv = RES_RUN / f"ERW_available_land_s_{CLUSTERS}.csv"
 
-# ── 1. BUILD: ERW potentials (build_EW_potentials) ─────────────────────────────
-section("1. BUILD: ERW CO2 sequestration potentials (CORINE + bioclimate)")
-
-ew_csv = RES_RUN / f"EW_potentials_s_{CLUSTERS}.csv"
-ew_png = RES_RUN / f"EW_potentials_s_{CLUSTERS}.png"
-
-ew_ok = check_file(ew_csv, f"ERW potentials CSV  s_{CLUSTERS}")
-check_file(ew_png, f"ERW potentials PNG  s_{CLUSTERS}")
+ew_ok = check_file(ew_csv, f"ERW available land CSV  s_{CLUSTERS}")
 
 if ew_ok:
     df_ew = pd.read_csv(ew_csv, index_col=0)
     print(f"        Rows: {len(df_ew)}  |  Columns: {list(df_ew.columns)}")
-    if "potential [t]" in df_ew.columns:
-        total_t  = df_ew["potential [t]"].sum()
-        total_Mt = total_t / 1e6
-        print(f"        Total ERW potential: {total_t:,.0f} t CO2  ({total_Mt:.2f} Mt CO2)")
-        print(f"        Per-node [t CO2] — min: {df_ew['potential [t]'].min():,.0f}, "
-              f"mean: {df_ew['potential [t]'].mean():,.0f}, "
-              f"max: {df_ew['potential [t]'].max():,.0f}")
+    if "potential [sqkm]" in df_ew.columns:
+        potential_per_sqkm = CFG.get("ERW", {}).get("potential_per_sqkm")
+        total_sqkm = df_ew["potential [sqkm]"].sum()
+        print(f"        Total ERW available land: {total_sqkm:,.0f} km²")
+        if potential_per_sqkm:
+            total_Mt = total_sqkm * potential_per_sqkm / 1e6
+            print(f"        Total ERW potential: {total_Mt:.2f} Mt CO2  "
+                  f"(at {potential_per_sqkm} t CO2/km²)")
+        print(f"        Per-node [km²] — min: {df_ew['potential [sqkm]'].min():,.1f}, "
+              f"mean: {df_ew['potential [sqkm]'].mean():,.1f}, "
+              f"max: {df_ew['potential [sqkm]'].max():,.1f}")
     if df_ew.isnull().any().any():
-        print(f"{WARN}  NaN values detected in ERW potentials CSV.")
+        print(f"{WARN}  NaN values detected in ERW available land CSV.")
 
 # ── 2. Pre-network (prepare_sector_network) ────────────────────────────────────
 section("2. PRE-NETWORK: sector-coupled (prepare_sector_network)")

@@ -1703,7 +1703,6 @@ rule retrieve_aCDRs_data:
         afforestation_nuts2_monthly_weights=resources("afforestation_nuts2_monthly_weights.csv"),
         eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
         eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
-        ERW_BioVal_cluster=resources("World_Ecological_BioVal_cluster.tif"),
     resources:
         mem_mb=4000,
     log:
@@ -1720,7 +1719,6 @@ rule retrieve_aCDRs_data:
                 ("outputs/afforestation/afforestation_nuts2_monthly_weights.csv", output.afforestation_nuts2_monthly_weights),
                 ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
                 ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
-                ("outputs/ERW/World_Ecological_BioVal_cluster.tif", output.ERW_BioVal_cluster),
             ]:
                 with z.open(src_path) as src, open(dest, "wb") as dst:
                     dst.write(src.read())

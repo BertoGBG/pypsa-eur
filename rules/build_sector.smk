@@ -971,42 +971,72 @@ rule build_perennial_potentials:
         scripts("build_perennials_potentials.py")
 
 
-rule build_biochar_potentials:
+rule determine_CDR_availability_matrix:
+    message:
+        "Determining availability matrix for {wildcards.clusters} clusters and {wildcards.technology} CDR technology"
     params:
-        component="biochar",
-        resolution=250,
-        corine_codes=config["biochar"]["corine"],
+        renewable=config_provider("renewable"),
+        plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
     input:
-        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
-        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
     output:
-        csv_file=resources("biochar_potentials_s_{clusters}.csv"),
-        png_file=resources("biochar_potentials_s_{clusters}.png"),
+        resources("availability_matrix_CDR_{clusters}_{technology}.nc"),
     log:
-        logs("build_biochar_potentials_s_{clusters}.log"),
+        logs("determine_CDR_availability_matrix_{clusters}_{technology}.log"),
+    wildcard_constraints:
+        technology="biochar|afforestation",
+    threads: config["atlite"].get("nprocesses", 4)
     resources:
-        mem_mb=32000,
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
     script:
-        scripts("build_corine_potentials.py")
+        scripts("determine_availability_matrix.py")
 
 
-rule build_afforestation_corine_potentials:
+rule determine_ERW_availability_matrix:
+    message:
+        "Determining availability matrix for {wildcards.clusters} clusters and ERW"
     params:
-        component="afforestation",
-        resolution=250,
-        corine_codes=config["afforestation"]["corine"],
+        renewable=config_provider("renewable"),
     input:
-        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
-        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", "ERW", "cutout")(w)
+        ),
     output:
-        csv_file=resources("afforestation_corine_potentials_s_{clusters}.csv"),
-        png_file=resources("afforestation_corine_potentials_s_{clusters}.png"),
+        resources("availability_matrix_CDR_{clusters}_ERW.nc"),
     log:
-        logs("build_afforestation_corine_potentials_s_{clusters}.log"),
+        logs("determine_ERW_availability_matrix_{clusters}.log"),
+    threads: config["atlite"].get("nprocesses", 4)
     resources:
-        mem_mb=32000,
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
     script:
-        scripts("build_corine_potentials.py")
+        scripts("determine_ERW_availability_matrix.py")
+
+
+rule build_available_land:
+    params:
+        renewable=config_provider("renewable"),
+    input:
+        availability_matrix=resources("availability_matrix_CDR_{clusters}_{technology}.nc"),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
+    output:
+        csv_file=resources("{technology}_available_land_s_{clusters}.csv"),
+    log:
+        logs("build_available_land_{clusters}_{technology}.log"),
+    wildcard_constraints:
+        technology="biochar|afforestation|ERW",
+    resources:
+        mem_mb=8000,
+    script:
+        scripts("build_available_land.py")
 
 
 rule build_afforestation_potentials:
@@ -1017,7 +1047,7 @@ rule build_afforestation_potentials:
         snapshots=config["snapshots"],
     input:
         afforestation_corine_potentials_csv_file=resources(
-            "afforestation_corine_potentials_s_{clusters}.csv"
+            "afforestation_available_land_s_{clusters}.csv"
         ),
         afforestation_nuts_file=lambda w: (
             rules.retrieve_aCDRs_data.output.afforestation_nuts_biomass_densities
@@ -1667,24 +1697,6 @@ def input_heat_source_power(w):
     }
 
 
-rule build_EW_potentials:
-    params:
-        resolution=250,
-    input:
-        corine_dataset=ancient(rules.retrieve_corine.output["tif_file"]),
-        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
-        bioclimate_dataset=ancient("data/World_Ecological_BioVal_cluster.tif"),
-    output:
-        csv_file=resources("EW_potentials_s_{clusters}.csv"),
-        png_file=resources("EW_potentials_s_{clusters}.png"),
-    log:
-        logs("build_EW_potentials_s_{clusters}.log"),
-    resources:
-        mem_mb=30000,
-    script:
-        scripts("build_EW_potentials.py")
-
-
 rule prepare_sector_network:
     message:
         "Preparing integrated sector-coupled energy network for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizon, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
@@ -1849,13 +1861,13 @@ rule prepare_sector_network:
             else []
         ),
         biochar_potentials=lambda w: (
-            resources("biochar_potentials_s_{clusters}.csv")
+            resources("biochar_available_land_s_{clusters}.csv")
             if config_provider("sector", "biochar")(w)
             else []
         ),
-        EW_potentials=lambda w: (
-            resources("EW_potentials_s_{clusters}.csv")
-            if config_provider("sector", "EW")(w)
+        ERW_potentials=lambda w: (
+            resources("ERW_available_land_s_{clusters}.csv")
+            if config_provider("sector", "ERW")(w)
             else []
         ),
         afforestation_potentials=lambda w: (

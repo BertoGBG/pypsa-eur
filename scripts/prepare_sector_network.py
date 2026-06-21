@@ -1284,9 +1284,11 @@ def add_methanol_reforming_cc(n, costs):
 def add_EW(n, costs):
     logger.info("Adding Enhanced Weathering (ERW).")
 
-    EW_potentials = pd.read_csv(snakemake.input.EW_potentials, index_col=0)
+    ERW_potentials = pd.read_csv(snakemake.input.ERW_potentials, index_col=0)
     potentials = (
-        EW_potentials["potential [t]"] * snakemake.config["ERW"]["max_land_usage"]
+        ERW_potentials["potential [sqkm]"]
+        * snakemake.config["ERW"]["potential_per_sqkm"]
+        * snakemake.config["ERW"]["max_land_usage"]
     )
 
     electricity_input = costs.at["Enhanced Weathering", "electricity-input"]
