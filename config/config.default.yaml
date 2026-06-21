@@ -866,8 +866,8 @@ sector:
   biochar:
     enable: true
     heat_output: true
-  ERW: false
-  afforestation: false
+  ERW: true
+  afforestation: true
   perennials: true
   co2_vent: false
   heat_vent:
