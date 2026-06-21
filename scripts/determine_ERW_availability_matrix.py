@@ -24,14 +24,16 @@ Output
 
 import functools
 import logging
+import os
+import tempfile
 import time
 
 import atlite
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import rasterio
 from atlite.gis import shape_availability
-from rasterio.io import MemoryFile
 from rasterio.plot import show
 
 from scripts._helpers import configure_logging, load_cutout, set_scenario_config
@@ -41,16 +43,23 @@ logger = logging.getLogger(__name__)
 
 def _mean_temperature_raster(cutout):
     """
-    Build an in-memory, georeferenced raster of the cutout's per-grid-cell
-    annual mean air temperature (Kelvin), suitable for
-    ``atlite.ExclusionContainer.add_raster``.
+    Write the cutout's per-grid-cell annual mean air temperature (Kelvin) to
+    a temporary GeoTIFF, suitable for ``atlite.ExclusionContainer.add_raster``.
+
+    A real file (not an in-memory raster) is required here: ``cutout.
+    availabilitymatrix`` asserts ``excluder.all_closed`` before parallelizing
+    across processes, i.e. every registered raster must be a path each worker
+    can (re-)open independently, not an already-open dataset handle.
     """
     mean_temp = (
         cutout.data["temperature"].mean(dim="time").transpose("y", "x").values
     ).astype("float32")
 
-    memfile = MemoryFile()
-    with memfile.open(
+    fd, path = tempfile.mkstemp(suffix=".tif")
+    os.close(fd)
+    with rasterio.open(
+        path,
+        "w",
         driver="GTiff",
         height=mean_temp.shape[0],
         width=mean_temp.shape[1],
@@ -61,7 +70,7 @@ def _mean_temperature_raster(cutout):
     ) as dataset:
         dataset.write(mean_temp, 1)
 
-    return memfile, memfile.open()
+    return path
 
 
 if __name__ == "__main__":
@@ -93,10 +102,12 @@ if __name__ == "__main__":
         snakemake.input.corine, codes=params["corine"], invert=True, crs=3035
     )
 
-    memfile, temp_raster = _mean_temperature_raster(cutout)
+    temp_raster_path = _mean_temperature_raster(cutout)
     max_mean_temp_K = params["max_mean_temp_C"] + 273.15
     excluder.add_raster(
-        temp_raster, codes=functools.partial(np.less, max_mean_temp_K), crs=cutout.crs
+        temp_raster_path,
+        codes=functools.partial(np.less, max_mean_temp_K),
+        crs=cutout.crs,
     )
 
     logger.info("Calculate landuse availability for ERW...")
@@ -120,5 +131,4 @@ if __name__ == "__main__":
 
     availability.to_netcdf(snakemake.output[0])
 
-    temp_raster.close()
-    memfile.close()
+    os.remove(temp_raster_path)
