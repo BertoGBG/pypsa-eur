@@ -704,10 +704,7 @@ plotting:
     co2 vent: '#ffd4dc'
     CO2 pipeline: '#f5627f'
     # alternative CDRs
-    perennials: '#008ffc'
-    perennial: '#008ffc'
-    perennials store: '#613700'
-    perennial store: '#613700'
+    co2 perennials: '#008ffc'
     # emissions
     process emissions CC: '#000000'
     process emissions: '#222222'
