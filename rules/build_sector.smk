@@ -971,9 +971,9 @@ rule build_perennial_potentials:
         scripts("build_perennials_potentials.py")
 
 
-rule determine_CDR_availability_matrix:
+rule determine_carbon_dioxide_removal_availability_matrix:
     message:
-        "Determining availability matrix for {wildcards.clusters} clusters and {wildcards.technology} CDR technology"
+        "Determining availability matrix for {wildcards.clusters} clusters and {wildcards.technology} carbon dioxide removal technology"
     params:
         renewable=config_provider("renewable"),
         plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
@@ -984,9 +984,9 @@ rule determine_CDR_availability_matrix:
             w, config_provider("renewable", w.technology, "cutout")(w)
         ),
     output:
-        resources("availability_matrix_CDR_{clusters}_{technology}.nc"),
+        resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
     log:
-        logs("determine_CDR_availability_matrix_{clusters}_{technology}.log"),
+        logs("determine_carbon_dioxide_removal_availability_matrix_{clusters}_{technology}.log"),
     wildcard_constraints:
         technology="biochar|afforestation",
     threads: config["atlite"].get("nprocesses", 4)
@@ -996,33 +996,33 @@ rule determine_CDR_availability_matrix:
         scripts("determine_availability_matrix.py")
 
 
-rule determine_ERW_availability_matrix:
+rule determine_rock_weathering_availability_matrix:
     message:
-        "Determining availability matrix for {wildcards.clusters} clusters and ERW"
+        "Determining availability matrix for {wildcards.clusters} clusters and rock weathering"
     params:
         renewable=config_provider("renewable"),
     input:
         corine=ancient(rules.retrieve_corine.output["tif_file"]),
         regions=resources("regions_onshore_base_s_{clusters}.geojson"),
         cutout=lambda w: input_cutout(
-            w, config_provider("renewable", "ERW", "cutout")(w)
+            w, config_provider("renewable", "rock_weathering", "cutout")(w)
         ),
     output:
-        resources("availability_matrix_CDR_{clusters}_ERW.nc"),
+        resources("availability_matrix_carbon_dioxide_removal_{clusters}_rock_weathering.nc"),
     log:
-        logs("determine_ERW_availability_matrix_{clusters}.log"),
+        logs("determine_rock_weathering_availability_matrix_{clusters}.log"),
     threads: config["atlite"].get("nprocesses", 4)
     resources:
         mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
     script:
-        scripts("determine_ERW_availability_matrix.py")
+        scripts("determine_rock_weathering_availability_matrix.py")
 
 
 rule build_available_land:
     params:
         renewable=config_provider("renewable"),
     input:
-        availability_matrix=resources("availability_matrix_CDR_{clusters}_{technology}.nc"),
+        availability_matrix=resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
         regions=resources("regions_onshore_base_s_{clusters}.geojson"),
         cutout=lambda w: input_cutout(
             w, config_provider("renewable", w.technology, "cutout")(w)
@@ -1032,7 +1032,7 @@ rule build_available_land:
     log:
         logs("build_available_land_{clusters}_{technology}.log"),
     wildcard_constraints:
-        technology="biochar|afforestation|ERW",
+        technology="biochar|afforestation|rock_weathering",
     resources:
         mem_mb=8000,
     script:
@@ -1865,9 +1865,9 @@ rule prepare_sector_network:
             if config_provider("sector", "biochar")(w)
             else []
         ),
-        ERW_potentials=lambda w: (
-            resources("ERW_available_land_s_{clusters}.csv")
-            if config_provider("sector", "ERW")(w)
+        rock_weathering_potentials=lambda w: (
+            resources("rock_weathering_available_land_s_{clusters}.csv")
+            if config_provider("sector", "rock_weathering")(w)
             else []
         ),
         afforestation_potentials=lambda w: (

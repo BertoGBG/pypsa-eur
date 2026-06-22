@@ -62,7 +62,7 @@ def section(title: str):
     print("=" * 60)
 
 
-# ── 1. BUILD: biochar available land (determine_CDR_availability_matrix + build_available_land) ──
+# ── 1. BUILD: biochar available land (determine_carbon_dioxide_removal_availability_matrix + build_available_land) ──
 section("1. BUILD: biochar available land")
 
 biochar_csv = RES_RUN / f"biochar_available_land_s_{CLUSTERS}.csv"

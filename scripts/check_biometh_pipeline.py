@@ -9,8 +9,8 @@ Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
     --config PATH    (direct path to a saved config YAML)
 
-Note: biomethanation has no separate potential calculation step (unlike biochar/ERW/
-afforestation). The two technologies added are:
+Note: biomethanation has no separate potential calculation step (unlike biochar/
+rock_weathering/afforestation). The two technologies added are:
   - biomethanation biogas  (H2 + biogas -> biomethane, in add_biomass)
   - biomethanation CO2     (H2 + CO2   -> biomethane, in add_power_to_gas)
 """

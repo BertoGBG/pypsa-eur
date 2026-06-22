@@ -83,7 +83,7 @@ else:
     weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"         # from retrieve_aCDRs_data output
     check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
 
-# ── 2. Available land (determine_CDR_availability_matrix + build_available_land) ──
+# ── 2. Available land (determine_carbon_dioxide_removal_availability_matrix + build_available_land) ──
 section("2. BUILD: CORINE afforestation land area")
 
 corine_csv = RES_RUN / f"afforestation_available_land_s_{CLUSTERS}.csv"

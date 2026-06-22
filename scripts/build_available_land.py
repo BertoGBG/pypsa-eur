@@ -3,20 +3,21 @@
 # SPDX-License-Identifier: MIT
 """
 Aggregate a per-bus land-eligibility availability matrix (as produced by
-``determine_availability_matrix.py`` / ``determine_ERW_availability_matrix.py``)
+``determine_availability_matrix.py`` / ``determine_rock_weathering_availability_matrix.py``)
 into eligible land area per network node, in km².
 
-Shared by biochar, afforestation and ERW: the per-bus fractional eligibility
-(0-1 per cutout grid cell) is multiplied by the cutout grid cell area and
-summed per bus, recovering the same eligible-area-in-km² number the previous
-per-technology scripts (``build_corine_potentials.py``, ``build_EW_potentials.py``)
-each computed independently via ``atlite.gis.shape_availability``.
+Shared by biochar, afforestation and rock weathering: the per-bus fractional
+eligibility (0-1 per cutout grid cell) is multiplied by the cutout grid cell
+area and summed per bus, recovering the same eligible-area-in-km² number the
+previous per-technology scripts (``build_corine_potentials.py``,
+``build_EW_potentials.py``) each computed independently via
+``atlite.gis.shape_availability``.
 
 Output: CSV with columns ``area [sqkm]`` (total node area) and
 ``potential [sqkm]`` (eligible area after exclusions), indexed by node name.
 The downstream consumers (``add_biochar``, ``build_afforestation_potentials``,
-``add_EW``) apply their own technology-specific rate (t/km², growth rate,
-etc.) to the ``potential [sqkm]`` column.
+``add_rock_weathering``) apply their own technology-specific rate (t/km²,
+growth rate, etc.) to the ``potential [sqkm]`` column.
 """
 
 import logging

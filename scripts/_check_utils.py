@@ -1,5 +1,5 @@
 """
-Shared utilities for CDR pipeline check scripts.
+Shared utilities for carbon dioxide removal pipeline check scripts.
 
 Loads run parameters from the saved pypsa-eur config so check scripts need
 only a single input: the run name.
@@ -77,10 +77,10 @@ def load_config(args: argparse.Namespace, base_dir: Path = BASE_DIR) -> tuple:
 
 def parse_check_args(extra_args=None) -> argparse.Namespace:
     """
-    Common CLI parser for all CDR check scripts.
+    Common CLI parser for all carbon dioxide removal check scripts.
 
     Positional:
-      run_name     Run directory name (e.g. EW_2050). Script finds the saved
+      run_name     Run directory name (e.g. rock_weathering_2050). Script finds the saved
                    config under results/<run_name>/**/configs/ automatically.
 
     Optional overrides (take precedence over config values):
@@ -95,7 +95,7 @@ def parse_check_args(extra_args=None) -> argparse.Namespace:
     extra_args: list of ([flags], kwargs) for script-specific arguments.
     """
     p = argparse.ArgumentParser(
-        description="CDR pipeline check — reads wildcards from the saved run config.",
+        description="Carbon dioxide removal pipeline check — reads wildcards from the saved run config.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(

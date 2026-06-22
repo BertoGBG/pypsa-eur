@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-Post-processing redistribution for afforestation CDR links/stores.
+Post-processing redistribution for afforestation carbon dioxide removal links/stores.
 
 When afforestation is solved in 'free_mode' (fixed p_nom = peak rate,
 p_min_pu=0), the LP solver freely distributes the annual CO₂ removal

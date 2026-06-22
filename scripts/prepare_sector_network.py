@@ -1281,46 +1281,48 @@ def add_methanol_reforming_cc(n, costs):
     )
 
 
-def add_EW(n, costs):
-    logger.info("Adding Enhanced Weathering (ERW).")
+def add_rock_weathering(n, costs):
+    logger.info("Adding enhanced rock weathering (rock_weathering).")
 
-    ERW_potentials = pd.read_csv(snakemake.input.ERW_potentials, index_col=0)
+    rock_weathering_potentials = pd.read_csv(
+        snakemake.input.rock_weathering_potentials, index_col=0
+    )
     potentials = (
-        ERW_potentials["potential [sqkm]"]
-        * snakemake.config["ERW"]["potential_per_sqkm"]
-        * snakemake.config["ERW"]["max_land_usage"]
+        rock_weathering_potentials["potential [sqkm]"]
+        * snakemake.config["rock_weathering"]["potential_per_sqkm"]
+        * snakemake.config["rock_weathering"]["max_land_usage"]
     )
 
     electricity_input = costs.at["Enhanced Weathering", "electricity-input"]
 
-    n.add("Carrier", "ERW")
-    n.add("Carrier", "ERW store")
+    n.add("Carrier", "rock_weathering")
+    n.add("Carrier", "rock_weathering store")
 
     n.add(
         "Bus",
-        spatial.nodes + " ERW co2 store",
+        spatial.nodes + " rock_weathering co2 store",
         location=spatial.nodes,
-        carrier="ERW",
+        carrier="rock_weathering",
         unit="t_co2",
     )
 
     n.add(
         "Store",
         spatial.nodes,
-        suffix=" ERW co2 store",
-        bus=spatial.nodes + " ERW co2 store",
+        suffix=" rock_weathering co2 store",
+        bus=spatial.nodes + " rock_weathering co2 store",
         e_nom=potentials,
-        carrier="ERW store",
+        carrier="rock_weathering store",
     )
 
     n.add(
         "Link",
         spatial.nodes,
-        suffix=" ERW",
+        suffix=" rock_weathering",
         bus0=spatial.nodes.values,
         bus1="co2 atmosphere",
-        bus2=spatial.nodes + " ERW co2 store",
-        carrier="ERW",
+        bus2=spatial.nodes + " rock_weathering co2 store",
+        carrier="rock_weathering",
         marginal_cost=costs.at["Enhanced Weathering", "VOM"] / electricity_input,
         efficiency=-1 / electricity_input,
         efficiency2=1 / electricity_input,
@@ -1389,7 +1391,6 @@ def add_biochar(n, costs):
         e_nom_max=(
             biochar_potentials["potential [sqkm]"].values
             * co2_per_tonne
-            * snakemake.config["biochar"]["co2_per_tonne_multiplier"]
             * snakemake.config["biochar"]["potential_per_sqkm"]
             * snakemake.config["biochar"]["max_land_usage"]
             / snakemake.config["biochar"]["number_years"]
@@ -6883,8 +6884,8 @@ if __name__ == "__main__":
     if options.get("biochar", {}).get("enable"):
         add_biochar(n, costs)
 
-    if options.get("ERW"):
-        add_EW(n, costs)
+    if options.get("rock_weathering"):
+        add_rock_weathering(n, costs)
 
     if options.get("afforestation"):
         add_afforestation(n, costs)

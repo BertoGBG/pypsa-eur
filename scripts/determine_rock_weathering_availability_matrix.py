@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Land eligibility analysis for Enhanced Rock Weathering (ERW), reusing the
+Land eligibility analysis for enhanced rock weathering, reusing the
 same `atlite <https://github.com/pypsa/atlite>`_ `ExclusionContainer`
 machinery as ``determine_availability_matrix.py`` (used for wind/solar), with
 two differences:
 
 - Only CORINE Land Cover grid-code exclusion is applied (no Natura2000,
   LUISA, bathymetry, shipping, or shore-distance exclusions, none of which
-  are relevant to land-based ERW).
+  are relevant to land-based rock weathering).
 - An additional exclusion removes grid cells whose annual mean air
   temperature (from the atlite cutout) exceeds ``max_mean_temp_C``, replacing
   the previous CORINE+bioclimate-zone "hot"/"temperate" subclass split.
@@ -17,8 +17,8 @@ two differences:
 Output
 ------
 
-- ``resources/availability_matrix_{clusters}_ERW.nc``: same format as
-  ``determine_availability_matrix.py``'s output, consumed by
+- ``resources/availability_matrix_carbon_dioxide_removal_{clusters}_rock_weathering.nc``:
+  same format as ``determine_availability_matrix.py``'s output, consumed by
   ``build_available_land.py``.
 """
 
@@ -77,20 +77,22 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from scripts._helpers import mock_snakemake
 
-        snakemake = mock_snakemake("determine_ERW_availability_matrix", clusters="adm")
+        snakemake = mock_snakemake(
+            "determine_rock_weathering_availability_matrix", clusters="adm"
+        )
     configure_logging(snakemake)
     set_scenario_config(snakemake)
 
     nprocesses = int(snakemake.threads)
     noprogress = snakemake.config["run"].get("disable_progressbar", True)
     noprogress = noprogress or not snakemake.config["atlite"]["show_progress"]
-    params = snakemake.params.renewable["ERW"]
+    params = snakemake.params.renewable["rock_weathering"]
 
     cutout = load_cutout(snakemake.input.cutout)
     regions = gpd.read_file(snakemake.input.regions)
     assert not regions.empty, (
         f"List of regions in {snakemake.input.regions} is empty, please "
-        "disable ERW"
+        "disable rock_weathering"
     )
     # do not pull up, set_index does not work if geo dataframe is empty
     regions = regions.set_index("name").rename_axis("bus")
@@ -110,17 +112,19 @@ if __name__ == "__main__":
         crs=cutout.crs,
     )
 
-    logger.info("Calculate landuse availability for ERW...")
+    logger.info("Calculate landuse availability for rock weathering...")
     start = time.time()
 
     kwargs = dict(nprocesses=nprocesses, disable_progressbar=noprogress)
     availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
 
     duration = time.time() - start
-    logger.info(f"Completed landuse availability calculation for ERW ({duration:2.2f}s)")
+    logger.info(
+        f"Completed landuse availability calculation for rock weathering ({duration:2.2f}s)"
+    )
 
     if params.get("plot_availability_matrix", False):
-        logger.info("Plotting landuse availability matrix for ERW.")
+        logger.info("Plotting landuse availability matrix for rock weathering.")
         band, transform = shape_availability(
             regions.geometry.to_crs(excluder.crs), excluder
         )

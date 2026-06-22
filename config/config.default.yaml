@@ -404,8 +404,9 @@ renewable:
     natura: true
     excluder_resolution: 100
     clip_p_max_pu: 0.01
-  # land-eligibility settings for alternative CDRs, feeding determine_availability_matrix.py
-  # (or determine_ERW_availability_matrix.py for ERW) the same way onwind/solar do above
+  # land-eligibility settings for alternative carbon dioxide removal technologies,
+  # feeding determine_availability_matrix.py (or determine_rock_weathering_availability_matrix.py
+  # for rock weathering) the same way onwind/solar do above
   biochar:
     corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
     natura: false
@@ -416,12 +417,12 @@ renewable:
     natura: false
     cutout: default
     excluder_resolution: 250
-  ERW:
+  rock_weathering:
     corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
     natura: false
     cutout: default
     excluder_resolution: 250
-    max_mean_temp_C: 10 # exclude grid cells with annual mean air temperature above this (replaces EW_hot/EW_temperate bioclimate split)
+    max_mean_temp_C: 10 # exclude grid cells with annual mean air temperature above this
   hydro:
     cutout: default
     carriers:
@@ -437,7 +438,7 @@ renewable:
     eia_correct_by_capacity: false
     eia_approximate_missing: false
 
-# alternative CDRs
+# alternative carbon dioxide removal technologies
 perennials:
   potential_co2: 2 # tCO2e/(ha y) sequestered
   biofuel_conversion:     # Biofuel conversion factors from JRC Technical Report doi:10.2760/69179
@@ -866,7 +867,7 @@ sector:
   biochar:
     enable: true
     heat_output: true
-  ERW: true
+  rock_weathering: true
   afforestation: true
   perennials: true
   co2_vent: false
@@ -1100,13 +1101,12 @@ industry:
 
 biochar:
   potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
-  co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
   number_years: 25 # aortisation period (years) for biochar CO2 storage
 
-ERW:
+rock_weathering:
   potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate-only rate; hot climate is ~1% of eligible EU area, dropped)
-  max_land_usage: 0.2 # maximum fraction of suitable area used for ERW
+  max_land_usage: 0.2 # maximum fraction of suitable area used for rock weathering
 
 afforestation:
   potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
