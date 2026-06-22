@@ -180,7 +180,16 @@ if opt_ok:
             print(perenn_stores[cols].to_string(index=True))
             if "e_nom_opt" in perenn_stores.columns:
                 active = perenn_stores[perenn_stores["e_nom_opt"] > 0]
+                total = perenn_stores["e_nom_opt"].sum()
                 print(f"\n  Stores with e_nom_opt > 0: {len(active)}")
+                print(f"  Total e_nom_opt: {total:,.0f} tCO2  ({total / 1e6:.3f} MtCO2)")
+                if active.empty:
+                    print(f"{WARN}  All perennial stores have e_nom_opt = 0 (not deployed).")
+                else:
+                    print(f"\n  Per-node e_nom_opt [tCO2] stats:")
+                    print(f"    min:  {perenn_stores['e_nom_opt'].min():,.0f}")
+                    print(f"    mean: {perenn_stores['e_nom_opt'].mean():,.0f}")
+                    print(f"    max:  {perenn_stores['e_nom_opt'].max():,.0f}")
 
         if perenn_links.empty and perenn_stores.empty:
             print(f"\n{WARN}  No perennial components in optimal network!")
