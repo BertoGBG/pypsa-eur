@@ -943,8 +943,8 @@ rule build_perennials_yields_nuts_file:
         biofuel_conversion=config_provider("perennials", "biofuel_conversion"),
     input:
         nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
-        crops_nuts2=rules.retrieve_aCDRs_data.output.eurostat_crops_nuts2,
-        crops_nuts0=rules.retrieve_aCDRs_data.output.eurostat_crops_nuts0,
+        crops_nuts2=rules.retrieve_co2_removal_data.output.eurostat_crops_nuts2,
+        crops_nuts0=rules.retrieve_co2_removal_data.output.eurostat_crops_nuts0,
     output:
         yields_all=resources("perennials_yields_1G_biofuels.csv"),
     log:
@@ -1050,14 +1050,14 @@ rule build_afforestation_potentials:
             "afforestation_available_land_s_{clusters}.csv"
         ),
         afforestation_nuts_file=lambda w: (
-            rules.retrieve_aCDRs_data.output.afforestation_nuts_biomass_densities
+            rules.retrieve_co2_removal_data.output.afforestation_nuts_biomass_densities
             if config["afforestation"]["potential_type"] == "density"
-            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_afforestation_rates
+            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_afforestation_rates
         ),
         afforestation_monthly_weights_file=lambda w: (
             []
             if config["afforestation"]["potential_type"] == "density"
-            else rules.retrieve_aCDRs_data.output.afforestation_nuts2_monthly_weights
+            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_monthly_weights
         ),
     output:
         csv_file=resources("afforestation_potentials_s_{clusters}.csv"),

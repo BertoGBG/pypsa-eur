@@ -1003,6 +1003,46 @@ def add_allam_gas(
 
 
 def add_perennials(n, costs):
+    """
+    Add perennialisation (CDR via 1st-generation biofuel cropland conversion)
+    to the network as Bus, Store, and Link components.
+
+    Perennial grasses sequester more soil carbon than the annual 1st-generation
+    (1G) biofuel crops (cereals, sugar beet, rapeseed) they replace. The land
+    area available for conversion at each node is backed out from the biomass
+    potential already allocated to 1G biofuels (``biomass_potentials``,
+    MWh/y) divided by the 1G crop yield (MWh/ha/y) at that node, giving a
+    displaced area in ha; multiplying by a fixed CO2 sequestration rate per
+    hectare (``perennials.potential_co2``) gives the store's CO2 potential.
+    A single "co2 perennials" Link models the harvesting process: CO2 drawn
+    from the atmosphere (bus0) is converted into biogas (bus3) and stored CO2
+    (bus1), with capacity restricted to the April-October harvesting season
+    via ``p_max_pu``.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain a
+        'perennials gbr' entry with 'electricity-input', 'biogas-output',
+        'capital_cost', 'VOM', and 'lifetime' parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the perennials Bus,
+        Store, and Link
+
+    Notes
+    -----
+    Reads ``snakemake.input.biomass_potentials`` and
+    ``snakemake.input.perennials_yields_1G_biofuels`` (NUTS2-derived crop
+    yields aggregated to clustered network regions, see
+    ``build_perennials_crop_yields_nuts2.py`` and
+    ``build_perennials_potentials.py``), and
+    ``snakemake.config["perennials"]["potential_co2"]``.
+    """
 
     logger.info("Adding perennials.")
 
@@ -1282,6 +1322,41 @@ def add_methanol_reforming_cc(n, costs):
 
 
 def add_rock_weathering(n, costs):
+    """
+    Add enhanced rock weathering (CDR via accelerated mineral carbonation)
+    to the network as Bus, Store, and Link components, all sharing a single
+    "co2 rock weathering" carrier.
+
+    A single Link per node draws electricity and CO2 from the atmosphere
+    (bus1) and deposits it into a fixed-capacity Store (bus2) representing
+    the cumulative mineral-carbonation potential at that node. The store's
+    capacity is dimensioned from the eligible land area (CORINE land cover,
+    filtered by an annual-mean-temperature threshold; see
+    ``determine_rock_weathering_availability_matrix.py`` and
+    ``build_available_land.py``) multiplied by a per-km2 CO2 removal rate.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain an
+        'Enhanced Weathering' entry with 'electricity-input', 'VOM', and
+        'lifetime' parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the rock weathering
+        Bus, Store, and Link
+
+    Notes
+    -----
+    Reads ``snakemake.input.rock_weathering_potentials`` (eligible area in
+    km2 per node) and
+    ``snakemake.config["rock_weathering"]["co2_removal_per_sqkm"]`` /
+    ``["max_land_usage"]``.
+    """
     logger.info("Adding enhanced rock weathering (rock_weathering).")
 
     rock_weathering_potentials = pd.read_csv(
@@ -1362,6 +1437,45 @@ def add_dac(n, costs):
 
 
 def add_biochar(n, costs):
+    """
+    Add biochar (CDR via biomass pyrolysis and stable-carbon soil storage)
+    to the network as Bus, Store, and Link components, all sharing a single
+    "co2 biochar" carrier; optionally exports pyrolysis waste heat to urban
+    central heating.
+
+    A single pyrolysis Link per node converts solid biomass (bus2) and
+    electricity (bus3) into stored biochar-carbon (bus1, drawn from the
+    atmosphere via bus0) and, if enabled, district heat (bus4, with an
+    overflow Store for heat that cannot be absorbed by the local heat
+    network). The store's capacity is dimensioned from the eligible CORINE
+    land area (see ``determine_availability_matrix.py`` and
+    ``build_available_land.py``) multiplied by a per-km2 application rate
+    and the stable-carbon fraction (``co2_per_tonne``), amortised over an
+    assumed storage horizon.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain a
+        'biochar pyrolysis' entry with 'biomass-input', 'yield-biochar',
+        'electricity-input', 'heat-output', 'capital_cost', and 'VOM'
+        parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the biochar Bus,
+        Store, and Link (and, if enabled, heat-output Bus/Link/Store)
+
+    Notes
+    -----
+    Reads ``snakemake.input.biochar_potentials`` (eligible area in km2 per
+    node) and ``snakemake.config["biochar"]["application_per_sqkm"]`` /
+    ``["max_land_usage"]`` / ``["number_years"]``. Heat output is gated by
+    ``sector.heating`` and ``sector.biochar.heat_output``.
+    """
     logger.info("Adding biochar.")
 
     biochar_potentials = pd.read_csv(snakemake.input.biochar_potentials).set_index("node")
@@ -1460,6 +1574,55 @@ def add_biochar(n, costs):
 
 
 def add_afforestation(n, costs):
+    """
+    Add afforestation (CDR via new forest growth) to the network as Bus,
+    Store, and Link components, all sharing a single "co2 afforestation"
+    carrier.
+
+    A single Link per node draws CO2 from the atmosphere (bus0) into a
+    growing-stock Store (bus1); the link's efficiency applies the EU CRCF
+    net/gross credit discount (``crcf_efficiency``) to convert physical
+    sequestration into creditable removals. Two alternative potential/cost
+    methodologies are supported via ``afforestation.potential_type``:
+
+    - ``"density"``: potential and capital cost derived from NUTS0 biomass
+      density (above-ground biomass over a fixed assumed lifetime).
+    - ``"growth"``: potential and capital cost derived from NUTS2
+      rotation-averaged Mean Annual Increment (MAI) and rotation age (Pilli
+      et al. forest-growth tables), with dispatch following a precomputed
+      monthly seasonal profile (FluxCom GPP-derived).
+
+    Both methodologies can additionally run in ``afforestation.free_mode``:
+    ``p_nom`` is fixed to the peak physical rate and dispatch is left
+    unconstrained (``p_min_pu=0``) instead of following the seasonal/uniform
+    profile exactly; ``redistribute_afforestation_seasonal()``
+    (``afforestation_postprocess.py``) must then be called before any
+    temporal plotting to remap the free dispatch back onto the biological
+    seasonal profile.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain an
+        'Afforestation' entry with 'investment', 'FOM', and 'lifetime'
+        parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the afforestation
+        Bus, Store, and Link
+
+    Notes
+    -----
+    Reads ``snakemake.input.afforestation_potentials`` (from
+    ``build_afforestation_potentials.py``) and, in growth mode,
+    ``snakemake.input.afforestation_seasonal_profile``. Config keys:
+    ``afforestation.potential_type``, ``co2_per_tonne``, ``max_land_usage``,
+    ``crcf_efficiency``, ``use_discount_rate``, ``free_mode``.
+    """
     logger.info("Adding afforestation.")
 
     afforestation_potentials = pd.read_csv(

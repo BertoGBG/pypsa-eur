@@ -1361,6 +1361,9 @@ data:
   instrat_co2_prices:
     source: primary
     version: latest
+  co2_removal_data:
+    source: primary
+    version: latest
   co2stop:
     source: archive
     version: latest

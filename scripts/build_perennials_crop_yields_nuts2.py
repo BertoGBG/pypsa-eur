@@ -133,7 +133,6 @@ def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, b
     df_crops["OBS_VALUE"] = df_crops["OBS_VALUE"].fillna(0)
 
     # Step 1: Filter to relevant rows for 2023 and strucpro of interest
-    # Keep only relevant structure and crops (all years)
     df_sub = df_crops[
         (df_crops["strucpro"].isin(["AR", "PR_HU_EU"])) & (df_crops["crops"].isin(crops_sel))
     ][["crops", "geo", "TIME_PERIOD", "strucpro", "OBS_VALUE"]]

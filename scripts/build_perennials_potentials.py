@@ -2,8 +2,26 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Compute conversion factor from 1G biofuels (MWh/y) to perennials (tDM/y) potentials for each clustered model region
-using data from JRC ENSPRESO.
+Reproject NUTS2-level 1st-generation (1G) biofuel and perennial crop yields
+(from ``build_perennials_crop_yields_nuts2.py``) onto the clustered network
+regions, for use by ``add_perennials()`` in ``prepare_sector_network.py``.
+
+NUTS2 yields (MWh/ha/y for 1G biofuels, t/ha/y for perennials) are mapped to
+clustered regions via an area-weighted overlay (NUTS2 geometries intersected
+with cluster region geometries, weighted by intersection area); NUTS2
+regions not covered by Eurostat data (non-EU countries, small islands,
+city-states) are first filled from the nearest valid NUTS2 centroid.
+Resulting columns are then grouped into biomass classes
+(``resolve_biomass_classes()``) to match the class structure used by
+``build_biomass_potentials.py``.
+
+``add_perennials()`` later combines this script's clustered-region 1G yields
+with the ENSPRESO 1G biomass potential (MWh/y) to back out the land area
+available for conversion to perennial grasses, and converts that area into a
+CO2 sequestration potential via ``perennials.potential_co2`` (tCO2/ha/y).
+
+Outputs a single CSV with one column per crop class (cereals, sugar beet,
+rapeseed, perennials) indexed by clustered region name.
 """
 
 import logging

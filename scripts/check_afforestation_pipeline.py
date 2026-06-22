@@ -78,9 +78,9 @@ if POTENTIAL_TYPE == "density":
     nuts_file = RES_RUN / "afforestation_nuts_biomass_densities.xlsx"
     check_file(nuts_file, "NUTS0 biomass densities (Excel, density mode)")
 else:
-    nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"   # from retrieve_aCDRs_data output
+    nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"   # from retrieve_co2_removal_data output
     check_file(nuts_file, "NUTS2 growth rates (CSV, growth mode)")
-    weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"         # from retrieve_aCDRs_data output
+    weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"         # from retrieve_co2_removal_data output
     check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
 
 # ── 2. Available land (determine_carbon_dioxide_removal_availability_matrix + build_available_land) ──
