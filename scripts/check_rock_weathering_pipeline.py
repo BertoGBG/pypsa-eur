@@ -70,13 +70,13 @@ if rw_ok:
     df_rw = pd.read_csv(rw_csv, index_col=0)
     print(f"        Rows: {len(df_rw)}  |  Columns: {list(df_rw.columns)}")
     if "potential [sqkm]" in df_rw.columns:
-        potential_per_sqkm = CFG.get("rock_weathering", {}).get("potential_per_sqkm")
+        removal_per_sqkm = CFG.get("rock_weathering", {}).get("co2_removal_per_sqkm")
         total_sqkm = df_rw["potential [sqkm]"].sum()
         print(f"        Total rock weathering available land: {total_sqkm:,.0f} km²")
-        if potential_per_sqkm:
-            total_Mt = total_sqkm * potential_per_sqkm / 1e6
+        if removal_per_sqkm:
+            total_Mt = total_sqkm * removal_per_sqkm / 1e6
             print(f"        Total rock weathering potential: {total_Mt:.2f} Mt CO2  "
-                  f"(at {potential_per_sqkm} t CO2/km²)")
+                  f"(at {removal_per_sqkm} t CO2/km²)")
         print(f"        Per-node [km²] — min: {df_rw['potential [sqkm]'].min():,.1f}, "
               f"mean: {df_rw['potential [sqkm]'].mean():,.1f}, "
               f"max: {df_rw['potential [sqkm]'].max():,.1f}")
@@ -96,53 +96,52 @@ if prenet_ok:
         n = pypsa.Network(str(prenet_path))
 
         # --- Carriers ---
-        rw_carriers = [c for c in n.carriers.index if "rock_weathering" in c.lower()]
-        print(f"\n  Carriers with 'rock_weathering': {rw_carriers}")
-        for expected_carrier in ["rock_weathering", "rock_weathering store"]:
-            if expected_carrier in n.carriers.index:
-                print(f"    {OK}  Carrier '{expected_carrier}' present.")
-            else:
-                print(f"    {WARN}  Carrier '{expected_carrier}' NOT found!")
+        rw_carriers = [c for c in n.carriers.index if "rock weathering" in c.lower()]
+        print(f"\n  Carriers with 'rock weathering': {rw_carriers}")
+        if "co2 rock weathering" in n.carriers.index:
+            print(f"    {OK}  Carrier 'co2 rock weathering' present.")
+        else:
+            print(f"    {WARN}  Carrier 'co2 rock weathering' NOT found!")
 
         # --- Buses ---
-        rw_buses = n.buses[n.buses.carrier.str.contains("rock_weathering", case=True, na=False)]
-        print(f"\n  Buses (carrier contains 'rock_weathering'): {len(rw_buses)}")
+        rw_buses = n.buses[n.buses.carrier.str.contains("rock weathering", case=False, na=False)]
+        print(f"\n  Buses (carrier contains 'rock weathering'): {len(rw_buses)}")
         if not rw_buses.empty:
             print(f"    Carriers present: {rw_buses['carrier'].unique().tolist()}")
             cols = [c for c in ["location", "carrier", "unit"] if c in rw_buses.columns]
             print(rw_buses[cols].head(5).to_string())
         if len(rw_buses) != int(CLUSTERS):
-            print(f"    {WARN}  Expected ~{CLUSTERS} rock_weathering buses, found {len(rw_buses)}")
+            print(f"    {WARN}  Expected ~{CLUSTERS} rock weathering buses, found {len(rw_buses)}")
 
-        # --- Links ---
-        rw_links = n.links[n.links.carrier.str.contains("rock_weathering", case=True, na=False)]
-        print(f"\n  Links (carrier contains 'rock_weathering'): {len(rw_links)}")
-        if not rw_links.empty:
+        # --- Links (co2 rock weathering only) ---
+        co2_rw_links = n.links[n.links.carrier == "co2 rock weathering"]
+        print(f"\n  Links (carrier == 'co2 rock weathering'): {len(co2_rw_links)}")
+        if not co2_rw_links.empty:
             cols = [c for c in ["bus0", "bus1", "bus2", "carrier",
                                  "p_nom_extendable", "efficiency", "efficiency2",
-                                 "marginal_cost"] if c in rw_links.columns]
-            print(rw_links[cols].head(10).to_string())
-            if "p_nom_extendable" in rw_links.columns:
-                if not rw_links["p_nom_extendable"].all():
-                    print(f"    {WARN}  Some rock_weathering links are NOT extendable — check add_rock_weathering()!")
-            # check bus2 points to rock_weathering co2 store
-            if "bus2" in rw_links.columns:
-                wrong_bus2 = rw_links[~rw_links["bus2"].str.contains("rock_weathering co2 store", na=False)]
+                                 "marginal_cost"] if c in co2_rw_links.columns]
+            print(co2_rw_links[cols].head(10).to_string())
+            if "p_nom_extendable" in co2_rw_links.columns:
+                if not co2_rw_links["p_nom_extendable"].all():
+                    print(f"    {WARN}  Some rock weathering links are NOT extendable — check add_rock_weathering()!")
+            # check bus2 points to the co2 rock weathering bus
+            if "bus2" in co2_rw_links.columns:
+                wrong_bus2 = co2_rw_links[~co2_rw_links["bus2"].str.contains("co2 rock weathering", na=False)]
                 if not wrong_bus2.empty:
-                    print(f"    {WARN}  Some rock_weathering links have unexpected bus2: {wrong_bus2['bus2'].tolist()}")
+                    print(f"    {WARN}  Some rock weathering links have unexpected bus2: {wrong_bus2['bus2'].tolist()}")
 
-        # --- Stores ---
-        rw_stores = n.stores[n.stores.carrier.str.contains("rock_weathering", case=True, na=False)]
-        print(f"\n  Stores (carrier contains 'rock_weathering'): {len(rw_stores)}")
-        if not rw_stores.empty:
-            cols = [c for c in ["bus", "carrier", "e_nom", "e_nom_extendable"] if c in rw_stores.columns]
-            print(rw_stores[cols].head(10).to_string())
-            if "e_nom" in rw_stores.columns:
-                total_enoms = rw_stores["e_nom"].sum()
+        # --- Stores (co2 rock weathering only) ---
+        co2_rw_stores = n.stores[n.stores.carrier == "co2 rock weathering"]
+        print(f"\n  Stores (carrier == 'co2 rock weathering'): {len(co2_rw_stores)}")
+        if not co2_rw_stores.empty:
+            cols = [c for c in ["bus", "carrier", "e_nom", "e_nom_extendable"] if c in co2_rw_stores.columns]
+            print(co2_rw_stores[cols].head(10).to_string())
+            if "e_nom" in co2_rw_stores.columns:
+                total_enoms = co2_rw_stores["e_nom"].sum()
                 print(f"\n    e_nom [t CO2] — "
-                      f"min: {rw_stores['e_nom'].min():,.0f}, "
-                      f"mean: {rw_stores['e_nom'].mean():,.0f}, "
-                      f"max: {rw_stores['e_nom'].max():,.0f}")
+                      f"min: {co2_rw_stores['e_nom'].min():,.0f}, "
+                      f"mean: {co2_rw_stores['e_nom'].mean():,.0f}, "
+                      f"max: {co2_rw_stores['e_nom'].max():,.0f}")
                 print(f"    Total e_nom: {total_enoms:,.0f} t CO2  ({total_enoms/1e6:.2f} Mt CO2)")
                 # cross-check against rock weathering potentials CSV
                 if rw_ok and "potential [t]" in df_rw.columns:
@@ -152,9 +151,9 @@ if prenet_ok:
                               f"expected ({expected_total:,.0f} t, assuming max_land_usage=0.2)")
 
         if not rw_carriers:
-            print(f"\n{WARN}  No rock_weathering carriers found — add_rock_weathering may NOT have run!")
-        elif rw_links.empty or rw_stores.empty:
-            print(f"\n{WARN}  Missing rock_weathering links or stores — check add_rock_weathering() execution!")
+            print(f"\n{WARN}  No rock weathering carriers found — add_rock_weathering may NOT have run!")
+        elif co2_rw_links.empty or co2_rw_stores.empty:
+            print(f"\n{WARN}  Missing co2 rock weathering links or stores — check add_rock_weathering() execution!")
         else:
             print(f"\n{OK}  Rock weathering components present in pre-network.")
 
@@ -175,50 +174,50 @@ if opt_ok:
 
         n_opt = pypsa.Network(str(opt_path))
 
-        rw_links  = n_opt.links [n_opt.links .carrier.str.contains("rock_weathering", case=True, na=False)]
-        rw_stores = n_opt.stores[n_opt.stores.carrier.str.contains("rock_weathering", case=True, na=False)]
+        co2_rw_links  = n_opt.links [n_opt.links .carrier == "co2 rock weathering"]
+        co2_rw_stores = n_opt.stores[n_opt.stores.carrier == "co2 rock weathering"]
 
         # --- Links optimal ---
-        print(f"\n  Links (carrier contains 'rock_weathering'): {len(rw_links)}")
-        if not rw_links.empty and "p_nom_opt" in rw_links.columns:
-            active = rw_links[rw_links["p_nom_opt"] > 0]
-            total  = rw_links["p_nom_opt"].sum()
+        print(f"\n  Links (carrier == 'co2 rock weathering'): {len(co2_rw_links)}")
+        if not co2_rw_links.empty and "p_nom_opt" in co2_rw_links.columns:
+            active = co2_rw_links[co2_rw_links["p_nom_opt"] > 0]
+            total  = co2_rw_links["p_nom_opt"].sum()
             print(f"  Links with p_nom_opt > 0: {len(active)}")
-            print(f"  Total p_nom_opt (all rock_weathering links): {total:,.2f} MW_el")
+            print(f"  Total p_nom_opt (co2 rock weathering links): {total:,.2f} MW_el")
             if active.empty:
-                print(f"{WARN}  All rock_weathering links have p_nom_opt = 0 (not deployed).")
+                print(f"{WARN}  All co2 rock weathering links have p_nom_opt = 0 (not deployed).")
             else:
                 print(f"{OK}  Rock weathering links deployed in optimal solution.")
                 cols = [c for c in ["bus0", "bus1", "bus2", "carrier", "p_nom_opt"] if c in active.columns]
                 print(active[cols].to_string())
 
         # --- Stores optimal ---
-        print(f"\n  Stores (carrier contains 'rock_weathering'): {len(rw_stores)}")
-        if not rw_stores.empty:
-            # rock_weathering stores are fixed capacity (e_nom, not e_nom_extendable)
+        print(f"\n  Stores (carrier == 'co2 rock weathering'): {len(co2_rw_stores)}")
+        if not co2_rw_stores.empty:
+            # rock weathering stores are fixed capacity (e_nom, not e_nom_extendable)
             # check the dispatch: how much CO2 was actually sequestered
-            if "e_nom" in rw_stores.columns:
-                total_cap = rw_stores["e_nom"].sum()
+            if "e_nom" in co2_rw_stores.columns:
+                total_cap = co2_rw_stores["e_nom"].sum()
                 print(f"  Total store capacity (e_nom): {total_cap:,.0f} t CO2  ({total_cap/1e6:.3f} Mt CO2)")
 
             # check time series for actual sequestration
             if hasattr(n_opt, "stores_t") and "e" in n_opt.stores_t:
-                rw_store_e = n_opt.stores_t["e"][rw_stores.index]
+                rw_store_e = n_opt.stores_t["e"][co2_rw_stores.index]
                 if not rw_store_e.empty:
                     final_e = rw_store_e.iloc[-1]
                     total_stored = final_e.sum()
                     print(f"  CO2 stored at end of horizon: {total_stored:,.0f} t CO2  "
                           f"({total_stored/1e6:.3f} Mt CO2)")
-                    if "e_nom" in rw_stores.columns:
-                        utilisation = (final_e / rw_stores["e_nom"]).mean() * 100
+                    if "e_nom" in co2_rw_stores.columns:
+                        utilisation = (final_e / co2_rw_stores["e_nom"]).mean() * 100
                         print(f"  Mean store utilisation: {utilisation:.1f}%")
                     if total_stored == 0:
                         print(f"{WARN}  No CO2 sequestered — rock weathering not utilised in solution.")
                     else:
                         print(f"{OK}  Rock weathering CO2 sequestration active in optimal solution.")
 
-        if rw_links.empty and rw_stores.empty:
-            print(f"\n{WARN}  No rock_weathering components in optimal network!")
+        if co2_rw_links.empty and co2_rw_stores.empty:
+            print(f"\n{WARN}  No co2 rock weathering components in optimal network!")
 
     except Exception as e:
         print(f"\n{WARN}  Could not load optimal network: {e}")

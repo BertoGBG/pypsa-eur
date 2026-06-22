@@ -1100,12 +1100,12 @@ industry:
   oil_refining_emissions: 0.013
 
 biochar:
-  potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
+  application_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
   max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
   number_years: 25 # aortisation period (years) for biochar CO2 storage
 
 rock_weathering:
-  potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate-only rate; hot climate is ~1% of eligible EU area, dropped)
+  co2_removal_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate-only rate; hot climate is ~1% of eligible EU area, dropped)
   max_land_usage: 0.2 # maximum fraction of suitable area used for rock weathering
 
 afforestation:

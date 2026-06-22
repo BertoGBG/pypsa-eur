@@ -1289,30 +1289,29 @@ def add_rock_weathering(n, costs):
     )
     potentials = (
         rock_weathering_potentials["potential [sqkm]"]
-        * snakemake.config["rock_weathering"]["potential_per_sqkm"]
+        * snakemake.config["rock_weathering"]["co2_removal_per_sqkm"]
         * snakemake.config["rock_weathering"]["max_land_usage"]
     )
 
     electricity_input = costs.at["Enhanced Weathering", "electricity-input"]
 
-    n.add("Carrier", "rock_weathering")
-    n.add("Carrier", "rock_weathering store")
+    n.add("Carrier", "co2 rock weathering")
 
     n.add(
         "Bus",
-        spatial.nodes + " rock_weathering co2 store",
+        spatial.nodes + " co2 rock weathering",
         location=spatial.nodes,
-        carrier="rock_weathering",
+        carrier="co2 rock weathering",
         unit="t_co2",
     )
 
     n.add(
         "Store",
         spatial.nodes,
-        suffix=" rock_weathering co2 store",
-        bus=spatial.nodes + " rock_weathering co2 store",
+        suffix=" co2 rock weathering",
+        bus=spatial.nodes + " co2 rock weathering",
         e_nom=potentials,
-        carrier="rock_weathering store",
+        carrier="co2 rock weathering",
     )
 
     n.add(
@@ -1321,8 +1320,8 @@ def add_rock_weathering(n, costs):
         suffix=" rock_weathering",
         bus0=spatial.nodes.values,
         bus1="co2 atmosphere",
-        bus2=spatial.nodes + " rock_weathering co2 store",
-        carrier="rock_weathering",
+        bus2=spatial.nodes + " co2 rock weathering",
+        carrier="co2 rock weathering",
         marginal_cost=costs.at["Enhanced Weathering", "VOM"] / electricity_input,
         efficiency=-1 / electricity_input,
         efficiency2=1 / electricity_input,
@@ -1391,7 +1390,7 @@ def add_biochar(n, costs):
         e_nom_max=(
             biochar_potentials["potential [sqkm]"].values
             * co2_per_tonne
-            * snakemake.config["biochar"]["potential_per_sqkm"]
+            * snakemake.config["biochar"]["application_per_sqkm"]
             * snakemake.config["biochar"]["max_land_usage"]
             / snakemake.config["biochar"]["number_years"]
         ),
