@@ -195,10 +195,12 @@ if opt_ok:
                 print(f"{WARN}  All co2 biochar stores have e_nom_opt = 0 (not deployed).")
             else:
                 print(f"{OK}  Biochar stores deployed. Total CO2 stored: {total/1e6:.3f} MtCO2")
+                print(active[["bus", "carrier", "e_nom_opt"]].to_string())
                 print(f"\n  Per-node e_nom_opt [tCO2] stats:")
                 print(f"    min:  {co2_bc_stores['e_nom_opt'].min():,.0f}")
                 print(f"    mean: {co2_bc_stores['e_nom_opt'].mean():,.0f}")
                 print(f"    max:  {co2_bc_stores['e_nom_opt'].max():,.0f}")
+                print(f"    sum:  {co2_bc_stores['e_nom_opt'].sum():,.0f}")
 
         # --- Shadow price of e_nom_max (assign_capacity_duals) ---
         if _assign_capacity_duals:
