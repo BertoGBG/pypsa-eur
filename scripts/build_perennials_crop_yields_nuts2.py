@@ -10,21 +10,23 @@ NUTS2021 region definitions used by PyPSA-Eur.
 Outputs a single CSV with columns for each crop class (cereals, sugar beet,
 rapeseed, perennials) indexed by NUTS2 region.
 
-Biofuel conversion efficiencies (t_biofuel / t_feedstock) are read from
-``config["perennials"]["biofuel_conversion"]`` and sourced from:
+Biofuel conversion efficiencies (t_biofuel / t_feedstock) are read from the
+``efficiency`` parameter of the ``ethanol from wheat``, ``ethanol from sugar
+beet``, and ``biodiesel from rapeseed`` technologies in the technology-data
+cost assumptions, sourced from:
 
     Banja et al. (2013), "Biofuels in the European Union - A general overview",
     JRC Technical Report, doi:10.2760/69179, Tables 93, 133, 155, 159.
 """
 
 import logging
-import os
 from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-import requests
+
+from scripts._helpers import load_costs
 
 logger = logging.getLogger(__name__)
 
@@ -263,15 +265,16 @@ if __name__ == "__main__":
         MINBIORPS1=["I1110", "I1120", "I1130", "I1110-1130", "I0000"],
         PERENNIALS=perennial_codes,
     )
+    costs = load_costs(snakemake.input.costs)
 
-    conv = snakemake.params.biofuel_conversion
+    #conv = snakemake.params.biofuel_conversion
     # LHV values are fixed physical constants, not parameters: JRC Technical Report doi:10.2760/69179
     LHV_fuels = {"ethanol": 7.447, "biodiesel": 10.194}  # MWh/t (26.81 MJ/kg, 36.7 MJ/kg)
 
     biofuel_yields = {
-        "MINBIOCRP11": conv["MINBIOCRP11"] * LHV_fuels["ethanol"],
-        "MINBIOCRP21": conv["MINBIOCRP21"] * LHV_fuels["ethanol"],
-        "MINBIORPS1":  conv["MINBIORPS1"]  * LHV_fuels["biodiesel"],
+        "MINBIOCRP11": costs.at['ethanol from wheat', 'efficiency'] * LHV_fuels["ethanol"],
+        "MINBIOCRP21": costs.at['ethanol from sugar beet', 'efficiency'] * LHV_fuels["ethanol"],
+        "MINBIORPS1":  costs.at['biodiesel from rapeseed', 'efficiency']  * LHV_fuels["biodiesel"],
     }
 
     other_crops_codes = [
