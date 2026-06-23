@@ -862,7 +862,7 @@ sector:
   dac: true
   biochar:
     enable: true
-    heat_output: true
+    heat_output: false
   rock_weathering: true
   afforestation: true
   perennials: true
@@ -960,7 +960,7 @@ sector:
   gas_distribution_grid: true
   gas_distribution_grid_cost_factor: 1.0
   biomass_spatial: true
-  biomass_transport: false
+  biomass_transport: true
   biogas_upgrading: true
   biogas_upgrading_cc: false
   conventional_generation:
