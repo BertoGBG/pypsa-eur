@@ -418,6 +418,13 @@ renewable:
     eia_norm_year: false
     eia_correct_by_capacity: false
     eia_approximate_missing: false
+  # land-eligibility settings for alternative carbon dioxide removal technologies,
+  # feeding determine_availability_matrix.py the same way onwind/solar do above
+  afforestation:
+    corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
+    natura: false
+    cutout: default
+    excluder_resolution: 250
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -836,6 +843,7 @@ sector:
   methanation: true
   coal_cc: false
   dac: true
+  afforestation: false
   co2_vent: false
   heat_vent:
     urban central: true
@@ -1068,6 +1076,19 @@ industry:
   hotmaps_locate_missing: false
   reference_year: 2023
   oil_refining_emissions: 0.013
+
+afforestation:
+  potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
+  free_mode: false  # (growth mode only) fix p_nom to seasonal peak rate, dispatch unconstrained;  call redistribute_afforestation_seasonal() before temporal plotting
+  use_discount_rate: false  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12) ONLY with potential growth set to "density"
+  max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
+  crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
+                        # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
+                        # Accounts for mandatory uncertainty deduction (min 10%, eq.1 of the methodology)
+                        # and buffer-pool contribution (risk rate 8-17% for typical European mixed/broadleaf
+                        # forests at low-medium disturbance, Table 7 of the methodology).
+                        # Central estimate: (1-0.10)*(1-0.11) = 0.80; range 0.72-0.83.
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#costs
 costs:
@@ -1307,6 +1328,9 @@ data:
     source: archive
     version: latest
   instrat_co2_prices:
+    source: primary
+    version: latest
+  co2_removal_data:
     source: primary
     version: latest
   co2stop:

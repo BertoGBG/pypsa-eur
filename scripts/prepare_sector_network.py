@@ -1247,6 +1247,198 @@ def add_dac(n, costs):
     )
 
 
+def add_afforestation(n, costs):
+    """
+    Add afforestation (CDR via new forest growth) to the network as Bus,
+    Store, and Link components, all sharing a single "co2 afforestation"
+    carrier.
+
+    A single Link per node draws CO2 from the atmosphere (bus0) into a
+    growing-stock Store (bus1); the link's efficiency applies the EU CRCF
+    net/gross credit discount (``crcf_efficiency``) to convert physical
+    sequestration into creditable removals. Two alternative potential/cost
+    methodologies are supported via ``afforestation.potential_type``:
+
+    - ``"density"``: potential and capital cost derived from NUTS0 biomass
+      density (above-ground biomass over a fixed assumed lifetime).
+    - ``"growth"``: potential and capital cost derived from NUTS2
+      rotation-averaged Mean Annual Increment (MAI) and rotation age (Pilli
+      et al. forest-growth tables), with dispatch following a precomputed
+      monthly seasonal profile (FluxCom GPP-derived).
+
+    Both methodologies can additionally run in ``afforestation.free_mode``:
+    ``p_nom`` is fixed to the peak physical rate and dispatch is left
+    unconstrained (``p_min_pu=0``) instead of following the seasonal/uniform
+    profile exactly; ``redistribute_afforestation_seasonal()``
+    (``afforestation_postprocess.py``) must then be called before any
+    temporal plotting to remap the free dispatch back onto the biological
+    seasonal profile.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain an
+        'Afforestation' entry with 'investment', 'FOM', and 'lifetime'
+        parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the afforestation
+        Bus, Store, and Link
+
+    Notes
+    -----
+    Reads ``snakemake.input.afforestation_potentials`` (from
+    ``build_afforestation_potentials.py``) and, in growth mode,
+    ``snakemake.input.afforestation_seasonal_profile``. Config keys:
+    ``afforestation.potential_type``, ``co2_per_tonne``, ``max_land_usage``,
+    ``crcf_efficiency``, ``use_discount_rate``, ``free_mode``.
+    """
+    logger.info("Adding afforestation.")
+
+    afforestation_potentials = pd.read_csv(
+        snakemake.input.afforestation_potentials
+    ).set_index("node")
+
+    potential_type = snakemake.params.afforestation_potential_type
+    co2_per_tonne = snakemake.config["afforestation"]["co2_per_tonne"]
+    max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
+    crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
+    # free_mode: fix p_nom to the peak physical rate and leave dispatch free (p_min_pu=0).
+    # Spikes are bounded: the link can never exceed the seasonal peak rate (growth) or
+    # the uniform rate (density). it Calls redistribute_afforestation_seasonal() from
+    # afforestation_postprocess.py before any temporal plotting.
+    free_mode = snakemake.config["afforestation"].get("free_mode", False)
+
+    if potential_type == "density":
+        densities = afforestation_potentials["biomass density [t/ha]"].values
+        AGB = afforestation_potentials["AGB [t]"].values
+        potentials = AGB / costs.at["Afforestation", "lifetime"] * co2_per_tonne * max_land_usage
+        # (tb * tCO2/tb) / y * 0.6 = tCO2 / y
+
+        # capital cost calculated from total CO2 removal during lifetime from per-hectar capital cost
+        investment_cost = costs.at["Afforestation", "investment"] # EUR / ha
+        maintenance_cost = (
+            investment_cost
+            * (costs.at["Afforestation", "FOM"] / 100)
+            * costs.at["Afforestation", "lifetime"] # EUR/ha * (%)  * y = EUR * y /ha
+        )
+        capital_cost = (investment_cost + maintenance_cost) / (densities * co2_per_tonne) # EUR/ ha + (EUR * y)/ha / (tb/ha * tCO2/tb) = EUR/tCO2 (1 + y/ha) !!!!!
+
+        if free_mode:
+            # cap: uniform hourly rate at full deployment (no seasonal info for density)
+            p_nom_cap = potentials / 8760.0
+
+    else:  # growth
+        potentials = afforestation_potentials["potential [tCO2/y]"].values
+        growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
+
+        # capital cost from annuity formula: I*(annuity(T*, r) + FOM) / MAI [EUR/tCO2]
+        use_discount_rate = snakemake.config["afforestation"].get("use_discount_rate", True)
+        investment_cost = costs.at["Afforestation", "investment"]
+        fom = costs.at["Afforestation", "FOM"] / 100
+        rotation_age = afforestation_potentials["rotation_age_years"].values
+        discount_rate = (
+            snakemake.config["costs"]["fill_values"]["discount rate"]
+            if use_discount_rate else 0.0
+        )
+        forest_annuity = calculate_annuity(rotation_age, discount_rate)
+        capital_cost = investment_cost * (forest_annuity + fom) / growth_rate  # [EUR/tCO2]
+
+        # Load pre-computed hourly seasonal profile (snapshots × nodes)
+        profile_full = pd.read_csv(
+            snakemake.input.afforestation_seasonal_profile, index_col="snapshot", parse_dates=True
+        )
+        dates = pd.DatetimeIndex(
+            n.snapshots.get_level_values(1) if isinstance(n.snapshots, pd.MultiIndex)
+            else n.snapshots
+        )
+        profile_full.columns = spatial.nodes + " afforestation"
+        monthly_rate = profile_full.reindex(dates).set_axis(n.snapshots)
+
+        if free_mode:
+            # cap: peak seasonal rate at full deployment
+            # w_sum/w_max gives minimum hours needed to fill annual potential at peak rate,
+            # bounding how concentrated the solver can make the dispatch.
+            w_sum = monthly_rate.sum()   # total weight per node (indexed by "{node} afforestation")
+            w_max = monthly_rate.max()   # peak weight per node
+            # align with spatial.nodes order
+            node_cols = spatial.nodes + " afforestation"
+            p_nom_cap = (potentials * (w_max / w_sum).reindex(node_cols).values)
+
+    n.add("Carrier", "co2 afforestation")
+
+    n.add(
+        "Bus",
+        spatial.nodes + " co2 afforestation",
+        location=spatial.nodes,
+        carrier="co2 afforestation",
+        unit="t_co2",
+    )
+
+    n.add(
+        "Store",
+        spatial.nodes + " co2 afforestation",
+        bus=spatial.nodes + " co2 afforestation",
+        carrier="co2 afforestation",
+        capital_cost=capital_cost,
+        e_nom_extendable=True,
+        e_nom_max=potentials,
+        lifetime=costs.at["Afforestation", "lifetime"],
+    )
+
+    # CRCF efficiency discount applies only to the growth method
+    link_efficiency = crcf_efficiency if potential_type == "growth" else 1.0
+
+    if free_mode:
+        # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
+        # No capital cost on the link since investment is captured by the store.
+        n.add(
+            "Link",
+            spatial.nodes + " afforestation",
+            bus0="co2 atmosphere",
+            bus1=spatial.nodes + " co2 afforestation",
+            carrier="co2 afforestation",
+            efficiency=link_efficiency,
+            p_nom=p_nom_cap,
+            p_nom_extendable=False,
+            p_min_pu=0.0,
+            p_max_pu=1.0,
+            lifetime=costs.at["Afforestation", "lifetime"],
+        )
+        logger.info(
+            "Afforestation free_mode=True: p_nom fixed to peak rate, dispatch unconstrained. "
+            "Call redistribute_afforestation_seasonal() before temporal plotting."
+        )
+    else:
+        n.add(
+            "Link",
+            spatial.nodes + " afforestation",
+            bus0="co2 atmosphere",
+            bus1=spatial.nodes + " co2 afforestation",
+            carrier="co2 afforestation",
+            efficiency=link_efficiency,
+            p_nom_extendable=True,
+            p_min_pu=1.0,
+            p_max_pu=1.0,
+            lifetime=costs.at["Afforestation", "lifetime"],
+        )
+
+        if potential_type == "growth":
+            # growth mode: override with time-varying seasonal profile
+            n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
+                columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
+            )
+            n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
+                columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
+            )
+            n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
+            n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
+
+
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     """
     Add a global CO2 emissions constraint to the network.
@@ -6505,6 +6697,9 @@ if __name__ == "__main__":
 
     if options["dac"]:
         add_dac(n, costs)
+
+    if options.get("afforestation"):
+        add_afforestation(n, costs)
 
     if not options["electricity_transmission_grid"]:
         decentral(n)

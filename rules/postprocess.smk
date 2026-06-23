@@ -467,6 +467,15 @@ rule plot_balance_timeseries:
         network=RESULTS
         + "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc",
         rc="matplotlibrc",
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv".format(**w))
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"].get("free_mode", False)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
+            else []
+        ),
     output:
         directory(
             RESULTS
@@ -485,6 +494,7 @@ rule plot_balance_timeseries:
         plotting=config_provider("plotting"),
         snapshots=config_provider("snapshots"),
         drop_leap_day=config_provider("enable", "drop_leap_day"),
+        afforestation_free_mode=config_provider("afforestation", "free_mode"),
     message:
         "Plotting energy balance time series for {wildcards.clusters} clusters, {wildcards.opts} electric options, {wildcards.sector_opts} sector options and {wildcards.planning_horizons} planning horizons"
     script:
@@ -496,6 +506,15 @@ rule plot_heatmap_timeseries:
         network=RESULTS
         + "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc",
         rc="matplotlibrc",
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv".format(**w))
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"].get("free_mode", False)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
+            else []
+        ),
     output:
         directory(
             RESULTS
@@ -514,6 +533,7 @@ rule plot_heatmap_timeseries:
         plotting=config_provider("plotting"),
         snapshots=config_provider("snapshots"),
         drop_leap_day=config_provider("enable", "drop_leap_day"),
+        afforestation_free_mode=config_provider("afforestation", "free_mode"),
     message:
         "Plotting heatmap time series visualization for {wildcards.clusters} clusters, {wildcards.opts} electric options, {wildcards.sector_opts} sector options and {wildcards.planning_horizons} planning horizons"
     script:

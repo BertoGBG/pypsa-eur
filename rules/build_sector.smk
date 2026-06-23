@@ -920,6 +920,89 @@ rule build_biomass_potentials:
         scripts("build_biomass_potentials.py")
 
 
+rule determine_carbon_dioxide_removal_availability_matrix:
+    message:
+        "Determining availability matrix for {wildcards.clusters} clusters and {wildcards.technology} carbon dioxide removal technology"
+    params:
+        renewable=config_provider("renewable"),
+        plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
+    input:
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
+    output:
+        resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
+    log:
+        logs("determine_carbon_dioxide_removal_availability_matrix_{clusters}_{technology}.log"),
+    wildcard_constraints:
+        technology="afforestation",
+    threads: config["atlite"].get("nprocesses", 4)
+    resources:
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
+    script:
+        scripts("determine_availability_matrix.py")
+
+
+rule build_available_land:
+    params:
+        renewable=config_provider("renewable"),
+    input:
+        availability_matrix=resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
+    output:
+        csv_file=resources("{technology}_available_land_s_{clusters}.csv"),
+    log:
+        logs("build_available_land_{clusters}_{technology}.log"),
+    wildcard_constraints:
+        technology="afforestation",
+    resources:
+        mem_mb=8000,
+    script:
+        scripts("build_available_land.py")
+
+
+rule build_afforestation_potentials:
+    params:
+        network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
+        nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
+        afforestation_potential_type=config["afforestation"]["potential_type"],
+        snapshots=config["snapshots"],
+    input:
+        afforestation_corine_potentials_csv_file=resources(
+            "afforestation_available_land_s_{clusters}.csv"
+        ),
+        afforestation_nuts_file=lambda w: (
+            rules.retrieve_co2_removal_data.output.afforestation_nuts_biomass_densities
+            if config["afforestation"]["potential_type"] == "density"
+            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_afforestation_rates
+        ),
+        afforestation_monthly_weights_file=lambda w: (
+            []
+            if config["afforestation"]["potential_type"] == "density"
+            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_monthly_weights
+        ),
+    output:
+        csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
+        monthly_weights_csv_file=resources(
+            "afforestation_monthly_weights_s_{clusters}.csv"
+        ),
+        seasonal_profile_csv_file=resources(
+            "afforestation_seasonal_profile_s_{clusters}.csv"
+        ),
+        png_file=resources("afforestation_potentials_s_{clusters}.png"),
+    log:
+        logs("build_afforestation_potentials_s_{clusters}.log"),
+    resources:
+        mem_mb=5000,
+    script:
+        scripts("build_afforestation_potentials.py")
+
+
 rule build_biomass_transport_costs:
     input:
         sc1="data/biomass_transport_costs_supplychain1.csv",
@@ -1689,6 +1772,19 @@ rule prepare_sector_network:
             if config_provider("sector", "district_heating", "ates", "enable")(w)
             else []
         ),
+        afforestation_potentials=lambda w: (
+            resources("afforestation_potentials_s_{clusters}.csv")
+            if config_provider("sector", "afforestation")(w)
+            else []
+        ),
+        afforestation_seasonal_profile=lambda w: (
+            resources("afforestation_seasonal_profile_s_{clusters}.csv")
+            if (
+                config_provider("sector", "afforestation")(w)
+                and config["afforestation"]["potential_type"] == "growth"
+            )
+            else []
+        ),
     output:
         resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -1737,6 +1833,7 @@ rule prepare_sector_network:
         temperature_limited_stores=config_provider(
             "sector", "district_heating", "temperature_limited_stores"
         ),
+        afforestation_potential_type=config_provider("afforestation", "potential_type"),
     message:
         "Preparing integrated sector-coupled energy network for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizon, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
     script:
