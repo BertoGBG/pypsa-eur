@@ -113,6 +113,9 @@ if pot_ok:
               f"mean: {df_pot['AGB [t]'].mean():,.0f}, "
               f"max: {df_pot['AGB [t]'].max():,.0f}")
     elif POTENTIAL_TYPE == "growth" and "potential [tCO2/y]" in df_pot.columns:
+        total_gross_potential = df_pot["potential [tCO2/y]"].sum()
+        print(f"        Total potential (gross, pre-CRCF): {total_gross_potential:,.0f} tCO2/y  "
+              f"({total_gross_potential / 1e6:.3f} MtCO2/y)")
         print(f"        Potential [tCO2/y] — min: {df_pot['potential [tCO2/y]'].min():.1f}, "
               f"mean: {df_pot['potential [tCO2/y]'].mean():.1f}, "
               f"max: {df_pot['potential [tCO2/y]'].max():.1f}")
@@ -184,10 +187,11 @@ if prenet_ok:
             if "efficiency" in affo_links.columns:
                 eff_vals = affo_links["efficiency"].unique()
                 print(f"\n    efficiency values: {eff_vals}")
-                if any(abs(e - 1.0) < 1e-6 for e in eff_vals):
-                    print(f"{WARN}  efficiency = 1.0 detected — crcf_efficiency may not have been applied!")
+                if any(abs(e - 1.0) > 1e-6 for e in eff_vals):
+                    print(f"{WARN}  efficiency != 1.0 detected — link should be mass-conserving; "
+                          f"crcf_efficiency belongs on the potential (e_nom_max), not the link.")
                 else:
-                    print(f"{OK}  efficiency < 1.0 (CRCF discount applied).")
+                    print(f"{OK}  efficiency = 1.0 (link is mass-conserving, as expected).")
 
         # --- Stores ---
         affo_stores = n.stores[n.stores.carrier.str.contains("afforestation", case=False, na=False)]
@@ -198,7 +202,9 @@ if prenet_ok:
             print(affo_stores[available_cols].head(10).to_string())
             if "e_nom_max" in affo_stores.columns:
                 finite_max = affo_stores["e_nom_max"][affo_stores["e_nom_max"] < 1e18]
-                print(f"\n    e_nom_max (finite) — "
+                print(f"\n    Total e_nom_max (net, post-CRCF): {finite_max.sum():,.0f} tCO2  "
+                      f"({finite_max.sum() / 1e6:.3f} MtCO2)")
+                print(f"    e_nom_max (finite) — "
                       f"min: {finite_max.min():.0f}, "
                       f"mean: {finite_max.mean():.0f}, "
                       f"max: {finite_max.max():.0f}  [tCO2]")

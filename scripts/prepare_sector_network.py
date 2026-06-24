@@ -1641,7 +1641,7 @@ def add_afforestation(n, costs):
     max_land_usage = snakemake.config["afforestation"]["max_land_usage"]
     crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
     # free_mode: fix p_nom to the peak physical rate and leave dispatch free (p_min_pu=0).
-    # Spikes are bounded: the link can never exceed the seasonal peak rate (growth) or
+    # Spikes are bounded: the p_nom in the link can never exceed the seasonal peak rate (growth) or
     # the uniform rate (density). it Calls redistribute_afforestation_seasonal() from
     # afforestation_postprocess.py before any temporal plotting.
     free_mode = snakemake.config["afforestation"].get("free_mode", False)
@@ -1671,7 +1671,7 @@ def add_afforestation(n, costs):
         # max creditable removal — only this net amount is treated as drawn from the
         # atmosphere for the model's overall CO2 accounting.
         potentials = afforestation_potentials["potential [tCO2/y]"].values * crcf_efficiency
-        growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
+        growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values * crcf_efficiency
 
         # capital cost from annuity formula: I*(annuity(T*, r) + FOM) / (MAI * crcf_efficiency) [EUR/tCO2_net]
         use_discount_rate = snakemake.config["afforestation"].get("use_discount_rate", True)
@@ -1683,7 +1683,7 @@ def add_afforestation(n, costs):
             if use_discount_rate else 0.0
         )
         forest_annuity = calculate_annuity(rotation_age, discount_rate)
-        capital_cost = investment_cost * (forest_annuity + fom) / (growth_rate * crcf_efficiency)  # [EUR/tCO2_net]
+        capital_cost = investment_cost * (forest_annuity + fom) / (growth_rate)  # [EUR/tCO2_net]
 
         # Load pre-computed hourly seasonal profile (snapshots × nodes)
         profile_full = pd.read_csv(
