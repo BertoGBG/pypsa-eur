@@ -1580,17 +1580,24 @@ def add_afforestation(n, costs):
     carrier.
 
     A single Link per node draws CO2 from the atmosphere (bus0) into a
-    growing-stock Store (bus1); the link's efficiency applies the EU CRCF
-    net/gross credit discount (``crcf_efficiency``) to convert physical
-    sequestration into creditable removals. Two alternative potential/cost
-    methodologies are supported via ``afforestation.potential_type``:
+    growing-stock Store (bus1); the link is mass-conserving (efficiency=1),
+    so only the net amount actually credited under the EU CRCF is treated
+    as removed from the shared "co2 atmosphere" bus. Two alternative
+    potential/cost methodologies are supported via
+    ``afforestation.potential_type``:
 
     - ``"density"``: potential and capital cost derived from NUTS0 biomass
-      density (above-ground biomass over a fixed assumed lifetime).
+      density (above-ground biomass over a fixed assumed lifetime). Not
+      discounted by ``crcf_efficiency``.
     - ``"growth"``: potential and capital cost derived from NUTS2
       rotation-averaged Mean Annual Increment (MAI) and rotation age (Pilli
       et al. forest-growth tables), with dispatch following a precomputed
-      monthly seasonal profile (FluxCom GPP-derived).
+      monthly seasonal profile (FluxCom GPP-derived). The gross Pilli
+      potential is discounted by the EU CRCF net/gross credit fraction
+      (``crcf_efficiency``) before being used as the store's ``e_nom_max``
+      (and, in ``free_mode``, the link's peak-rate cap); ``capital_cost``'s
+      denominator is scaled by the same factor so the annualized per-hectare
+      cost is correctly spread over net (not gross) creditable tonnes.
 
     Both methodologies can additionally run in ``afforestation.free_mode``:
     ``p_nom`` is fixed to the peak physical rate and dispatch is left
@@ -1659,10 +1666,14 @@ def add_afforestation(n, costs):
             p_nom_cap = potentials / 8760.0
 
     else:  # growth
-        potentials = afforestation_potentials["potential [tCO2/y]"].values
+        # Pilli gross MAI-based potential, discounted by the EU CRCF net/gross credit
+        # fraction here (rather than on the link) so e_nom_max directly represents the
+        # max creditable removal — only this net amount is treated as drawn from the
+        # atmosphere for the model's overall CO2 accounting.
+        potentials = afforestation_potentials["potential [tCO2/y]"].values * crcf_efficiency
         growth_rate = afforestation_potentials["CO2 seq rate tCO2/(ha y)"].values
 
-        # capital cost from annuity formula: I*(annuity(T*, r) + FOM) / MAI [EUR/tCO2]
+        # capital cost from annuity formula: I*(annuity(T*, r) + FOM) / (MAI * crcf_efficiency) [EUR/tCO2_net]
         use_discount_rate = snakemake.config["afforestation"].get("use_discount_rate", True)
         investment_cost = costs.at["Afforestation", "investment"]
         fom = costs.at["Afforestation", "FOM"] / 100
@@ -1672,7 +1683,7 @@ def add_afforestation(n, costs):
             if use_discount_rate else 0.0
         )
         forest_annuity = calculate_annuity(rotation_age, discount_rate)
-        capital_cost = investment_cost * (forest_annuity + fom) / growth_rate  # [EUR/tCO2]
+        capital_cost = investment_cost * (forest_annuity + fom) / (growth_rate * crcf_efficiency)  # [EUR/tCO2_net]
 
         # Load pre-computed hourly seasonal profile (snapshots × nodes)
         profile_full = pd.read_csv(
@@ -1716,8 +1727,10 @@ def add_afforestation(n, costs):
         lifetime=costs.at["Afforestation", "lifetime"],
     )
 
-    # CRCF efficiency discount applies only to the growth method
-    link_efficiency = crcf_efficiency if potential_type == "growth" else 1.0
+    # CRCF discount is applied to the potential (growth mode, see above), not the link:
+    # the link stays mass-conserving so only the net creditable amount is treated as
+    # removed from the shared "co2 atmosphere" bus.
+    link_efficiency = 1.0
 
     if free_mode:
         # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
