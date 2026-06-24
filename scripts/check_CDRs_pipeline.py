@@ -145,49 +145,63 @@ def mu_ext_e_nom_upper_check(stores, label: str):
               f"assign_capacity_duals: true when solving?")
 
 
-def flow_weighted_bus_price(n_opt, links, bus_col, p_col, sign, total_capacity, capacity_label, wavg_cost):
-    """Flow-weighted mean marginal price at a CDR store's bus -- sanity
-    check that should reproduce the same effective EUR/tCO2 figure as the
-    capacity-weighted capital_cost/VOM passed in as wavg_cost (None to skip
-    that specific ratio print).
+def flow_weighted_bus_price(n_opt, stores, wavg_cost=None):
+    """Flow-weighted mean marginal price at each CDR store's own bus.
 
-    bus_col: which link column ("bus1" or "bus2") is the store's bus.
-    p_col / sign: which links_t flow column gives the delivered flow, and
-    the sign needed to convert it into "tCO2 delivered to that bus"
-    (efficiency=1 techs: p_col="p0", sign=+1; rock weathering's bus2:
-    p_col="p2", sign=-1, since PyPSA's convention is flow delivered = -p_i).
+    Reads flow directly off the STORE (not the feeding link): these CDR
+    stores are one-way accumulators (e_cyclic=False, never discharge), so
+    the amount delivered each snapshot is unambiguously -stores_t.p (PyPSA's
+    Store convention: p>0 discharging, p<0 charging). This sidesteps having
+    to track which bus index (bus1, bus2, ...) and sign convention a given
+    tech's link uses -- the store's own bus/flow are correct regardless.
+
+    Two-step, node-then-capacity weighting:
+      1. Per node: time-weighted average marginal price at that node's bus,
+         weighted by (flow into the store) x "stores" snapshot weighting.
+      2. Across nodes: weighted average of the per-node prices, weighted by
+         e_nom_opt -- the SAME node-weighting used for "Weighted-avg capital
+         cost (by e_nom_opt)", so the two numbers are directly comparable
+         even when a store isn't fully utilised (flow total can then differ
+         from e_nom_opt, where a flow-weighted pooling would diverge from
+         this capacity-weighted one).
     """
     mp = n_opt.buses_t.marginal_price if "marginal_price" in n_opt.buses_t else None
-    if mp is None or mp.empty or links.empty or bus_col not in links.columns:
+    if mp is None or mp.empty or stores.empty:
         print(f"\n{WARN}  buses_t.marginal_price unavailable or empty -- "
               f"check the network was solved with a solver returning duals.")
         return
 
     weighting = n_opt.snapshot_weightings["stores"]
-    link_of_bus = pd.Series(links.index, index=links[bus_col])
-    flows = getattr(n_opt.links_t, p_col)
+    store_flow = -n_opt.stores_t.p[stores.index]  # flow into the store (charging is p<0)
 
-    total_co2 = 0.0
-    total_value = 0.0
-    for bus, link_name in link_of_bus.items():
+    node_prices = {}
+    node_flow_total = {}
+    for store_name in stores.index:
+        bus = stores.at[store_name, "bus"]
         if bus not in mp.columns:
             continue
-        flow = sign * flows[link_name]
-        qty = flow * weighting
-        total_co2 += qty.sum()
-        total_value += (mp[bus] * qty).sum()
+        qty = store_flow[store_name] * weighting
+        total_qty = qty.sum()
+        if total_qty > 0:
+            node_prices[store_name] = (mp[bus] * qty).sum() / total_qty
+            node_flow_total[store_name] = total_qty
 
-    if total_co2 <= 0:
+    if not node_prices:
         return
-    flow_wavg_price = total_value / total_co2
-    print(f"\n  Flow-weighted mean marginal price (bus dual x flow x "
-          f"'stores' weighting): {flow_wavg_price:.2f} €/tCO2")
-    if total_capacity:
-        print(f"    Total CO2 via flow accumulation: {total_co2:,.0f} tCO2  "
-              f"vs. {capacity_label}: {total_capacity:,.0f} tCO2  "
-              f"(ratio: {total_co2 / total_capacity:.4f}, expect ~1.0)")
-    else:
-        print(f"    Total CO2 via flow accumulation: {total_co2:,.0f} tCO2")
+    node_price = pd.Series(node_prices)
+    node_weight = stores.loc[node_price.index, "e_nom_opt"]
+    total_weight = node_weight.sum()
+    if total_weight <= 0:
+        return
+
+    flow_wavg_price = (node_price * node_weight).sum() / total_weight
+    total_flow = sum(node_flow_total.values())
+    print(f"\n  Flow-weighted mean marginal price (per-node time-weighted by "
+          f"flow x 'stores' weighting, then node-weighted by e_nom_opt): "
+          f"{flow_wavg_price:.2f} €/tCO2")
+    print(f"    Total CO2 via flow accumulation: {total_flow:,.0f} tCO2  "
+          f"vs. total e_nom_opt: {total_weight:,.0f} tCO2  "
+          f"(ratio: {total_flow / total_weight:.4f}, expect ~1.0)")
     if wavg_cost:
         print(f"    Ratio flow-weighted price / capacity-weighted cost: "
               f"{flow_wavg_price / wavg_cost:.4f}  (expect ~1.0 at LP optimum)")
@@ -350,11 +364,7 @@ def check_afforestation_optimal(n_opt):
             ).sum() / total_weight
             print(f"\n  Weighted-avg capital cost (by e_nom_opt): {wavg_cost:.2f} €/tCO2")
 
-        flow_weighted_bus_price(
-            n_opt, affo_links, bus_col="bus1", p_col="p0", sign=1,
-            total_capacity=total_e_nom_opt, capacity_label="total e_nom_opt",
-            wavg_cost=wavg_cost,
-        )
+        flow_weighted_bus_price(n_opt, affo_stores, wavg_cost=wavg_cost)
 
     if affo_links.empty and affo_stores.empty:
         print(f"\n{WARN}  No afforestation components in optimal network!")
@@ -435,26 +445,11 @@ def check_biochar_optimal(n_opt):
         else:
             print(f"{OK}  Biochar stores deployed.")
 
-    # capital_cost lives on the "<node> biochar" link, not the store.
-    wavg_cost = None
-    if (
-        not co2_bc_links.empty
-        and "p_nom_opt" in co2_bc_links.columns
-        and "capital_cost" in co2_bc_links.columns
-    ):
-        total_p_weight = co2_bc_links["p_nom_opt"].sum()
-        if total_p_weight > 0:
-            wavg_cost = (
-                co2_bc_links["capital_cost"] * co2_bc_links["p_nom_opt"]
-            ).sum() / total_p_weight
-            print(f"\n  Weighted-avg capital cost (by p_nom_opt, on biochar "
-                  f"pyrolysis link): {wavg_cost:.2f} €/tCO2")
-
-    flow_weighted_bus_price(
-        n_opt, co2_bc_links, bus_col="bus1", p_col="p0", sign=1,
-        total_capacity=total, capacity_label="total e_nom_opt",
-        wavg_cost=wavg_cost,
-    )
+    # capital_cost lives on the "<node> biochar" link and is a single global
+    # constant from technology-data (not node-varying), so a "weighted
+    # average by p_nom_opt" of it is meaningless -- the flow-weighted bus
+    # price below is the only meaningful per-tCO2 cost figure for this tech.
+    flow_weighted_bus_price(n_opt, co2_bc_stores)
 
     if co2_bc_links.empty and co2_bc_stores.empty:
         print(f"\n{WARN}  No co2 biochar components in optimal network!")
@@ -535,26 +530,12 @@ def check_perennials_optimal(n_opt):
         if active.empty:
             print(f"{WARN}  All perennial stores have e_nom_opt = 0 (not deployed).")
 
-    # capital_cost lives on the "<node> perennials GBR" link, not the store.
-    wavg_cost = None
-    if (
-        not perenn_links.empty
-        and "p_nom_opt" in perenn_links.columns
-        and "capital_cost" in perenn_links.columns
-    ):
-        total_p_weight = perenn_links["p_nom_opt"].sum()
-        if total_p_weight > 0:
-            wavg_cost = (
-                perenn_links["capital_cost"] * perenn_links["p_nom_opt"]
-            ).sum() / total_p_weight
-            print(f"\n  Weighted-avg capital cost (by p_nom_opt, on perennials "
-                  f"GBR link): {wavg_cost:.2f} €/tCO2")
-
-    flow_weighted_bus_price(
-        n_opt, perenn_links, bus_col="bus1", p_col="p0", sign=1,
-        total_capacity=store_total, capacity_label="total e_nom_opt",
-        wavg_cost=wavg_cost,
-    )
+    # capital_cost lives on the "<node> perennials GBR" link and is a single
+    # global constant from technology-data (not node-varying), so a
+    # "weighted average by p_nom_opt" of it is meaningless -- the
+    # flow-weighted bus price below is the only meaningful per-tCO2 cost
+    # figure for this tech.
+    flow_weighted_bus_price(n_opt, perenn_stores)
 
     if perenn_links.empty and perenn_stores.empty:
         print(f"\n{WARN}  No perennial components in optimal network!")
@@ -653,31 +634,12 @@ def check_rock_weathering_optimal(n_opt):
                 else:
                     print(f"{OK}  Rock weathering CO2 sequestration active in optimal solution.")
 
-    # add_rock_weathering() sets no capital_cost anywhere -- only marginal_cost
-    # (VOM). When e_nom_max is binding, the bus dual is expected to sit AT OR
-    # ABOVE the weighted VOM (gap = scarcity rent), not approximately equal to
-    # it as in the other three CDR techs.
-    wavg_vom = None
-    if (
-        not co2_rw_links.empty
-        and "p_nom_opt" in co2_rw_links.columns
-        and "marginal_cost" in co2_rw_links.columns
-    ):
-        total_p_weight = co2_rw_links["p_nom_opt"].sum()
-        if total_p_weight > 0:
-            wavg_vom = (
-                co2_rw_links["marginal_cost"] * co2_rw_links["p_nom_opt"]
-            ).sum() / total_p_weight
-            print(f"\n  Weighted-avg VOM (by p_nom_opt, on rock weathering "
-                  f"link): {wavg_vom:.2f} €/tCO2  (no capital_cost in this tech)")
-
-    # the store sits on bus2 here (bus0=electricity, bus1=co2 atmosphere,
-    # bus2=co2 rock weathering store) -- flow delivered = -p2.
-    flow_weighted_bus_price(
-        n_opt, co2_rw_links, bus_col="bus2", p_col="p2", sign=-1,
-        total_capacity=total_stored, capacity_label="CO2 stored at end of horizon",
-        wavg_cost=wavg_vom,
-    )
+    # add_rock_weathering() sets no capital_cost anywhere and marginal_cost
+    # (VOM) is a single global constant from technology-data (not
+    # node-varying), so a "weighted average by p_nom_opt" of it is
+    # meaningless -- the flow-weighted bus price below is the only
+    # meaningful per-tCO2 cost figure for this tech.
+    flow_weighted_bus_price(n_opt, co2_rw_stores)
 
     if co2_rw_links.empty and co2_rw_stores.empty:
         print(f"\n{WARN}  No co2 rock weathering components in optimal network!")
