@@ -203,8 +203,24 @@ def flow_weighted_bus_price(n_opt, stores, wavg_cost=None):
           f"vs. total e_nom_opt: {total_weight:,.0f} tCO2  "
           f"(ratio: {total_flow / total_weight:.4f}, expect ~1.0)")
     if wavg_cost:
+        # Sign: capital_cost is always reported positive (a cost paid to
+        # build); the bus dual carries whatever sign the LP's KKT structure
+        # gives a "more throughput here is good" constraint, which is
+        # negative throughout this whole CDR setup -- so expect ~-1.0, not
+        # +1.0. The MAGNITUDE only approaches 1.0 if (a) capital_cost is
+        # homogeneous across nodes and (b) the store's own e_nom_max is
+        # what's binding (full utilisation) -- if a node's local potential
+        # isn't the limiting constraint, its bus price instead reflects
+        # whatever IS binding system-wide (e.g. the global CO2 budget), and
+        # the weighted-average deployed cost will sit below that marginal
+        # price whenever cheaper nodes get built before more expensive ones
+        # (a merit-order effect) -- see the SYSTEM-WIDE CO2 DIAGNOSTICS
+        # CO2Limit dual / co2 atmosphere bus price for comparison.
         print(f"    Ratio flow-weighted price / capacity-weighted cost: "
-              f"{flow_wavg_price / wavg_cost:.4f}  (expect ~1.0 at LP optimum)")
+              f"{flow_wavg_price / wavg_cost:.4f}  (expect ~-1.0 only if "
+              f"capital_cost is uniform across nodes AND e_nom_max is fully "
+              f"utilised at most nodes -- otherwise compare magnitude "
+              f"against the system-wide CO2 price instead)")
 
 
 # ── Afforestation ────────────────────────────────────────────────────────────────

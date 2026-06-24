@@ -1110,7 +1110,7 @@ afforestation:
   use_discount_rate: false  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
   co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12) ONLY with potential growth set to "density"
   max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
-  crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
+  crcf_efficiency: 0.85 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
                         # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
                         # Accounts for mandatory uncertainty deduction (min 10%, eq.1 of the methodology)
                         # and buffer-pool contribution (risk rate 8-17% for typical European mixed/broadleaf
