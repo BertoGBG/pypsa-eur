@@ -1328,12 +1328,15 @@ def add_rock_weathering(n, costs):
     "co2 rock weathering" carrier.
 
     A single Link per node draws electricity and CO2 from the atmosphere
-    (bus1) and deposits it into a fixed-capacity Store (bus2) representing
-    the cumulative mineral-carbonation potential at that node. The store's
-    capacity is dimensioned from the eligible land area (CORINE land cover,
-    filtered by an annual-mean-temperature threshold; see
-    ``determine_rock_weathering_availability_matrix.py`` and
-    ``build_available_land.py``) multiplied by a per-km2 CO2 removal rate.
+    (bus1) and deposits it into an extendable Store (bus2) representing the
+    cumulative mineral-carbonation potential at that node; the store's
+    ``e_nom_max`` (not ``e_nom``) is dimensioned from the eligible land area
+    (CORINE land cover, filtered by an annual-mean-temperature threshold;
+    see ``determine_rock_weathering_availability_matrix.py`` and
+    ``build_available_land.py``) multiplied by a per-km2 CO2 removal rate --
+    matching the other three CDR techs' extendable-store pattern, so that
+    the "is the land potential binding" KKT multiplier (dual of
+    ``e_nom_opt <= e_nom_max``) is available the same way for all four.
 
     Parameters
     ----------
@@ -1385,7 +1388,8 @@ def add_rock_weathering(n, costs):
         spatial.nodes,
         suffix=" co2 rock weathering",
         bus=spatial.nodes + " co2 rock weathering",
-        e_nom=potentials,
+        e_nom_extendable=True,
+        e_nom_max=potentials,
         carrier="co2 rock weathering",
     )
 

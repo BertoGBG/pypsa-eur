@@ -21,6 +21,7 @@ import argparse
 import sys
 from pathlib import Path
 
+import pandas as pd
 import yaml
 
 BASE_DIR = Path(".")   # check scripts are run from the pypsa-eur root
@@ -216,3 +217,102 @@ def load_check_params(args: argparse.Namespace) -> dict:
         SHARED_RES=SHARED_RES,
         cfg=cfg,
     )
+
+
+# ── System-wide CO2 diagnostics (shared by all CDR check scripts) ──────────────
+
+def _bus_gross_throughput(n_opt, bus_name: str) -> pd.Series:
+    """Total gross throughput at a bus per snapshot: the sum of all flows
+    leaving the bus (== sum of all flows entering it, by KCL), across every
+    component type touching it.
+
+    Computed as 0.5 * sum of |signed flow| over all attached components, since
+    summing absolute values double-counts (injections + withdrawals are equal
+    in magnitude at any bus by the nodal balance constraint).
+    """
+    throughput = pd.Series(0.0, index=n_opt.snapshots)
+
+    for comp_t, static, dynamic in (
+        ("Generator", n_opt.generators, n_opt.generators_t),
+        ("Load", n_opt.loads, n_opt.loads_t),
+        ("Store", n_opt.stores, n_opt.stores_t),
+        ("StorageUnit", n_opt.storage_units, n_opt.storage_units_t),
+    ):
+        if "bus" not in static.columns or "p" not in dynamic:
+            continue
+        attached = static.index[static["bus"] == bus_name]
+        if len(attached):
+            throughput = throughput.add(
+                dynamic["p"][attached].abs().sum(axis=1), fill_value=0.0
+            )
+
+    for i in range(4):
+        bus_col = f"bus{i}"
+        p_col = f"p{i}"
+        if bus_col not in n_opt.links.columns or p_col not in n_opt.links_t:
+            continue
+        attached = n_opt.links.index[n_opt.links[bus_col] == bus_name]
+        if len(attached):
+            throughput = throughput.add(
+                n_opt.links_t[p_col][attached].abs().sum(axis=1), fill_value=0.0
+            )
+
+    return throughput / 2.0
+
+
+def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]"):
+    """
+    Print two system-wide CO2 diagnostics common to every CDR check script:
+
+    1. The dual (shadow price) of the "CO2Limit" GlobalConstraint -- the
+       net-zero-by-end-of-horizon cap built from config["co2_budget"] (see
+       add_co2limit() in prepare_sector_network.py and
+       add_co2_atmosphere_constraint() in solve_network.py). This dual is
+       saved automatically by PyPSA into n.global_constraints["mu"] (a
+       scalar GlobalConstraint dual, unconditionally assigned regardless of
+       assign_all_duals) and survives netcdf export -- no special solving
+       option or re-run is needed to see it.
+    2. The flow-weighted mean marginal price at the "co2 atmosphere" bus,
+       weighted by gross throughput (flow x "stores" snapshot weighting,
+       summed over every component touching the bus). Also needs no special
+       solving option -- buses_t.marginal_price is always saved.
+    """
+    print(f"\n{'=' * 60}")
+    print("  SYSTEM-WIDE CO2 DIAGNOSTICS")
+    print("=" * 60)
+
+    # --- 1. CO2Limit global constraint dual ---------------------------------
+    if "CO2Limit" in n_opt.global_constraints.index:
+        glc = n_opt.global_constraints.loc["CO2Limit"]
+        constant = glc.get("constant")
+        mu = glc.get("mu")
+        print(f"\n  CO2Limit constant: {constant:,.0f} tCO2  (net cumulative "
+              f"atmosphere CO2 at final snapshot must be <= this)")
+        if pd.notna(mu):
+            print(f"  CO2Limit dual (mu): {mu:.4f} €/tCO2  (implied carbon "
+                  f"price for the configured co2_budget target)")
+        else:
+            print(f"{WARN}  CO2Limit has no 'mu' value -- was the constraint "
+                  f"actually built (non-empty emissions carriers) in this solve?")
+    else:
+        print(f"\n{WARN}  No 'CO2Limit' global constraint found in this network.")
+
+    # --- 2. Flow-weighted mean marginal price at "co2 atmosphere" bus ------
+    bus_name = "co2 atmosphere"
+    mp = n_opt.buses_t.marginal_price if "marginal_price" in n_opt.buses_t else None
+    if mp is not None and bus_name in mp.columns:
+        weighting = n_opt.snapshot_weightings["stores"]
+        throughput = _bus_gross_throughput(n_opt, bus_name)
+        qty = throughput * weighting
+        total_qty = qty.sum()
+        if total_qty > 0:
+            flow_wavg_price = (mp[bus_name] * qty).sum() / total_qty
+            print(f"\n  'co2 atmosphere' bus flow-weighted mean marginal price: "
+                  f"{flow_wavg_price:.2f} €/tCO2")
+            print(f"    Total gross throughput (flow x 'stores' weighting, "
+                  f"summed over all components touching the bus): "
+                  f"{total_qty:,.0f} tCO2")
+        else:
+            print(f"\n{WARN}  No throughput detected at '{bus_name}' bus.")
+    else:
+        print(f"\n{WARN}  '{bus_name}' bus or its marginal_price not found.")
