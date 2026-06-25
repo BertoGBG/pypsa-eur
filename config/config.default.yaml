@@ -15,8 +15,8 @@ logging:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#remote
 remote:
-  ssh: ""
-  path: ""
+  ssh: "albal@fe-open-01.genomedk.net"
+  path: "/home/albal/workspace/pypsa-eur_AA/pypsa-eur"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
@@ -1327,7 +1327,7 @@ solving:
     atol: 1000000
     rtol: 0.01
   oetc:
-  mem_mb: 500000
+  mem_mb: 150000
   memory_logging_frequency: 5
   runtime: 48h
 
