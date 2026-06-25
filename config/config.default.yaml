@@ -15,7 +15,7 @@ logging:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#remote
 remote:
-  ssh: "albal@fe-open-01.genomedk.net"
+  ssh: "albal@login.genome.au.dk"
   path: "/home/albal/workspace/pypsa-eur_AA/pypsa-eur"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run

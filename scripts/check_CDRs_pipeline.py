@@ -192,17 +192,17 @@ def flow_weighted_bus_price(n_opt, stores, wavg_cost=None):
     print(f"     unweighted  mean ± std:   {node_price.mean():+.2f} ± {node_price.std():.2f}  €/tCO2"
           f"    [min: {node_price.min():+.2f}  max: {node_price.max():+.2f}]")
     if wavg_cost:
-        net_lccs = flow_wavg_price + wavg_cost
+        net_lccdr = flow_wavg_price + wavg_cost
         print(f"     capital cost (e_nom_opt-weighted): {wavg_cost:+.2f} €/tCO2"
-              f"  →  net LCCS ≈ {net_lccs:+.2f} €/tCO2"
+              f"  →  net LCCDR ≈ {net_lccdr:+.2f} €/tCO2"
               f"  (≈ μ e_nom_max for afforestation)")
 
 
 def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carrier: str, label: str):
-    """Levelized CO2 Sequestration Cost (LCCS) for CDR techs whose costs live on
+    """Levelized CO2 Sequestration Cost (LCCDR) for CDR techs whose costs live on
     the Link (biochar, perennials, rock weathering).
 
-    LCCS = (annualized_capex + VOM + net_bus_costs) / total_CO2_sequestered
+    LCCDR = (annualized_capex + VOM + net_bus_costs) / total_CO2_sequestered
 
     net_bus_costs covers every bus connected to the link EXCEPT the CDR store bus:
       bus0       → contribution = +price_bus0 × p0  (link draws from bus0)
@@ -213,7 +213,7 @@ def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carri
     """
     mp = getattr(n_opt.buses_t, "marginal_price", None)
     if mp is None or mp.empty:
-        print(f"\n{WARN}  buses_t.marginal_price unavailable — cannot compute LCCS")
+        print(f"\n{WARN}  buses_t.marginal_price unavailable — cannot compute LCCDR")
         return
     if links.empty or "p_nom_opt" not in links.columns:
         return
@@ -222,7 +222,7 @@ def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carri
     p0_df = getattr(n_opt.links_t, "p0", None)
 
     tot_capex = tot_vom = tot_bus = tot_co2 = 0.0
-    node_lccs    = {}
+    node_lccdr    = {}
     node_enomopt = {}
 
     for link_name, link in links.iterrows():
@@ -251,9 +251,18 @@ def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carri
                 bus_n += (price_t * p0_t * sw).sum()
             else:
                 p_i_df = getattr(n_opt.links_t, f"p{i}", None)
-                if p_i_df is None or link_name not in p_i_df.columns:
-                    continue
-                bus_n += (-price_t * p_i_df[link_name] * sw).sum()
+                if p_i_df is not None and link_name in p_i_df.columns:
+                    p_i_t = p_i_df[link_name]
+                else:
+                    # links_t.p_i not stored in .nc — derive from efficiency × p0
+                    eff_col = "efficiency" if i == 1 else f"efficiency{i}"
+                    if eff_col not in links.columns:
+                        continue
+                    eff = link.get(eff_col, 0.0)
+                    if eff == 0.0:
+                        continue
+                    p_i_t = eff * p0_t
+                bus_n += (-price_t * p_i_t * sw).sum()
 
         if cdr_bus is None:
             continue
@@ -271,31 +280,31 @@ def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carri
         tot_vom   += vom_n
         tot_bus   += bus_n
         tot_co2   += co2_n
-        node_lccs[link_name]    = (capex_n + vom_n + bus_n) / co2_n
+        node_lccdr[link_name]    = (capex_n + vom_n + bus_n) / co2_n
         node_enomopt[link_name] = stores.at[store_name, "e_nom_opt"] if "e_nom_opt" in stores.columns else 1.0
 
     if tot_co2 <= 0:
-        print(f"\n{WARN}  No CO2 flow — cannot compute LCCS")
+        print(f"\n{WARN}  No CO2 flow — cannot compute LCCDR")
         return
 
-    lccs_pooled  = (tot_capex + tot_vom + tot_bus) / tot_co2
-    node_lccs_s  = pd.Series(node_lccs)
-    node_w       = pd.Series(node_enomopt).reindex(node_lccs_s.index).fillna(0.0)
+    lccdr_pooled  = (tot_capex + tot_vom + tot_bus) / tot_co2
+    node_lccdr_s  = pd.Series(node_lccdr)
+    node_w       = pd.Series(node_enomopt).reindex(node_lccdr_s.index).fillna(0.0)
     w_total      = node_w.sum()
-    lccs_wavg    = (node_lccs_s * node_w).sum() / w_total if w_total > 0 else lccs_pooled
+    lccdr_wavg    = (node_lccdr_s * node_w).sum() / w_total if w_total > 0 else lccdr_pooled
 
-    print(f"\n  ── Levelized CO2 Sequestration Cost  LCCS {'─'*39}")
-    print(f"     Cost breakdown (pooled, {len(node_lccs)} nodes):")
+    print(f"\n  ── Levelized CO2 Sequestration Cost  LCCDR {'─'*39}")
+    print(f"     Cost breakdown (pooled, {len(node_lccdr)} nodes):")
     print(f"       Annualized capex:   {tot_capex / tot_co2:+.2f}  €/tCO2")
     print(f"       VOM:                {tot_vom   / tot_co2:+.2f}  €/tCO2")
     print(f"       Net bus costs:      {tot_bus   / tot_co2:+.2f}  €/tCO2"
           f"   (CO2 atm credit − inputs + co-products)")
     print(f"       {'─'*50}")
-    print(f"       LCCS (pooled):      {lccs_pooled:+.2f}  €/tCO2")
-    print(f"     Per-node distribution ({len(node_lccs)} nodes):")
-    print(f"       e_nom_opt-weighted mean:  {lccs_wavg:+.2f}  €/tCO2")
-    print(f"       unweighted  mean ± std:   {node_lccs_s.mean():+.2f} ± {node_lccs_s.std():.2f}  €/tCO2"
-          f"    [min: {node_lccs_s.min():+.2f}  max: {node_lccs_s.max():+.2f}]")
+    print(f"       LCCDR (pooled):      {lccdr_pooled:+.2f}  €/tCO2")
+    print(f"     Per-node distribution ({len(node_lccdr)} nodes):")
+    print(f"       e_nom_opt-weighted mean:  {lccdr_wavg:+.2f}  €/tCO2")
+    print(f"       unweighted  mean ± std:   {node_lccdr_s.mean():+.2f} ± {node_lccdr_s.std():.2f}  €/tCO2"
+          f"    [min: {node_lccdr_s.min():+.2f}  max: {node_lccdr_s.max():+.2f}]")
 
 
 # ── Afforestation ────────────────────────────────────────────────────────────────
