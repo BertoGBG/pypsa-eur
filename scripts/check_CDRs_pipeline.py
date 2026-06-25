@@ -112,67 +112,55 @@ def header(title: str):
 
 
 def mu_ext_e_nom_upper_check(stores, label: str):
-    """Shadow price of e_nom_max (assign_capacity_duals), common to all four
-    CDR techs now that every CDR Store is e_nom_extendable=True with a
-    resource-potential e_nom_max. Dual of "Store-ext-e_nom-upper"
-    (e_nom_opt <= e_nom_max): the marginal value of relaxing that potential
-    by one more tCO2 of capacity. Only written to
-    n.stores["mu_ext_e_nom_upper"] if solving.options.assign_capacity_duals:
-    true (see solve_network.py, "Assign scalar capacity duals" block) --
-    requires a re-run with that config flag set if not already enabled.
+    """Shadow price of the land-potential constraint μ(e_nom_max) for CDR stores.
+
+    Dual of "Store-ext-e_nom-upper" (e_nom_opt ≤ e_nom_max): the marginal
+    improvement in the objective from relaxing the potential by 1 tCO2.
+    Negative = beneficial (relaxing costs → cheaper system).
+    Written to n.stores["mu_ext_e_nom_upper"] only when
+    solving.options.assign_capacity_duals: true.
     """
-    _dual_status = (
-        "enabled" if _assign_capacity_duals
-        else "disabled (set solving.options.assign_capacity_duals: true and re-run to enable)"
-    )
-    print(f"\n  assign_capacity_duals: {_dual_status}")
+    print(f"\n  ── Shadow price of land potential  μ(e_nom_max) {'─'*36}")
     if not _assign_capacity_duals:
+        print(f"     assign_capacity_duals: disabled"
+              f"  (set solving.options.assign_capacity_duals: true and re-run)")
         return
-    if "mu_ext_e_nom_upper" in stores.columns:
-        mu = stores["mu_ext_e_nom_upper"].dropna()
-        binding = mu[mu.abs() > 1e-6]
-        print(f"\n  mu_ext_e_nom_upper (shadow price of e_nom_max) [{len(mu)} {label} stores]:")
-        print(f"    non-zero (binding): {len(binding)}")
-        if not mu.empty:
-            print(f"    min:  {mu.min():,.4f}")
-            print(f"    mean: {mu.mean():,.4f}")
-            print(f"    max:  {mu.max():,.4f}")
-        if not binding.empty:
-            print(f"\n    Binding nodes (top 10):")
-            print(binding.sort_values().tail(10).to_string())
-    else:
-        print(f"\n{WARN}  mu_ext_e_nom_upper not found in stores — was "
-              f"assign_capacity_duals: true when solving?")
+    print(f"     assign_capacity_duals: enabled")
+    if "mu_ext_e_nom_upper" not in stores.columns:
+        print(f"     {WARN}  column not found in stores — was assign_capacity_duals: true when solving?")
+        return
+
+    mu = stores["mu_ext_e_nom_upper"].dropna()
+    if mu.empty:
+        return
+    binding = mu[mu.abs() > 1e-6]
+    print(f"     binding: {len(binding)}/{len(mu)} nodes")
+
+    w = stores["e_nom_opt"].reindex(mu.index).fillna(0.0) if "e_nom_opt" in stores.columns else pd.Series(1.0, index=mu.index)
+    w_total = w.sum()
+    wavg = (mu * w).sum() / w_total if w_total > 0 else float("nan")
+    print(f"     e_nom_opt-weighted mean:  {wavg:+.2f}  €/tCO2")
+    print(f"     unweighted  mean ± std:   {mu.mean():+.2f} ± {mu.std():.2f}  €/tCO2"
+          f"    [min: {mu.min():+.2f}  max: {mu.max():+.2f}]")
 
 
 def flow_weighted_bus_price(n_opt, stores, wavg_cost=None):
-    """Flow-weighted mean marginal price at each CDR store's own bus.
+    """Marginal price at the CDR store bus, flow-time-weighted per node then
+    e_nom_opt-weighted across nodes.
 
-    Reads flow directly off the STORE (not the feeding link): these CDR
-    stores are one-way accumulators (e_cyclic=False, never discharge), so
-    the amount delivered each snapshot is unambiguously -stores_t.p (PyPSA's
-    Store convention: p>0 discharging, p<0 charging). This sidesteps having
-    to track which bus index (bus1, bus2, ...) and sign convention a given
-    tech's link uses -- the store's own bus/flow are correct regardless.
-
-    Two-step, node-then-capacity weighting:
-      1. Per node: time-weighted average marginal price at that node's bus,
-         weighted by (flow into the store) x "stores" snapshot weighting.
-      2. Across nodes: weighted average of the per-node prices, weighted by
-         e_nom_opt -- the SAME node-weighting used for "Weighted-avg capital
-         cost (by e_nom_opt)", so the two numbers are directly comparable
-         even when a store isn't fully utilised (flow total can then differ
-         from e_nom_opt, where a flow-weighted pooling would diverge from
-         this capacity-weighted one).
+    Flow is read off the store directly (stores_t.p, sign-flipped: charging
+    p<0 → positive inflow). Per-node price = time-weighted mean marginal price
+    at that node's CDR store bus, weighted by inflow × snapshot weight.
+    Across nodes: weighted by e_nom_opt for comparability with capital cost.
     """
     mp = n_opt.buses_t.marginal_price if "marginal_price" in n_opt.buses_t else None
     if mp is None or mp.empty or stores.empty:
-        print(f"\n{WARN}  buses_t.marginal_price unavailable or empty -- "
+        print(f"\n{WARN}  buses_t.marginal_price unavailable or empty — "
               f"check the network was solved with a solver returning duals.")
         return
 
     weighting = n_opt.snapshot_weightings["stores"]
-    store_flow = -n_opt.stores_t.p[stores.index]  # flow into the store (charging is p<0)
+    store_flow = -n_opt.stores_t.p[stores.index]
 
     node_prices = {}
     node_flow_total = {}
@@ -196,31 +184,118 @@ def flow_weighted_bus_price(n_opt, stores, wavg_cost=None):
 
     flow_wavg_price = (node_price * node_weight).sum() / total_weight
     total_flow = sum(node_flow_total.values())
-    print(f"\n  Flow-weighted mean marginal price (per-node time-weighted by "
-          f"flow x 'stores' weighting, then node-weighted by e_nom_opt): "
-          f"{flow_wavg_price:.2f} €/tCO2")
-    print(f"    Total CO2 via flow accumulation: {total_flow:,.0f} tCO2  "
-          f"vs. total e_nom_opt: {total_weight:,.0f} tCO2  "
-          f"(ratio: {total_flow / total_weight:.4f}, expect ~1.0)")
+
+    print(f"\n  ── Marginal price at CDR store bus {'─'*46}")
+    print(f"     n={len(node_price)} nodes  |  total CO2 flow: {total_flow:,.0f} tCO2"
+          f"  |  flow/potential: {total_flow / total_weight:.4f}")
+    print(f"     e_nom_opt-weighted mean:  {flow_wavg_price:+.2f}  €/tCO2")
+    print(f"     unweighted  mean ± std:   {node_price.mean():+.2f} ± {node_price.std():.2f}  €/tCO2"
+          f"    [min: {node_price.min():+.2f}  max: {node_price.max():+.2f}]")
     if wavg_cost:
-        # Sign: capital_cost is always reported positive (a cost paid to
-        # build); the bus dual carries whatever sign the LP's KKT structure
-        # gives a "more throughput here is good" constraint, which is
-        # negative throughout this whole CDR setup -- so expect ~-1.0, not
-        # +1.0. The MAGNITUDE only approaches 1.0 if (a) capital_cost is
-        # homogeneous across nodes and (b) the store's own e_nom_max is
-        # what's binding (full utilisation) -- if a node's local potential
-        # isn't the limiting constraint, its bus price instead reflects
-        # whatever IS binding system-wide (e.g. the global CO2 budget), and
-        # the weighted-average deployed cost will sit below that marginal
-        # price whenever cheaper nodes get built before more expensive ones
-        # (a merit-order effect) -- see the SYSTEM-WIDE CO2 DIAGNOSTICS
-        # CO2Limit dual / co2 atmosphere bus price for comparison.
-        print(f"    Ratio flow-weighted price / capacity-weighted cost: "
-              f"{flow_wavg_price / wavg_cost:.4f}  (expect ~-1.0 only if "
-              f"capital_cost is uniform across nodes AND e_nom_max is fully "
-              f"utilised at most nodes -- otherwise compare magnitude "
-              f"against the system-wide CO2 price instead)")
+        net_lccs = flow_wavg_price + wavg_cost
+        print(f"     capital cost (e_nom_opt-weighted): {wavg_cost:+.2f} €/tCO2"
+              f"  →  net LCCS ≈ {net_lccs:+.2f} €/tCO2"
+              f"  (≈ μ e_nom_max for afforestation)")
+
+
+def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carrier: str, label: str):
+    """Levelized CO2 Sequestration Cost (LCCS) for CDR techs whose costs live on
+    the Link (biochar, perennials, rock weathering).
+
+    LCCS = (annualized_capex + VOM + net_bus_costs) / total_CO2_sequestered
+
+    net_bus_costs covers every bus connected to the link EXCEPT the CDR store bus:
+      bus0       → contribution = +price_bus0 × p0  (link draws from bus0)
+      bus_i i≥1  → contribution = −price_bus_i × p_i  (p_i>0 = output = revenue)
+
+    From KKT this should approximately equal the flow-weighted marginal price
+    at the CDR store bus printed above.
+    """
+    mp = getattr(n_opt.buses_t, "marginal_price", None)
+    if mp is None or mp.empty:
+        print(f"\n{WARN}  buses_t.marginal_price unavailable — cannot compute LCCS")
+        return
+    if links.empty or "p_nom_opt" not in links.columns:
+        return
+
+    sw   = n_opt.snapshot_weightings["stores"]
+    p0_df = getattr(n_opt.links_t, "p0", None)
+
+    tot_capex = tot_vom = tot_bus = tot_co2 = 0.0
+    node_lccs    = {}
+    node_enomopt = {}
+
+    for link_name, link in links.iterrows():
+        if p0_df is None or link_name not in p0_df.columns:
+            continue
+        p0_t = p0_df[link_name]
+
+        capex_n = link.get("capital_cost", 0.0) * link.get("p_nom_opt", 0.0)
+        vom_n   = (link.get("marginal_cost", 0.0) * p0_t * sw).sum()
+        bus_n   = 0.0
+        cdr_bus = None
+
+        for i in range(5):
+            bus_name = link.get(f"bus{i}")
+            if not isinstance(bus_name, str) or not bus_name:
+                continue
+            if bus_name not in n_opt.buses.index:
+                continue
+            if n_opt.buses.at[bus_name, "carrier"] == cdr_store_carrier:
+                cdr_bus = bus_name
+                continue
+            if bus_name not in mp.columns:
+                continue
+            price_t = mp[bus_name]
+            if i == 0:
+                bus_n += (price_t * p0_t * sw).sum()
+            else:
+                p_i_df = getattr(n_opt.links_t, f"p{i}", None)
+                if p_i_df is None or link_name not in p_i_df.columns:
+                    continue
+                bus_n += (-price_t * p_i_df[link_name] * sw).sum()
+
+        if cdr_bus is None:
+            continue
+        store_mask = stores["bus"] == cdr_bus
+        if not store_mask.any():
+            continue
+        store_name = stores.index[store_mask][0]
+        if store_name not in n_opt.stores_t.p.columns:
+            continue
+        co2_n = (-n_opt.stores_t.p[store_name] * sw).sum()
+        if co2_n <= 0:
+            continue
+
+        tot_capex += capex_n
+        tot_vom   += vom_n
+        tot_bus   += bus_n
+        tot_co2   += co2_n
+        node_lccs[link_name]    = (capex_n + vom_n + bus_n) / co2_n
+        node_enomopt[link_name] = stores.at[store_name, "e_nom_opt"] if "e_nom_opt" in stores.columns else 1.0
+
+    if tot_co2 <= 0:
+        print(f"\n{WARN}  No CO2 flow — cannot compute LCCS")
+        return
+
+    lccs_pooled  = (tot_capex + tot_vom + tot_bus) / tot_co2
+    node_lccs_s  = pd.Series(node_lccs)
+    node_w       = pd.Series(node_enomopt).reindex(node_lccs_s.index).fillna(0.0)
+    w_total      = node_w.sum()
+    lccs_wavg    = (node_lccs_s * node_w).sum() / w_total if w_total > 0 else lccs_pooled
+
+    print(f"\n  ── Levelized CO2 Sequestration Cost  LCCS {'─'*39}")
+    print(f"     Cost breakdown (pooled, {len(node_lccs)} nodes):")
+    print(f"       Annualized capex:   {tot_capex / tot_co2:+.2f}  €/tCO2")
+    print(f"       VOM:                {tot_vom   / tot_co2:+.2f}  €/tCO2")
+    print(f"       Net bus costs:      {tot_bus   / tot_co2:+.2f}  €/tCO2"
+          f"   (CO2 atm credit − inputs + co-products)")
+    print(f"       {'─'*50}")
+    print(f"       LCCS (pooled):      {lccs_pooled:+.2f}  €/tCO2")
+    print(f"     Per-node distribution ({len(node_lccs)} nodes):")
+    print(f"       e_nom_opt-weighted mean:  {lccs_wavg:+.2f}  €/tCO2")
+    print(f"       unweighted  mean ± std:   {node_lccs_s.mean():+.2f} ± {node_lccs_s.std():.2f}  €/tCO2"
+          f"    [min: {node_lccs_s.min():+.2f}  max: {node_lccs_s.max():+.2f}]")
 
 
 # ── Afforestation ────────────────────────────────────────────────────────────────
@@ -466,6 +541,7 @@ def check_biochar_optimal(n_opt):
     # average by p_nom_opt" of it is meaningless -- the flow-weighted bus
     # price below is the only meaningful per-tCO2 cost figure for this tech.
     flow_weighted_bus_price(n_opt, co2_bc_stores)
+    print_levelized_co2_sequestration_cost(n_opt, co2_bc_links, co2_bc_stores, "co2 biochar", "biochar")
 
     if co2_bc_links.empty and co2_bc_stores.empty:
         print(f"\n{WARN}  No co2 biochar components in optimal network!")
@@ -552,6 +628,7 @@ def check_perennials_optimal(n_opt):
     # flow-weighted bus price below is the only meaningful per-tCO2 cost
     # figure for this tech.
     flow_weighted_bus_price(n_opt, perenn_stores)
+    print_levelized_co2_sequestration_cost(n_opt, perenn_links, perenn_stores, "co2 perennials", "perennials")
 
     if perenn_links.empty and perenn_stores.empty:
         print(f"\n{WARN}  No perennial components in optimal network!")
@@ -656,6 +733,7 @@ def check_rock_weathering_optimal(n_opt):
     # meaningless -- the flow-weighted bus price below is the only
     # meaningful per-tCO2 cost figure for this tech.
     flow_weighted_bus_price(n_opt, co2_rw_stores)
+    print_levelized_co2_sequestration_cost(n_opt, co2_rw_links, co2_rw_stores, "co2 rock weathering", "rock weathering")
 
     if co2_rw_links.empty and co2_rw_stores.empty:
         print(f"\n{WARN}  No co2 rock weathering components in optimal network!")
