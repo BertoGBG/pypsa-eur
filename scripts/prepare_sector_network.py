@@ -1104,6 +1104,7 @@ def add_perennials(n, costs):
        e_nom_max=perennials_potentials_spatial.values,
        carrier="co2 perennials",
        e_cyclic=False,
+       capital_cost=1e-3,  # epsilon: prevents free allocation to e_nom_max when link barely operates
     )
 
 def add_biomass_to_methanol(n, costs):
@@ -1391,6 +1392,7 @@ def add_rock_weathering(n, costs):
         e_nom_extendable=True,
         e_nom_max=potentials,
         carrier="co2 rock weathering",
+        capital_cost=1e-3,  # epsilon: prevents free allocation to e_nom_max when link barely operates
     )
 
     n.add(
@@ -1512,6 +1514,7 @@ def add_biochar(n, costs):
             * snakemake.config["biochar"]["max_land_usage"]
             / snakemake.config["biochar"]["number_years"]
         ),
+        capital_cost=1e-3,  # epsilon: prevents free allocation to e_nom_max when link barely operates
     )
 
     if len(spatial.biomass.nodes) == 1:
