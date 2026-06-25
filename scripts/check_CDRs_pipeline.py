@@ -236,8 +236,9 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
                 store_bus_to_link[bus] = link_name
 
     tot_capex = tot_vom = tot_co2atm = tot_bus_other = tot_co2 = 0.0
-    node_lccdr:   dict = {}
-    node_enomopt: dict = {}
+    node_lccdr:       dict = {}
+    node_gross_lccdr: dict = {}
+    node_enomopt:     dict = {}
 
     for store_name, store in stores.iterrows():
         store_bus = store["bus"]
@@ -298,39 +299,48 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
                     else:
                         bus_other_n += contrib
 
-        bus_n = bus_co2atm_n + bus_other_n
+        gross_n = capex_n + vom_n + bus_other_n
+        bus_n   = bus_co2atm_n + bus_other_n
         tot_capex      += capex_n
         tot_vom        += vom_n
         tot_co2atm     += bus_co2atm_n
         tot_bus_other  += bus_other_n
         tot_co2        += co2_n
-        node_lccdr[store_name]   = (capex_n + vom_n + bus_n) / co2_n
-        node_enomopt[store_name] = store.get("e_nom_opt", 0.0)
+        node_lccdr[store_name]       = (gross_n + bus_co2atm_n) / co2_n  # CDR net revenue
+        node_gross_lccdr[store_name] = gross_n / co2_n                   # LCCDR (cost only)
+        node_enomopt[store_name]     = store.get("e_nom_opt", 0.0)
 
     if tot_co2 <= 0:
         print(f"\n{WARN}  No CO2 flow — cannot compute LCCDR")
         return
 
-    tot_bus      = tot_co2atm + tot_bus_other
-    lccdr_pooled = (tot_capex + tot_vom + tot_bus) / tot_co2
-    node_lccdr_s = pd.Series(node_lccdr)
-    node_w       = pd.Series(node_enomopt).reindex(node_lccdr_s.index).fillna(0.0)
-    w_total      = node_w.sum()
-    lccdr_wavg   = (node_lccdr_s * node_w).sum() / w_total if w_total > 0 else lccdr_pooled
+    tot_gross        = tot_capex + tot_vom + tot_bus_other
+    tot_net_revenue  = tot_gross + tot_co2atm
+    node_lccdr_s     = pd.Series(node_lccdr)
+    node_gross_s     = pd.Series(node_gross_lccdr)
+    node_w           = pd.Series(node_enomopt).reindex(node_lccdr_s.index).fillna(0.0)
+    w_total          = node_w.sum()
+    wavg             = lambda s: (s * node_w).sum() / w_total if w_total > 0 else s.mean()
 
     print(f"\n  ── Levelized Cost of CDR  (LCCDR) {'─'*46}")
     print(f"     Cost breakdown (pooled, {len(node_lccdr)} nodes):")
-    print(f"       Capex (link + store):   {tot_capex    / tot_co2:+.2f}  €/tCO2")
-    print(f"       VOM:                    {tot_vom       / tot_co2:+.2f}  €/tCO2")
-    print(f"       CO2 credit:             {tot_co2atm   / tot_co2:+.2f}  €/tCO2"
-          f"   (CO2 atm price × CO2 flow)")
-    print(f"       Other variable costs:   {tot_bus_other / tot_co2:+.2f}  €/tCO2"
+    print(f"       Capex (link + store):        {tot_capex     / tot_co2:+.2f}  €/tCO2")
+    print(f"       VOM:                         {tot_vom        / tot_co2:+.2f}  €/tCO2")
+    print(f"       Other variable costs:        {tot_bus_other  / tot_co2:+.2f}  €/tCO2"
           f"   (energy inputs − co-products)")
     print(f"       {'─'*54}")
-    print(f"       LCCDR (pooled):         {lccdr_pooled:+.2f}  €/tCO2")
+    print(f"       Levelized Cost of CDR:       {tot_gross      / tot_co2:+.2f}  €/tCO2"
+          f"   (cost to remove 1 tCO2, excl. CO2 value)")
+    print(f"     + CO2 credit:                  {tot_co2atm     / tot_co2:+.2f}  €/tCO2"
+          f"   (CO2 atm price × CO2 flow)")
+    print(f"       {'─'*54}")
+    print(f"     = CDR net revenue:             {tot_net_revenue / tot_co2:+.2f}  €/tCO2")
     print(f"     Per-node distribution ({len(node_lccdr)} nodes):")
-    print(f"       e_nom_opt-weighted mean:  {lccdr_wavg:+.2f}  €/tCO2")
-    print(f"       unweighted  mean ± std:   {node_lccdr_s.mean():+.2f} ± {node_lccdr_s.std():.2f}  €/tCO2"
+    print(f"       Levelized Cost of CDR  —  e_nom_opt-weighted mean:  {wavg(node_gross_s):+.2f}  €/tCO2")
+    print(f"                                 unweighted  mean ± std:   {node_gross_s.mean():+.2f} ± {node_gross_s.std():.2f}  €/tCO2"
+          f"    [min: {node_gross_s.min():+.2f}  max: {node_gross_s.max():+.2f}]")
+    print(f"       CDR net revenue        —  e_nom_opt-weighted mean:  {wavg(node_lccdr_s):+.2f}  €/tCO2")
+    print(f"                                 unweighted  mean ± std:   {node_lccdr_s.mean():+.2f} ± {node_lccdr_s.std():.2f}  €/tCO2"
           f"    [min: {node_lccdr_s.min():+.2f}  max: {node_lccdr_s.max():+.2f}]")
 
 
