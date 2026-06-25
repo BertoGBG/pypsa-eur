@@ -235,7 +235,7 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
             if n_opt.buses.at[bus, "carrier"] == cdr_store_carrier:
                 store_bus_to_link[bus] = link_name
 
-    tot_capex = tot_vom = tot_bus = tot_co2 = 0.0
+    tot_capex = tot_vom = tot_co2atm = tot_bus_other = tot_co2 = 0.0
     node_lccdr:   dict = {}
     node_enomopt: dict = {}
 
@@ -249,9 +249,10 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
         if co2_n <= 0:
             continue
 
-        capex_n = store.get("capital_cost", 0.0) * store.get("e_nom_opt", 0.0)
-        vom_n   = 0.0
-        bus_n   = 0.0
+        capex_n      = store.get("capital_cost", 0.0) * store.get("e_nom_opt", 0.0)
+        vom_n        = 0.0
+        bus_co2atm_n = 0.0
+        bus_other_n  = 0.0
 
         if link_name is not None:
             link = links.loc[link_name]
@@ -270,7 +271,8 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
                         continue
                     if bus_name not in n_opt.buses.index:
                         continue
-                    if n_opt.buses.at[bus_name, "carrier"] == cdr_store_carrier:
+                    bus_carrier = n_opt.buses.at[bus_name, "carrier"]
+                    if bus_carrier == cdr_store_carrier:
                         continue  # skip CDR store bus
                     if bus_name not in mp.columns:
                         continue
@@ -290,12 +292,18 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
                                 continue
                             p_i_t = -eff * p0_t
                     # PyPSA: p_i = -eff_i × p0, positive = consuming from bus_i
-                    bus_n += (price_t * p_i_t * sw).sum()
+                    contrib = (price_t * p_i_t * sw).sum()
+                    if bus_carrier == "co2":  # CO2 atmosphere bus
+                        bus_co2atm_n += contrib
+                    else:
+                        bus_other_n += contrib
 
-        tot_capex += capex_n
-        tot_vom   += vom_n
-        tot_bus   += bus_n
-        tot_co2   += co2_n
+        bus_n = bus_co2atm_n + bus_other_n
+        tot_capex      += capex_n
+        tot_vom        += vom_n
+        tot_co2atm     += bus_co2atm_n
+        tot_bus_other  += bus_other_n
+        tot_co2        += co2_n
         node_lccdr[store_name]   = (capex_n + vom_n + bus_n) / co2_n
         node_enomopt[store_name] = store.get("e_nom_opt", 0.0)
 
@@ -303,6 +311,7 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
         print(f"\n{WARN}  No CO2 flow — cannot compute LCCDR")
         return
 
+    tot_bus      = tot_co2atm + tot_bus_other
     lccdr_pooled = (tot_capex + tot_vom + tot_bus) / tot_co2
     node_lccdr_s = pd.Series(node_lccdr)
     node_w       = pd.Series(node_enomopt).reindex(node_lccdr_s.index).fillna(0.0)
@@ -311,10 +320,14 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
 
     print(f"\n  ── Levelized Cost of CDR  (LCCDR) {'─'*46}")
     print(f"     Cost breakdown (pooled, {len(node_lccdr)} nodes):")
-    print(f"       Capex (link + store):   {tot_capex / tot_co2:+.2f}  €/tCO2")
-    print(f"       VOM:                    {tot_vom   / tot_co2:+.2f}  €/tCO2")
-    print(f"       Net CDR cost:           {tot_bus   / tot_co2:+.2f}  €/tCO2"
-          f"   (CO2 atm credit − inputs + co-products)")
+    print(f"       Capex (link + store):   {tot_capex    / tot_co2:+.2f}  €/tCO2")
+    print(f"       VOM:                    {tot_vom       / tot_co2:+.2f}  €/tCO2")
+    print(f"       CO2 credit:             {tot_co2atm   / tot_co2:+.2f}  €/tCO2"
+          f"   (CO2 atm price × CO2 flow)")
+    print(f"       Other variable costs:   {tot_bus_other / tot_co2:+.2f}  €/tCO2"
+          f"   (energy inputs − co-products)")
+    print(f"       Net CDR cost:           {tot_bus       / tot_co2:+.2f}  €/tCO2"
+          f"   (CO2 credit + other variable costs)")
     print(f"       {'─'*54}")
     print(f"       LCCDR (pooled):         {lccdr_pooled:+.2f}  €/tCO2")
     print(f"     Per-node distribution ({len(node_lccdr)} nodes):")
