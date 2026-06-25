@@ -326,8 +326,6 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
           f"   (CO2 atm price × CO2 flow)")
     print(f"       Other variable costs:   {tot_bus_other / tot_co2:+.2f}  €/tCO2"
           f"   (energy inputs − co-products)")
-    print(f"       Net CDR cost:           {tot_bus       / tot_co2:+.2f}  €/tCO2"
-          f"   (CO2 credit + other variable costs)")
     print(f"       {'─'*54}")
     print(f"       LCCDR (pooled):         {lccdr_pooled:+.2f}  €/tCO2")
     print(f"     Per-node distribution ({len(node_lccdr)} nodes):")
