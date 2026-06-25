@@ -248,21 +248,25 @@ def print_levelized_co2_sequestration_cost(n_opt, links, stores, cdr_store_carri
                 continue
             price_t = mp[bus_name]
             if i == 0:
-                bus_n += (price_t * p0_t * sw).sum()
+                p_i_t = p0_t
             else:
                 p_i_df = getattr(n_opt.links_t, f"p{i}", None)
                 if p_i_df is not None and link_name in p_i_df.columns:
                     p_i_t = p_i_df[link_name]
                 else:
-                    # links_t.p_i not stored in .nc — derive from efficiency × p0
+                    # links_t.p_i not stored — derive using PyPSA convention:
+                    # links_t.p_i = -efficiency_i × p0
                     eff_col = "efficiency" if i == 1 else f"efficiency{i}"
                     if eff_col not in links.columns:
                         continue
                     eff = link.get(eff_col, 0.0)
                     if eff == 0.0:
                         continue
-                    p_i_t = eff * p0_t
-                bus_n += (-price_t * p_i_t * sw).sum()
+                    p_i_t = -eff * p0_t
+            # unified formula for all buses: +price × p_i_stored
+            # PyPSA stores p_i = -efficiency_i × p0, so positive p_i means
+            # the link is consuming FROM bus_i (e.g. p1>0 at co2 atm = CO2 removal)
+            bus_n += (price_t * p_i_t * sw).sum()
 
         if cdr_bus is None:
             continue
