@@ -1687,7 +1687,7 @@ def add_afforestation(n, costs):
             if use_discount_rate else 0.0
         )
         forest_annuity = calculate_annuity(rotation_age, discount_rate)
-        capital_cost = investment_cost * (forest_annuity + fom) / (growth_rate)  * 0.9 # [EUR/tCO2_net]
+        capital_cost = investment_cost * (5500/9743) * (forest_annuity + fom * 0.5) / (growth_rate) # [EUR/tCO2_net]
 
         # Load pre-computed hourly seasonal profile (snapshots × nodes)
         profile_full = pd.read_csv(
