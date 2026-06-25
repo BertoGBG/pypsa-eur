@@ -120,7 +120,7 @@ def mu_ext_e_nom_upper_check(stores, label: str):
     Written to n.stores["mu_ext_e_nom_upper"] only when
     solving.options.assign_capacity_duals: true.
     """
-    print(f"\n  ── Shadow price of land potential  μ(e_nom_max) {'─'*36}")
+    print(f"\n  ── Shadow price of CDR potential  μ(e_nom_max) {'─'*36}")
     if not _assign_capacity_duals:
         print(f"     assign_capacity_duals: disabled"
               f"  (set solving.options.assign_capacity_duals: true and re-run)")
