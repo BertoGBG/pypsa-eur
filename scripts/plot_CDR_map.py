@@ -386,9 +386,11 @@ if __name__ == "__main__":
         (df["e_nom_max"].max() if not df.empty else 0.0)
         for df in cdr_data.values()
     )
+    # colormap scale from deployed nodes only (lccdr_gross=NaN for undeployed / no-potential)
     all_lccdr = pd.concat([
         df["lccdr_gross"].dropna() for df in cdr_data.values() if not df.empty
     ]) if any(not df.empty for df in cdr_data.values()) else pd.Series(dtype=float)
+    lccdr_min = float(all_lccdr.min()) if not all_lccdr.empty else 0.0
     lccdr_max = float(all_lccdr.max()) if not all_lccdr.empty else 1000.0
 
     # ── Figure 1: 2×2 panels + right legend strip ─────────────────────────────
@@ -409,7 +411,7 @@ if __name__ == "__main__":
         reg = regions.copy()
         reg["lccdr"] = df["lccdr_gross"].reindex(reg.index) if not df.empty else np.nan
 
-        setup_ax(ax, reg, "lccdr", crs, boundaries, vmin=0, vmax=lccdr_max)
+        setup_ax(ax, reg, "lccdr", crs, boundaries, vmin=lccdr_min, vmax=lccdr_max)
 
         wlccdr, co2_mt = summaries[carrier]
         title_str = label
@@ -433,7 +435,7 @@ if __name__ == "__main__":
 
     # shared colorbar below map columns only
     sm1 = plt.cm.ScalarMappable(
-        cmap=CMAP, norm=plt.Normalize(vmin=0, vmax=lccdr_max)
+        cmap=CMAP, norm=plt.Normalize(vmin=lccdr_min, vmax=lccdr_max)
     )
     all_map_axes = [map_axes[r][c] for r in range(2) for c in range(2)]
     cb1 = fig1.colorbar(
@@ -479,7 +481,11 @@ if __name__ == "__main__":
 
     reg2 = regions.copy()
     reg2["wlccdr"] = wlccdr_map
-    setup_ax(ax2, reg2, "wlccdr", crs, boundaries, vmin=0, vmax=lccdr_max)
+    # vmin2/vmax2 from deployed nodes in the composite map
+    wlccdr_valid = wlccdr_map.dropna()
+    vmin2 = float(wlccdr_valid.min()) if not wlccdr_valid.empty else lccdr_min
+    vmax2 = float(wlccdr_valid.max()) if not wlccdr_valid.empty else lccdr_max
+    setup_ax(ax2, reg2, "wlccdr", crs, boundaries, vmin=vmin2, vmax=vmax2)
     ax2.set_title(
         "CDR portfolio — deployment mix and weighted LCCDR per node",
         fontsize=11, fontweight="bold", pad=4,
@@ -488,7 +494,7 @@ if __name__ == "__main__":
     draw_pie_charts(ax2, cdr_data, carriers_order, n, crs, colors, max_total)
 
     sm2 = plt.cm.ScalarMappable(
-        cmap=CMAP, norm=plt.Normalize(vmin=0, vmax=lccdr_max)
+        cmap=CMAP, norm=plt.Normalize(vmin=vmin2, vmax=vmax2)
     )
     cb2 = fig2.colorbar(
         sm2, ax=ax2,
