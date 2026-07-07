@@ -28,6 +28,12 @@ from matplotlib.patches import Circle, Wedge
 
 CO2_ATM_CARRIER = "co2"
 
+
+def load_projection(plotting_params):
+    proj_kwargs = plotting_params.get("projection", {"name": "EqualEarth"}).copy()
+    proj_func = getattr(ccrs, proj_kwargs.pop("name"))
+    return proj_func(**proj_kwargs)
+
 CDR_TECHS = [
     ("Afforestation",    "co2 afforestation"),
     ("Perennialisation", "co2 perennials"),
@@ -287,8 +293,6 @@ if __name__ == "__main__":
         configure_logging(snakemake)
         set_scenario_config(snakemake)
         update_config_from_wildcards(snakemake.config, snakemake.wildcards)
-
-    from scripts.plot_power_network import load_projection
 
     n = pypsa.Network(snakemake.input.network)
     regions = gpd.read_file(snakemake.input.regions).set_index("name")
