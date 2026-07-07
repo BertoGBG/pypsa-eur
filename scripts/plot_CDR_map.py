@@ -39,6 +39,9 @@ CDR_TECHS = [
 ]
 
 MAX_RADIUS = 160_000  # metres in EqualEarth projection
+# Nodes whose actual CO2 flow is below this fraction of their potential are
+# treated as undeployed: lccdr_gross is set to NaN and shown white on the map.
+MIN_DEPLOYMENT_FRAC = 1e-3
 
 
 def load_projection(plotting_params):
@@ -139,6 +142,10 @@ def compute_cdr_per_node(n, store_carrier):
                         bus_other_n += (price_t * p_i_t * sw).sum()
 
             lccdr_gross = (capex_n + vom_n + bus_other_n) / co2_seq
+            # Null out LCCDR for essentially undeployed nodes (e.g. biochar with
+            # epsilon capital_cost giving spurious e_nom_opt but near-zero dispatch).
+            if e_nom_max > 0 and co2_seq / e_nom_max < MIN_DEPLOYMENT_FRAC:
+                lccdr_gross = np.nan
 
         records.append(dict(
             node=node, e_nom_max=e_nom_max, e_nom_opt=e_nom_opt,
