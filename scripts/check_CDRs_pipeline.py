@@ -20,7 +20,11 @@ Override any value on the CLI:
     --config PATH    (direct path to a saved config YAML)
 """
 
+import sys
 from pathlib import Path
+
+# Ensure sibling modules in scripts/ are importable regardless of CWD
+sys.path.insert(0, str(Path(__file__).parent))
 
 import pandas as pd
 import pypsa
