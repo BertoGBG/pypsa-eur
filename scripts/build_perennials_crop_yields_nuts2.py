@@ -257,6 +257,11 @@ if __name__ == "__main__":
     CROPS_CSV_NUTS2.parent.mkdir(parents=True, exist_ok=True)
     OUT_CSV_YIELDS_ALL.parent.mkdir(parents=True, exist_ok=True)
 
+    # G0000: total green plants (kept – often the only G-code with NUTS2 coverage, e.g. DK)
+    # G1000: temporary grasses and grazings
+    # G2000: aggregate legumes (G2100 + G2900) – included for NUTS0 fallback coverage;
+    #         does NOT inflate MAX because it is always ≤ max(G2100, G2900)
+    # G2100: lucerne/alfalfa; G2900: clover and other leguminous plants
     perennial_codes = ["G0000", "G1000", "G2000", "G2100", "G2900"]
 
     crops_mapping = dict(
@@ -342,6 +347,8 @@ if __name__ == "__main__":
             "MINBIOCRP11": yield_MINBIOCRP11_full["energy_yields_(MWh/ha)"],
             "MINBIOCRP21": yield_MINBIOCRP21_full["energy_yields_(MWh/ha)"],
             "MINBIORPS1": yield_MINBIORPS1_full["energy_yields_(MWh/ha)"],
+            # Max yield across G-codes: models the best-available perennial crop
+            # choice in each region when substituting 1G biofuel crops.
             "PERENNIALS_MAX": yields_perennials_max_full["YL_(t/ha)"],
         },
         axis=1,
