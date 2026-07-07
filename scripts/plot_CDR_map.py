@@ -313,7 +313,7 @@ if __name__ == "__main__":
             regions_path = Path(args.regions)
 
         with open(args.plotting_config) as _f:
-            _plotting = yaml.safe_load(_f)
+            _plotting = yaml.safe_load(_f)["plotting"]
 
         snakemake = SimpleNamespace(
             input=SimpleNamespace(
