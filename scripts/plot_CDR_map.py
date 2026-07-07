@@ -273,18 +273,45 @@ def add_size_legend(ax, max_potential, ref_fracs=(0.25, 0.5, 1.0)):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
+        import argparse
         import yaml
-        run_dir = Path("results/F_lim_H_ind/F_limit_H_ind_test")
-        with open("config/plotting.default.yaml") as _f:
+
+        parser = argparse.ArgumentParser(description="Plot CDR diagnostic maps.")
+        parser.add_argument(
+            "--network", required=True,
+            help="Path to optimised network .nc file",
+        )
+        parser.add_argument(
+            "--regions", default="resources/regions_onshore_base_s_90.geojson",
+            help="Path to regions GeoJSON (default: resources/regions_onshore_base_s_90.geojson)",
+        )
+        parser.add_argument(
+            "--out-fig1", default=None,
+            help="Output PDF for Figure 1 (default: <network_dir>/../maps/static/CDR_costs_map.pdf)",
+        )
+        parser.add_argument(
+            "--out-fig2", default=None,
+            help="Output PDF for Figure 2 (default: <network_dir>/../maps/static/CDR_portfolio_map.pdf)",
+        )
+        parser.add_argument(
+            "--plotting-config", default="config/plotting.default.yaml",
+            help="Path to plotting config YAML (default: config/plotting.default.yaml)",
+        )
+        args = parser.parse_args()
+
+        net_path = Path(args.network)
+        maps_dir = net_path.parent.parent / "maps" / "static"
+        with open(args.plotting_config) as _f:
             _plotting = yaml.safe_load(_f)
+
         snakemake = SimpleNamespace(
             input=SimpleNamespace(
-                network=str(run_dir / "networks/base_s_90__168h_2050.nc"),
-                regions="resources/regions_onshore_base_s_90.geojson",
+                network=str(net_path),
+                regions=args.regions,
             ),
             output=[
-                str(run_dir / "maps/static/CDR_costs_map.pdf"),
-                str(run_dir / "maps/static/CDR_portfolio_map.pdf"),
+                args.out_fig1 or str(maps_dir / "CDR_costs_map.pdf"),
+                args.out_fig2 or str(maps_dir / "CDR_portfolio_map.pdf"),
             ],
             params=SimpleNamespace(plotting=_plotting),
         )
