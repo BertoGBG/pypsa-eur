@@ -301,13 +301,24 @@ if __name__ == "__main__":
 
         net_path = Path(args.network)
         maps_dir = net_path.parent.parent / "maps" / "static"
+
+        # Auto-derive regions path: resources/<run_name>/regions_onshore_base_s_<clusters>.geojson
+        # Network: results/<run_name>/networks/base_s_<clusters>__...nc
+        if args.regions == "resources/regions_onshore_base_s_90.geojson":
+            run_name = net_path.parent.parent.name  # e.g. "CDRs_2050"
+            net_stem = net_path.stem              # e.g. "base_s_90__168h_2050"
+            clusters = net_stem.split("_")[2]    # e.g. "90"
+            regions_path = Path("resources") / run_name / f"regions_onshore_base_s_{clusters}.geojson"
+        else:
+            regions_path = Path(args.regions)
+
         with open(args.plotting_config) as _f:
             _plotting = yaml.safe_load(_f)
 
         snakemake = SimpleNamespace(
             input=SimpleNamespace(
                 network=str(net_path),
-                regions=args.regions,
+                regions=str(regions_path),
             ),
             output=[
                 args.out_fig1 or str(maps_dir / "CDR_costs_map.pdf"),
