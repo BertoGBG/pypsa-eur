@@ -42,6 +42,14 @@ MAX_RADIUS = 160_000  # metres in EqualEarth projection
 # Nodes whose actual CO2 flow is below this fraction of their potential are
 # treated as undeployed: lccdr_gross is set to NaN and shown white on the map.
 MIN_DEPLOYMENT_FRAC = 1e-3
+# ...but a fractional threshold alone fails when e_nom_max itself is tiny
+# (a handful of tCO2 or less): LP noise-level flow can then equal or exceed
+# e_nom_max, giving a ratio near/above 1 despite both numbers being
+# meaningless. Require the absolute flow to also clear this floor -- set
+# comfortably above the observed solver noise ceiling (~1-2 tCO2/node) and
+# below the smallest genuine deployment seen across all four CDR techs
+# (~75 tCO2 for rock weathering).
+MIN_DEPLOYMENT_TCO2 = 50
 
 
 def load_projection(plotting_params):
@@ -144,7 +152,14 @@ def compute_cdr_per_node(n, store_carrier):
             lccdr_gross = (capex_n + vom_n + bus_other_n) / co2_seq
             # Null out LCCDR for essentially undeployed nodes (e.g. biochar with
             # epsilon capital_cost giving spurious e_nom_opt but near-zero dispatch).
-            if e_nom_max > 0 and co2_seq / e_nom_max < MIN_DEPLOYMENT_FRAC:
+            # Both checks are needed: the fractional one catches real potential
+            # with negligible use, but is fooled when e_nom_max itself is tiny
+            # (noise-level flow / noise-level potential ~ 1) -- the absolute
+            # floor catches that case.
+            undeployed = co2_seq < MIN_DEPLOYMENT_TCO2 or (
+                e_nom_max > 0 and co2_seq / e_nom_max < MIN_DEPLOYMENT_FRAC
+            )
+            if undeployed:
                 lccdr_gross = np.nan
 
         records.append(dict(
@@ -422,9 +437,9 @@ if __name__ == "__main__":
 
         # per-panel annotation
         if np.isfinite(wlccdr):
-            ann = f"LCCDR: {wlccdr:+.0f} €/tCO₂\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
+            ann = f"weighted marginal CO2 abatement cost: {wlccdr:.0f} €/tCO₂\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
         else:
-            ann = f"LCCDR: n/a\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
+            ann = f"weighted marginal CO2 abatement cost: n/a\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
         ax.text(
             0.97, 0.03, ann, transform=ax.transAxes,
             ha="right", va="bottom", fontsize=7.5,
@@ -487,7 +502,7 @@ if __name__ == "__main__":
     vmax2 = float(wlccdr_valid.max()) if not wlccdr_valid.empty else lccdr_max
     setup_ax(ax2, reg2, "wlccdr", crs, boundaries, vmin=vmin2, vmax=vmax2)
     ax2.set_title(
-        "CDR portfolio — deployment mix and weighted LCCDR per node",
+        "CDR portfolio — deployment mix and weighted marginal CO2 abatement cost per node",
         fontsize=11, fontweight="bold", pad=4,
     )
 
@@ -498,7 +513,7 @@ if __name__ == "__main__":
     )
     cb2 = fig2.colorbar(
         sm2, ax=ax2,
-        label="Weighted LCCDR  [€/tCO₂]  (excl. CO₂ credit)",
+        label="Weighted marginal CO2 abatement cost  [€/tCO₂]  (excl. CO₂ credit)",
         orientation="horizontal", shrink=0.9, pad=0.02, aspect=40,
     )
     cb2.outline.set_edgecolor("none")

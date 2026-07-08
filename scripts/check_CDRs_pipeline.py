@@ -89,6 +89,20 @@ WARN = "  [WARN]"
 passed = []
 failed = []
 
+# CSV export: every numeric result recorded alongside its print statement,
+# written out as results/<run_name>/csvs/check_CDRs_pipeline_<WC>.csv at the
+# end of the run (see bottom of this script).
+CSV_ROWS = []
+
+
+def record(technology: str, metric: str, value, unit: str = ""):
+    CSV_ROWS.append({
+        "technology": technology,
+        "metric": metric,
+        "value": value,
+        "unit": unit,
+    })
+
 
 def check_file(path: Path, label: str) -> bool:
     exists = path.exists()
@@ -147,8 +161,12 @@ def mu_ext_e_nom_upper_check(stores, label: str):
     print(f"     unweighted  mean ± std:   {mu.mean():+.2f} ± {mu.std():.2f}  €/tCO2"
           f"    [min: {mu.min():+.2f}  max: {mu.max():+.2f}]")
 
+    record(label, "mu_ext_e_nom_upper_weighted_mean", wavg, "EUR/tCO2")
+    record(label, "mu_ext_e_nom_upper_unweighted_mean", mu.mean(), "EUR/tCO2")
+    record(label, "mu_ext_e_nom_upper_binding_nodes", len(binding), "count")
 
-def flow_weighted_bus_price(n_opt, stores):
+
+def flow_weighted_bus_price(n_opt, stores, label: str = ""):
     """Marginal price at the CDR store bus, flow-time-weighted per node then
     CO2-flow-weighted across nodes.
 
@@ -206,6 +224,11 @@ def flow_weighted_bus_price(n_opt, stores):
     print(f"     CO2-flow-weighted mean:   {flow_wavg_price:+.2f}  €/tCO2")
     print(f"     unweighted  mean ± std:   {node_price.mean():+.2f} ± {node_price.std():.2f}  €/tCO2"
           f"    [min: {node_price.min():+.2f}  max: {node_price.max():+.2f}]")
+
+    if label:
+        record(label, "store_bus_price_flow_weighted_mean", flow_wavg_price, "EUR/tCO2")
+        record(label, "store_bus_price_unweighted_mean", node_price.mean(), "EUR/tCO2")
+        record(label, "total_co2_flow", total_flow, "tCO2")
 
 
 def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
@@ -358,6 +381,16 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
     print(f"                                 unweighted  mean ± std:   {node_lccdr_s.mean():+.2f} ± {node_lccdr_s.std():.2f}  €/tCO2"
           f"    [min: {node_lccdr_s.min():+.2f}  max: {node_lccdr_s.max():+.2f}]")
 
+    record(label, "lccdr_capex", tot_capex / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_vom", tot_vom / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_other_variable_costs", tot_bus_other / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_gross", tot_gross / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_co2_credit", tot_co2atm / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_net_revenue", tot_net_revenue / tot_co2, "EUR/tCO2")
+    record(label, "lccdr_gross_flow_weighted_mean", wavg(node_gross_s), "EUR/tCO2")
+    record(label, "lccdr_net_revenue_flow_weighted_mean", wavg(node_lccdr_s), "EUR/tCO2")
+    record(label, "lccdr_total_co2_flow", tot_co2, "tCO2")
+
 
 # ── Afforestation ────────────────────────────────────────────────────────────────
 
@@ -381,6 +414,7 @@ def check_afforestation_build():
         if "area [sqkm]" in df_corine.columns:
             total_area = df_corine["area [sqkm]"].sum()
             print(f"        Total available CORINE area: {total_area:,.0f} km²")
+            record("afforestation", "available_land_area", total_area, "km2")
         if df_corine.isnull().any().any():
             print(f"{WARN}  NaN values detected in CORINE potentials CSV.")
 
@@ -398,6 +432,7 @@ def check_afforestation_build():
             total_gross_potential = df_pot["potential [tCO2/y]"].sum()
             print(f"        Total potential (gross, pre-CRCF): {total_gross_potential:,.0f} tCO2/y  "
                   f"({total_gross_potential / 1e6:.3f} MtCO2/y)")
+            record("afforestation", "gross_potential_pre_crcf", total_gross_potential, "tCO2/y")
             print(f"        Potential [tCO2/y] — min: {df_pot['potential [tCO2/y]'].min():.1f}, "
                   f"mean: {df_pot['potential [tCO2/y]'].mean():.1f}, "
                   f"max: {df_pot['potential [tCO2/y]'].max():.1f}")
@@ -456,6 +491,7 @@ def check_afforestation_prenet(n):
         finite_max = affo_stores["e_nom_max"][affo_stores["e_nom_max"] < 1e18]
         print(f"\n    Total e_nom_max (net, post-CRCF): {finite_max.sum():,.0f} tCO2  "
               f"({finite_max.sum() / 1e6:.3f} MtCO2)")
+        record("afforestation", "prenet_e_nom_max_net_post_crcf", finite_max.sum(), "tCO2")
 
     if not affo_carriers:
         print(f"\n{WARN}  No afforestation carrier found — add_afforestation may NOT have run!")
@@ -477,6 +513,7 @@ def check_afforestation_optimal(n_opt):
         total_p_nom_opt = affo_links["p_nom_opt"].sum()
         print(f"  Links with p_nom_opt > 0: {len(active_links)}")
         print(f"  Total p_nom_opt: {total_p_nom_opt:,.2f}")
+        record("afforestation", "link_p_nom_opt", total_p_nom_opt, "MW")
         if active_links.empty:
             print(f"{WARN}  All afforestation links have p_nom_opt = 0 (not deployed).")
         else:
@@ -489,6 +526,7 @@ def check_afforestation_optimal(n_opt):
         total_e_nom_opt = affo_stores["e_nom_opt"].sum()
         print(f"  Stores with e_nom_opt > 0: {len(active_stores)}")
         print(f"  Total e_nom_opt: {total_e_nom_opt:,.2f} tCO2  ({total_e_nom_opt/1e6:.3f} MtCO2/yr)")
+        record("afforestation", "deployed_e_nom_opt", total_e_nom_opt, "tCO2/yr")
         if active_stores.empty:
             print(f"{WARN}  All afforestation stores have e_nom_opt = 0 (not deployed).")
         else:
@@ -499,11 +537,13 @@ def check_afforestation_optimal(n_opt):
             total_e_nom_max = finite_max.sum()
             print(f"\n  Total e_nom_max (available potential): "
                   f"{total_e_nom_max:,.0f} tCO2  ({total_e_nom_max/1e6:.3f} MtCO2/yr)")
+            record("afforestation", "optimal_potential_e_nom_max", total_e_nom_max, "tCO2/yr")
             if total_e_nom_max > 0:
                 utilisation = total_e_nom_opt / total_e_nom_max * 100
                 print(f"  Potential utilisation (e_nom_opt / e_nom_max): {utilisation:.1f}%")
+                record("afforestation", "potential_utilisation", utilisation, "%")
 
-    flow_weighted_bus_price(n_opt, affo_stores)
+    flow_weighted_bus_price(n_opt, affo_stores, "afforestation")
     print_lccdr(n_opt, affo_links, affo_stores, "co2 afforestation", "afforestation")
 
     if affo_links.empty and affo_stores.empty:
@@ -525,6 +565,7 @@ def check_biochar_build():
         if "potential [sqkm]" in df.columns:
             total = df["potential [sqkm]"].sum()
             print(f"        Total potential area: {total:,.0f} km²")
+            record("biochar", "available_land_area", total, "km2")
         if df.isnull().any().any():
             print(f"{WARN}  NaN values detected in biochar potentials CSV.")
 
@@ -547,6 +588,7 @@ def check_biochar_prenet(n):
     if not co2_bc_stores.empty and "e_nom" in co2_bc_stores.columns:
         total_max = co2_bc_stores["e_nom"].sum()
         print(f"    Total e_nom (fixed potential): {total_max:,.0f} tCO2  ({total_max / 1e6:.3f} MtCO2)")
+        record("biochar", "prenet_e_nom_potential", total_max, "tCO2")
 
     if not biochar_carriers:
         print(f"\n{WARN}  No biochar carriers found — add_biochar may NOT have run!")
@@ -567,6 +609,7 @@ def check_biochar_optimal(n_opt):
         total_link = co2_bc_links["p_nom_opt"].sum()
         print(f"  Links with p_nom_opt > 0: {len(active)}")
         print(f"  Total p_nom_opt: {total_link:,.2f} MW")
+        record("biochar", "link_p_nom_opt", total_link, "MW")
         if active.empty:
             print(f"{WARN}  All co2 biochar links have p_nom_opt = 0 (not deployed).")
         else:
@@ -579,6 +622,7 @@ def check_biochar_optimal(n_opt):
         if "e_nom" in co2_bc_stores.columns:
             total_cap = co2_bc_stores["e_nom"].sum()
             print(f"  Total e_nom (fixed potential): {total_cap:,.0f} tCO2  ({total_cap/1e6:.3f} MtCO2)")
+            record("biochar", "optimal_potential_e_nom", total_cap, "tCO2")
         # Stores are non-extendable (e_nom fixed = potential); e_nom_opt is
         # just an alias for e_nom and would always read as "fully deployed"
         # regardless of actual usage, so read the state of charge instead.
@@ -589,9 +633,11 @@ def check_biochar_optimal(n_opt):
                 total_stored = final_e.sum()
                 print(f"  CO2 stored at end of horizon: {total_stored:,.0f} tCO2  "
                       f"({total_stored/1e6:.3f} MtCO2)")
+                record("biochar", "deployed_stored_at_horizon_end", total_stored, "tCO2")
                 if total_cap > 0:
                     utilisation = total_stored / total_cap * 100
                     print(f"  Potential utilisation (stored / e_nom): {utilisation:.1f}%")
+                    record("biochar", "potential_utilisation", utilisation, "%")
                 if total_stored == 0:
                     print(f"{WARN}  No CO2 sequestered — biochar not utilised in solution.")
                 else:
@@ -601,7 +647,7 @@ def check_biochar_optimal(n_opt):
     # constant from technology-data (not node-varying), so a "weighted
     # average by p_nom_opt" of it is meaningless -- the flow-weighted bus
     # price below is the only meaningful per-tCO2 cost figure for this tech.
-    flow_weighted_bus_price(n_opt, co2_bc_stores)
+    flow_weighted_bus_price(n_opt, co2_bc_stores, "biochar")
     print_lccdr(n_opt, co2_bc_links, co2_bc_stores, "co2 biochar", "biochar")
 
     if co2_bc_links.empty and co2_bc_stores.empty:
@@ -626,6 +672,7 @@ def check_perennials_build():
         if "perennials" in df.columns:
             print(f"        perennials [tDM/ha] — min: {df['perennials'].min():.2f}, "
                   f"mean: {df['perennials'].mean():.2f}, max: {df['perennials'].max():.2f}")
+            record("perennials", "yield_mean", df["perennials"].mean(), "tDM/ha")
         else:
             print(f"        {WARN} no 'perennials' column found!")
         biofuels_1G_cols = [c for c in df.columns if "biofuels_1G" in c]
@@ -647,6 +694,7 @@ def check_perennials_prenet(n):
     if not perenn_stores.empty and "e_nom" in perenn_stores.columns:
         total_cap = perenn_stores["e_nom"].sum()
         print(f"\n  Total store capacity (e_nom, fixed potential): {total_cap:,.0f} tCO2  ({total_cap/1e6:.3f} MtCO2)")
+        record("perennials", "prenet_e_nom_potential", total_cap, "tCO2")
         if total_cap == 0:
             print(f"  {WARN} ALL stores have e_nom=0!")
             print(f"  {WARN} This usually means biomass.classes in config.default.yaml")
@@ -679,6 +727,7 @@ def check_perennials_optimal(n_opt):
         if "e_nom" in perenn_stores.columns:
             total_cap = perenn_stores["e_nom"].sum()
             print(f"\n  Total e_nom (fixed potential): {total_cap:,.0f} tCO2  ({total_cap / 1e6:.3f} MtCO2)")
+            record("perennials", "optimal_potential_e_nom", total_cap, "tCO2")
         # Stores are non-extendable (e_nom fixed = potential); e_nom_opt is
         # just an alias for e_nom and would always read as "fully deployed"
         # regardless of actual usage, so read the state of charge instead.
@@ -689,9 +738,11 @@ def check_perennials_optimal(n_opt):
                 total_stored = final_e.sum()
                 print(f"  CO2 stored at end of horizon: {total_stored:,.0f} tCO2  "
                       f"({total_stored/1e6:.3f} MtCO2)")
+                record("perennials", "deployed_stored_at_horizon_end", total_stored, "tCO2")
                 if total_cap > 0:
                     utilisation = total_stored / total_cap * 100
                     print(f"  Potential utilisation (stored / e_nom): {utilisation:.1f}%")
+                    record("perennials", "potential_utilisation", utilisation, "%")
                 if total_stored == 0:
                     print(f"{WARN}  All perennial stores are empty (not deployed).")
 
@@ -700,7 +751,7 @@ def check_perennials_optimal(n_opt):
     # "weighted average by p_nom_opt" of it is meaningless -- the
     # flow-weighted bus price below is the only meaningful per-tCO2 cost
     # figure for this tech.
-    flow_weighted_bus_price(n_opt, perenn_stores)
+    flow_weighted_bus_price(n_opt, perenn_stores, "perennials")
     print_lccdr(n_opt, perenn_links, perenn_stores, "co2 perennials", "perennials")
 
     if perenn_links.empty and perenn_stores.empty:
@@ -722,10 +773,12 @@ def check_rock_weathering_build():
             removal_per_sqkm = CFG.get("rock_weathering", {}).get("co2_removal_per_sqkm")
             total_sqkm = df_rw["potential [sqkm]"].sum()
             print(f"        Total rock weathering available land: {total_sqkm:,.0f} km²")
+            record("rock_weathering", "available_land_area", total_sqkm, "km2")
             if removal_per_sqkm:
                 total_Mt = total_sqkm * removal_per_sqkm / 1e6
                 print(f"        Total rock weathering potential: {total_Mt:.2f} Mt CO2  "
                       f"(at {removal_per_sqkm} t CO2/km²)")
+                record("rock_weathering", "gross_potential", total_Mt * 1e6, "tCO2")
         if df_rw.isnull().any().any():
             print(f"{WARN}  NaN values detected in rock weathering available land CSV.")
     return rw_ok, (df_rw if rw_ok else None)
@@ -747,6 +800,7 @@ def check_rock_weathering_prenet(n, rw_ok, df_rw):
     if not co2_rw_stores.empty and "e_nom" in co2_rw_stores.columns:
         total_enoms = co2_rw_stores["e_nom"].sum()
         print(f"    Total e_nom (fixed potential): {total_enoms:,.0f} t CO2  ({total_enoms/1e6:.2f} Mt CO2)")
+        record("rock_weathering", "prenet_e_nom_potential", total_enoms, "tCO2")
         if rw_ok and df_rw is not None and "potential [t]" in df_rw.columns:
             expected_total = df_rw["potential [t]"].sum() * 0.2  # default max_land_usage=0.2
             if abs(total_enoms - expected_total) / max(expected_total, 1) > 0.01:
@@ -783,6 +837,7 @@ def check_rock_weathering_optimal(n_opt):
             total_max = co2_rw_stores["e_nom"].sum()
             print(f"  Total e_nom (fixed potential): {total_max:,.0f} t CO2  "
                   f"({total_max/1e6:.3f} Mt CO2)")
+            record("rock_weathering", "optimal_potential_e_nom", total_max, "tCO2")
         if hasattr(n_opt, "stores_t") and "e" in n_opt.stores_t:
             rw_store_e = n_opt.stores_t["e"][co2_rw_stores.index]
             if not rw_store_e.empty:
@@ -790,9 +845,11 @@ def check_rock_weathering_optimal(n_opt):
                 total_stored = final_e.sum()
                 print(f"  CO2 stored at end of horizon: {total_stored:,.0f} t CO2  "
                       f"({total_stored/1e6:.3f} Mt CO2)")
+                record("rock_weathering", "deployed_stored_at_horizon_end", total_stored, "tCO2")
                 if total_max > 0:
                     utilisation = total_stored / total_max * 100
                     print(f"  Potential utilisation (stored / e_nom): {utilisation:.1f}%")
+                    record("rock_weathering", "potential_utilisation", utilisation, "%")
                 if total_stored == 0:
                     print(f"{WARN}  No CO2 sequestered — rock weathering not utilised in solution.")
                 else:
@@ -803,13 +860,13 @@ def check_rock_weathering_optimal(n_opt):
     # node-varying), so a "weighted average by p_nom_opt" of it is
     # meaningless -- the flow-weighted bus price below is the only
     # meaningful per-tCO2 cost figure for this tech.
-    flow_weighted_bus_price(n_opt, co2_rw_stores)
-    print_lccdr(n_opt, co2_rw_links, co2_rw_stores, "co2 rock weathering", "rock weathering")
+    flow_weighted_bus_price(n_opt, co2_rw_stores, "rock_weathering")
+    print_lccdr(n_opt, co2_rw_links, co2_rw_stores, "co2 rock weathering", "rock_weathering")
 
     if co2_rw_links.empty and co2_rw_stores.empty:
         print(f"\n{WARN}  No co2 rock weathering components in optimal network!")
 
-    mu_ext_e_nom_upper_check(co2_rw_stores, "rock weathering")
+    mu_ext_e_nom_upper_check(co2_rw_stores, "rock_weathering")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────────
@@ -871,7 +928,7 @@ if opt_ok:
         if ACTIVE["rock_weathering"]:
             check_rock_weathering_optimal(n_opt)
 
-        print_co2_system_diagnostics(n_opt, OK=OK, WARN=WARN)
+        print_co2_system_diagnostics(n_opt, OK=OK, WARN=WARN, record_fn=record)
     except Exception as e:
         print(f"\n{WARN}  Could not load optimal network: {e}")
 else:
@@ -891,3 +948,12 @@ if failed:
     print(f"\n  Missing files:")
     for f in failed:
         print(f"    - {f}")
+
+# ── CSV export ────────────────────────────────────────────────────────────────────
+# A flat (technology, metric, value, unit) table of every numeric result
+# printed above, for downstream analysis without re-parsing console output.
+csv_dir = RESULTS / "csvs"
+csv_dir.mkdir(parents=True, exist_ok=True)
+csv_path = csv_dir / f"check_CDRs_pipeline_{WC}.csv"
+pd.DataFrame(CSV_ROWS, columns=["technology", "metric", "value", "unit"]).to_csv(csv_path, index=False)
+print(f"\n  CSV results saved: {csv_path.resolve()}  ({len(CSV_ROWS)} rows)")

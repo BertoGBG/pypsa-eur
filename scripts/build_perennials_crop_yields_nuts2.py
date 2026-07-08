@@ -218,7 +218,7 @@ def calculate_yields(filepath_nuts2, filepath_nuts0, crops_sel, crops_mapping, b
         * unsustainable_biofuels_yields.index.get_level_values("mapping").map(biofuel_yields)
     )
 
-    # yields of perennials per hectar in ton/ha
+    # yields of perennials per hectare in ton/ha
     # standard humidity for perennials = 0.65 (tH2O/t_fresh) -> note production is for fresh until 2025
     std_moist_perennials = 0.65
 

@@ -260,7 +260,7 @@ def _bus_gross_throughput(n_opt, bus_name: str) -> pd.Series:
     return throughput / 2.0
 
 
-def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]"):
+def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]", record_fn=None):
     """
     Print two system-wide CO2 diagnostics common to every CDR check script:
 
@@ -276,6 +276,9 @@ def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]"):
        weighted by gross throughput (flow x "stores" snapshot weighting,
        summed over every component touching the bus). Also needs no special
        solving option -- buses_t.marginal_price is always saved.
+
+    record_fn(technology, metric, value, unit="") is called for each
+    computed number if given, so callers can also export these to CSV.
     """
     print(f"\n{'=' * 60}")
     print("  SYSTEM-WIDE CO2 DIAGNOSTICS")
@@ -288,9 +291,13 @@ def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]"):
         mu = glc.get("mu")
         print(f"\n  CO2Limit constant: {constant:,.0f} tCO2  (net cumulative "
               f"atmosphere CO2 at final snapshot must be <= this)")
+        if record_fn:
+            record_fn("system", "co2limit_constant", constant, "tCO2")
         if pd.notna(mu):
             print(f"  CO2Limit dual (mu): {mu:.4f} €/tCO2  (implied carbon "
                   f"price for the configured co2_budget target)")
+            if record_fn:
+                record_fn("system", "co2limit_dual_mu", mu, "EUR/tCO2")
         else:
             print(f"{WARN}  CO2Limit has no 'mu' value -- was the constraint "
                   f"actually built (non-empty emissions carriers) in this solve?")
@@ -309,6 +316,9 @@ def print_co2_system_diagnostics(n_opt, OK="  [OK]", WARN="  [WARN]"):
             flow_wavg_price = (mp[bus_name] * qty).sum() / total_qty
             print(f"\n  'co2 atmosphere' bus flow-weighted mean marginal price: "
                   f"{flow_wavg_price:.2f} €/tCO2")
+            if record_fn:
+                record_fn("system", "co2_atmosphere_flow_weighted_price", flow_wavg_price, "EUR/tCO2")
+                record_fn("system", "co2_atmosphere_total_throughput", total_qty, "tCO2")
             print(f"    Total gross throughput (flow x 'stores' weighting, "
                   f"summed over all components touching the bus): "
                   f"{total_qty:,.0f} tCO2")
