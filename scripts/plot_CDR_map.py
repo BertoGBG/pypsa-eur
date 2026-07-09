@@ -225,24 +225,21 @@ def draw_split_circles(ax, df, n, crs, color, max_potential, zorder=5):
             ))
 
 
-def draw_pie_charts(ax, cdr_data, carriers_order, n, crs, colors, max_total, zorder=5):
+def draw_pie_charts(ax, cdr_data, carriers_order, n, crs, colors, max_deployed, zorder=5):
+    """Pie charts sized by *deployed* CO2 removal only (co2_seq), not potential."""
     all_nodes = sorted({nd for df in cdr_data.values() for nd in df.index
                         if nd in n.buses.index})
     if not all_nodes:
         return
     xs, ys = node_xy(n, all_nodes, crs)
     for x, y, node in zip(xs, ys, all_nodes):
-        total_max = sum(
-            cdr_data[c].at[node, "e_nom_max"] if node in cdr_data[c].index else 0.0
+        total_deployed = sum(
+            cdr_data[c].at[node, "co2_seq"] if node in cdr_data[c].index else 0.0
             for c in carriers_order
         )
-        if total_max <= 0:
+        if total_deployed <= 0:
             continue
-        r = MAX_RADIUS * np.sqrt(total_max / max_total)
-        ax.add_patch(Circle(
-            (x, y), r, facecolor="lightgrey", edgecolor="grey",
-            linewidth=0.3, zorder=zorder,
-        ))
+        r = MAX_RADIUS * np.sqrt(total_deployed / max_deployed)
         angle = 90.0
         for carrier in carriers_order:
             df = cdr_data[carrier]
@@ -251,10 +248,11 @@ def draw_pie_charts(ax, cdr_data, carriers_order, n, crs, colors, max_total, zor
             co2 = float(df.at[node, "co2_seq"])
             if co2 <= 0:
                 continue
-            frac = co2 / total_max
+            frac = co2 / total_deployed
             ax.add_patch(Wedge(
                 (x, y), r, angle - frac * 360, angle,
-                facecolor=colors[carrier], linewidth=0, zorder=zorder + 1,
+                facecolor=colors[carrier], edgecolor="white", linewidth=0.3,
+                zorder=zorder + 1,
             ))
             angle -= frac * 360
 
@@ -276,7 +274,8 @@ def setup_ax(ax, regions, column, crs, boundaries, vmin, vmax):
 
 # ── legend panel helpers ──────────────────────────────────────────────────────
 
-def fill_legend_panel(ax_leg, colors, max_potential):
+def fill_legend_panel(ax_leg, colors, max_size, show_unused=True,
+                       size_label="Potential (MtCO₂/yr)"):
     """Draw CDR tech color patches + circle size reference in the legend axis."""
     ax_leg.set_xlim(0, 1)
     ax_leg.set_ylim(0, 1)
@@ -295,23 +294,24 @@ def fill_legend_panel(ax_leg, colors, max_potential):
                     transform=ax_leg.transAxes)
         tech_y -= 0.09
 
-    ax_leg.add_patch(mpatches.FancyBboxPatch(
-        (0.05, tech_y - 0.025), 0.12, 0.05,
-        boxstyle="round,pad=0.01", facecolor="lightgrey",
-        edgecolor="grey", linewidth=0.5,
-        transform=ax_leg.transAxes, clip_on=False,
-    ))
-    ax_leg.text(0.21, tech_y, "Unused potential", fontsize=8, va="center",
-                transform=ax_leg.transAxes)
+    if show_unused:
+        ax_leg.add_patch(mpatches.FancyBboxPatch(
+            (0.05, tech_y - 0.025), 0.12, 0.05,
+            boxstyle="round,pad=0.01", facecolor="lightgrey",
+            edgecolor="grey", linewidth=0.5,
+            transform=ax_leg.transAxes, clip_on=False,
+        ))
+        ax_leg.text(0.21, tech_y, "Unused potential", fontsize=8, va="center",
+                    transform=ax_leg.transAxes)
 
     # Circle size legend
     size_y0 = tech_y - 0.12
-    ax_leg.text(0.05, size_y0, "Potential (MtCO₂/yr)", fontsize=9,
+    ax_leg.text(0.05, size_y0, size_label, fontsize=9,
                 fontweight="bold", va="top", transform=ax_leg.transAxes)
     ref_fracs = [1.0, 0.5, 0.25]
     y_cursor = size_y0 - 0.06
     for frac in ref_fracs:
-        val = frac * max_potential / 1e6
+        val = frac * max_size / 1e6
         marker_size = 12 * np.sqrt(frac)
         ax_leg.plot(
             0.15, y_cursor, "o", markersize=marker_size,
@@ -488,8 +488,8 @@ if __name__ == "__main__":
                 wden[nd]  += co2
     wlccdr_map = (wnum / wden.replace(0.0, np.nan)).reindex(regions.index)
 
-    max_total = max(
-        (sum(cdr_data[c].at[nd, "e_nom_max"] if nd in cdr_data[c].index else 0.0
+    max_deployed = max(
+        (sum(cdr_data[c].at[nd, "co2_seq"] if nd in cdr_data[c].index else 0.0
              for c in carriers_order)
          for nd in all_nodes),
         default=1.0,
@@ -512,7 +512,7 @@ if __name__ == "__main__":
         fontsize=11, fontweight="bold", pad=4,
     )
 
-    draw_pie_charts(ax2, cdr_data, carriers_order, n, crs, colors, max_total)
+    draw_pie_charts(ax2, cdr_data, carriers_order, n, crs, colors, max_deployed)
 
     sm2 = plt.cm.ScalarMappable(
         cmap=CMAP, norm=plt.Normalize(vmin=vmin2, vmax=vmax2)
@@ -524,7 +524,8 @@ if __name__ == "__main__":
     )
     cb2.outline.set_edgecolor("none")
 
-    fill_legend_panel(ax_leg2, colors, max_total)
+    fill_legend_panel(ax_leg2, colors, max_deployed, show_unused=False,
+                       size_label="Deployed CO2 removal (MtCO₂/yr)")
 
     fig2.savefig(snakemake.output[1], dpi=150, bbox_inches="tight")
     plt.close(fig2)
