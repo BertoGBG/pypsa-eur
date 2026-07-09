@@ -1861,7 +1861,7 @@ rule prepare_sector_network:
         ),
         biochar_potentials=lambda w: (
             resources("biochar_available_land_s_{clusters}.csv")
-            if config_provider("sector", "biochar")(w)
+            if config_provider("sector", "biochar", "enable")(w)
             else []
         ),
         rock_weathering_potentials=lambda w: (
