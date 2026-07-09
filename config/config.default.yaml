@@ -422,7 +422,7 @@ renewable:
     natura: false
     cutout: default
     excluder_resolution: 250
-    min_mean_temp_C: 10 # exclude grid cells with annual mean air temperature below this (weathering kinetics slow in cold climates)
+    min_mean_temp_C: 9 # exclude grid cells with annual mean air temperature below this (weathering kinetics slow in cold climates)
   hydro:
     cutout: default
     carriers:
