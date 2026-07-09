@@ -21,13 +21,13 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "CDRs_2050"
+  name: "CDRs_2050_24h"
   scenarios:
     enable: false
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
+    policy: "CDRs_2050"  # reuse resources/CDRs_2050/ (already built at s_90) without touching that run
     exclude: []
   use_shadow_directory: false
 
@@ -41,7 +41,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - 4h
+  - 24h
   planning_horizons:
   - 2050
 
