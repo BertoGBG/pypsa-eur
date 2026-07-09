@@ -95,9 +95,15 @@ def compute_cdr_per_node(n, store_carrier):
         if not isinstance(node, str) or not node:
             continue
 
-        e_nom_max = float(st.get("e_nom_max", np.inf))
-        if not np.isfinite(e_nom_max):
-            e_nom_max = 0.0
+        if bool(st.get("e_nom_extendable", False)):
+            e_nom_max = float(st.get("e_nom_max", np.inf))
+            if not np.isfinite(e_nom_max):
+                e_nom_max = 0.0
+        else:
+            # non-extendable store: e_nom *is* the fixed potential (e_nom_max
+            # defaults to +inf for non-extendable components, which is not
+            # meaningful here).
+            e_nom_max = float(st.get("e_nom", 0.0))
         e_nom_opt = float(st.get("e_nom_opt", 0.0))
 
         co2_seq = 0.0
