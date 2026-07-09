@@ -288,7 +288,8 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
         if co2_n <= 0:
             continue
 
-        capex_n      = store.get("capital_cost", 0.0) * store.get("e_nom", store.get("e_nom_opt", 0.0))
+        store_cap    = store.get("e_nom_opt", 0.0) if store.get("e_nom_extendable", False) else store.get("e_nom", 0.0)
+        capex_n      = store.get("capital_cost", 0.0) * store_cap
         vom_n        = 0.0
         bus_co2atm_n = 0.0
         bus_other_n  = 0.0
