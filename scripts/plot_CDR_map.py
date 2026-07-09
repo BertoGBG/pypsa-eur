@@ -444,9 +444,9 @@ if __name__ == "__main__":
 
         # per-panel annotation
         if np.isfinite(wlccdr):
-            ann = f"weighted marginal CO2 abatement cost: {wlccdr:.0f} €/tCO₂\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
+            ann = f"weighted Levelized cost of CO2 removal: {wlccdr:.0f} €/tCO₂\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
         else:
-            ann = f"weighted marginal CO2 abatement cost: n/a\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
+            ann = f"weighted Levelized cost of CO2 removal: n/a\nCO₂ removed: {co2_mt:.1f} MtCO₂/yr"
         ax.text(
             0.97, 0.03, ann, transform=ax.transAxes,
             ha="right", va="bottom", fontsize=7.5,
@@ -520,7 +520,7 @@ if __name__ == "__main__":
     # anchored to the whole-figure canvas and can collide with the floating
     # size legend when ax2 nearly fills the figure.
     ax2.set_title(
-        "CDR portfolio — deployment mix and weighted marginal CO2 abatement cost per node",
+        "CDR portfolio — deployment mix and weighted Levelized cost of CO2 removal per node",
         fontsize=11, fontweight="bold", pad=4,
     )
 
@@ -531,7 +531,7 @@ if __name__ == "__main__":
     )
     cb2 = fig2.colorbar(
         sm2, ax=ax2,
-        label="Weighted marginal CO2 abatement cost  [€/tCO₂]  (excl. CO₂ credit)",
+        label="Weighted Levelized cost of CO2 removal  [€/tCO₂]  (excl. CO₂ credit)",
         orientation="horizontal", shrink=0.9, pad=0.02, aspect=40,
     )
     cb2.outline.set_edgecolor("none")
