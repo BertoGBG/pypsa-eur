@@ -86,6 +86,33 @@ OK   = "  [OK]"
 FAIL = "  [MISSING]"
 WARN = "  [WARN]"
 
+# Nodes contributing less than this fraction of a technology's total CO2 flow
+# are excluded from unweighted per-node statistics (mean/std/min/max). Such
+# nodes typically carry solver-tolerance-level flow (not exactly zero, but
+# numerically negligible) which, divided into a real capex/price numerator,
+# produces ratio blow-ups that swamp the summary stats without reflecting any
+# actual deployment. Flow-weighted stats already downweight these nodes
+# naturally and are unaffected.
+MATERIALITY_THRESHOLD = 1e-3  # 0.1% of total flow
+
+
+def _material_subset(values: pd.Series, weights: pd.Series, total_weight: float):
+    """Return (values restricted to materially-weighted entries, n_excluded).
+
+    Falls back to the full series if filtering would remove everything
+    (e.g. all nodes are individually small relative to a very concentrated
+    total) so callers always get a usable, non-empty series.
+    """
+    if total_weight <= 0:
+        return values, 0
+    mask = weights.reindex(values.index).fillna(0.0) >= MATERIALITY_THRESHOLD * total_weight
+    n_excluded = int((~mask).sum())
+    subset = values[mask]
+    if subset.empty:
+        return values, 0
+    return subset, n_excluded
+
+
 passed = []
 failed = []
 
@@ -221,14 +248,19 @@ def flow_weighted_bus_price(n_opt, stores, label: str = ""):
               f"  |  flow/potential: {total_flow / total_potential:.4f}")
     else:
         print(f"     n={len(node_price)} nodes  |  total CO2 flow: {total_flow:,.0f} tCO2")
+    price_stats, n_excluded = _material_subset(node_price, node_weight, total_weight)
     print(f"     CO2-flow-weighted mean:   {flow_wavg_price:+.2f}  €/tCO2")
-    print(f"     unweighted  mean ± std:   {node_price.mean():+.2f} ± {node_price.std():.2f}  €/tCO2"
-          f"    [min: {node_price.min():+.2f}  max: {node_price.max():+.2f}]")
+    print(f"     unweighted  mean ± std:   {price_stats.mean():+.2f} ± {price_stats.std():.2f}  €/tCO2"
+          f"    [min: {price_stats.min():+.2f}  max: {price_stats.max():+.2f}]")
+    if n_excluded:
+        print(f"     ({n_excluded} node(s) with <{MATERIALITY_THRESHOLD * 100:.2g}% of total CO2 flow "
+              f"excluded from unweighted stats as numerically negligible)")
 
     if label:
         record(label, "store_bus_price_flow_weighted_mean", flow_wavg_price, "EUR/tCO2")
-        record(label, "store_bus_price_unweighted_mean", node_price.mean(), "EUR/tCO2")
+        record(label, "store_bus_price_unweighted_mean", price_stats.mean(), "EUR/tCO2")
         record(label, "total_co2_flow", total_flow, "tCO2")
+        record(label, "store_bus_price_nodes_excluded_negligible_flow", n_excluded, "count")
 
 
 def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
@@ -374,13 +406,22 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
           f"   (CO2 atm price × CO2 flow)")
     print(f"       {'─'*54}")
     print(f"     = CDR net revenue:             {tot_net_revenue / tot_co2:+.2f}  €/tCO2")
+    gross_stats, n_excluded_gross = _material_subset(node_gross_s, node_w, w_total)
+    net_stats, n_excluded_net     = _material_subset(node_lccdr_s, node_w, w_total)
+
     print(f"     Per-node distribution ({len(node_lccdr)} nodes):")
     print(f"       Levelized Cost of CDR  —  CO2-flow-weighted mean:  {wavg(node_gross_s):+.2f}  €/tCO2")
-    print(f"                                 unweighted  mean ± std:   {node_gross_s.mean():+.2f} ± {node_gross_s.std():.2f}  €/tCO2"
-          f"    [min: {node_gross_s.min():+.2f}  max: {node_gross_s.max():+.2f}]")
+    print(f"                                 unweighted  mean ± std:   {gross_stats.mean():+.2f} ± {gross_stats.std():.2f}  €/tCO2"
+          f"    [min: {gross_stats.min():+.2f}  max: {gross_stats.max():+.2f}]")
+    if n_excluded_gross:
+        print(f"       ({n_excluded_gross} node(s) with <{MATERIALITY_THRESHOLD * 100:.2g}% of total CO2 flow "
+              f"excluded from unweighted stats as numerically negligible)")
     print(f"       CDR net revenue        —  CO2-flow-weighted mean:  {wavg(node_lccdr_s):+.2f}  €/tCO2")
-    print(f"                                 unweighted  mean ± std:   {node_lccdr_s.mean():+.2f} ± {node_lccdr_s.std():.2f}  €/tCO2"
-          f"    [min: {node_lccdr_s.min():+.2f}  max: {node_lccdr_s.max():+.2f}]")
+    print(f"                                 unweighted  mean ± std:   {net_stats.mean():+.2f} ± {net_stats.std():.2f}  €/tCO2"
+          f"    [min: {net_stats.min():+.2f}  max: {net_stats.max():+.2f}]")
+    if n_excluded_net:
+        print(f"       ({n_excluded_net} node(s) with <{MATERIALITY_THRESHOLD * 100:.2g}% of total CO2 flow "
+              f"excluded from unweighted stats as numerically negligible)")
 
     record(label, "lccdr_capex", tot_capex / tot_co2, "EUR/tCO2")
     record(label, "lccdr_vom", tot_vom / tot_co2, "EUR/tCO2")
@@ -391,6 +432,7 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
     record(label, "lccdr_gross_flow_weighted_mean", wavg(node_gross_s), "EUR/tCO2")
     record(label, "lccdr_net_revenue_flow_weighted_mean", wavg(node_lccdr_s), "EUR/tCO2")
     record(label, "lccdr_total_co2_flow", tot_co2, "tCO2")
+    record(label, "lccdr_nodes_excluded_negligible_flow", n_excluded_gross, "count")
 
 
 # ── Afforestation ────────────────────────────────────────────────────────────────
