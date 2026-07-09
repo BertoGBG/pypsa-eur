@@ -20,13 +20,13 @@ from types import SimpleNamespace
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import geopandas as gpd
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pypsa
-from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, Wedge
+from pypsa.geo import get_projected_area_factor
+from pypsa.plot import add_legend_patches, add_legend_semicircles
 
 CO2_ATM_CARRIER = "co2"
 CMAP = "Purples"
@@ -272,55 +272,54 @@ def setup_ax(ax, regions, column, crs, boundaries, vmin, vmax):
     )
 
 
-# ── legend panel helpers ──────────────────────────────────────────────────────
+# ── legend helpers (pypsa-eur house style, matching plot_balance_map.py) ──────
 
-def fill_legend_panel(ax_leg, colors, max_size, show_unused=True,
-                       size_label="Potential (MtCO₂/yr)"):
-    """Draw CDR tech color patches + circle size reference in the legend axis."""
-    ax_leg.set_xlim(0, 1)
-    ax_leg.set_ylim(0, 1)
-    ax_leg.axis("off")
+LEGEND_KWARGS = {
+    "loc": "upper left",
+    "frameon": False,
+    "alignment": "left",
+    "title_fontproperties": {"weight": "bold"},
+}
 
-    # CDR colour legend
-    ax_leg.text(0.05, 0.98, "CDR technology", fontsize=9, fontweight="bold", va="top")
-    tech_y = 0.91
-    for lbl, carrier in CDR_TECHS:
-        ax_leg.add_patch(mpatches.FancyBboxPatch(
-            (0.05, tech_y - 0.025), 0.12, 0.05,
-            boxstyle="round,pad=0.01", facecolor=colors[carrier], linewidth=0,
-            transform=ax_leg.transAxes, clip_on=False,
-        ))
-        ax_leg.text(0.21, tech_y, lbl, fontsize=8, va="center",
-                    transform=ax_leg.transAxes)
-        tech_y -= 0.09
 
-    if show_unused:
-        ax_leg.add_patch(mpatches.FancyBboxPatch(
-            (0.05, tech_y - 0.025), 0.12, 0.05,
-            boxstyle="round,pad=0.01", facecolor="lightgrey",
-            edgecolor="grey", linewidth=0.5,
-            transform=ax_leg.transAxes, clip_on=False,
-        ))
-        ax_leg.text(0.21, tech_y, "Unused potential", fontsize=8, va="center",
-                    transform=ax_leg.transAxes)
+def semicircle_sizes(fracs, ax, srid=4326):
+    """
+    Convert circle-size fractions (of MAX_RADIUS) into the "size" values
+    expected by pypsa.plot.add_legend_semicircles, so the legend glyphs are
+    geometrically consistent with the actual MAX_RADIUS-scaled circles drawn
+    on the map (same axis, same projection).
+    """
+    factor = get_projected_area_factor(ax, srid)
+    radii = [MAX_RADIUS * np.sqrt(f) for f in fracs]
+    return [(r / factor) ** 2 / 2 for r in radii]
 
-    # Circle size legend
-    size_y0 = tech_y - 0.12
-    ax_leg.text(0.05, size_y0, size_label, fontsize=9,
-                fontweight="bold", va="top", transform=ax_leg.transAxes)
+
+def add_size_legend(ax, max_size, size_label="Potential (MtCO₂/yr)", bbox_to_anchor=(0, 1)):
+    """Circle-size semicircle legend (pypsa-eur house style), anchored to ax."""
     ref_fracs = [1.0, 0.5, 0.25]
-    y_cursor = size_y0 - 0.06
-    for frac in ref_fracs:
-        val = frac * max_size / 1e6
-        marker_size = 12 * np.sqrt(frac)
-        ax_leg.plot(
-            0.15, y_cursor, "o", markersize=marker_size,
-            markerfacecolor="none", markeredgecolor="grey", markeredgewidth=0.8,
-            transform=ax_leg.transAxes,
-        )
-        ax_leg.text(0.28, y_cursor, f"{val:.0f}", fontsize=8, va="center",
-                    transform=ax_leg.transAxes)
-        y_cursor -= 0.07 + 0.03 * np.sqrt(frac)
+    sizes  = semicircle_sizes(ref_fracs, ax)
+    labels = [f"{f * max_size / 1e6:.0f} MtCO₂/yr" for f in ref_fracs]
+    add_legend_semicircles(
+        ax, sizes, labels,
+        patch_kw={"color": "#999"},
+        legend_kw={"bbox_to_anchor": bbox_to_anchor, "title": size_label,
+                   **LEGEND_KWARGS},
+    )
+
+
+def add_tech_legend(ax, colors, unused=True, bbox_to_anchor=(0, -0.05)):
+    """CDR-technology patch legend (pypsa-eur house style), anchored to ax."""
+    tech_colors_ = [colors[c] for _, c in CDR_TECHS]
+    tech_labels  = [lbl for lbl, _ in CDR_TECHS]
+    if unused:
+        tech_colors_ = tech_colors_ + ["lightgrey"]
+        tech_labels  = tech_labels + ["Unused potential"]
+
+    add_legend_patches(
+        ax, tech_colors_, tech_labels,
+        legend_kw={"bbox_to_anchor": bbox_to_anchor, "title": "CDR technology",
+                   **LEGEND_KWARGS},
+    )
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -348,6 +347,9 @@ if __name__ == "__main__":
         maps_dir  = net_path.parent.parent / "maps" / "static"
         run_name  = net_path.parent.parent.name
         clusters  = net_path.stem.split("_")[2]
+        # matches pypsa-eur's own wildcard naming, e.g. "base_s_90__4h_2050"
+        # (same convention as maps/static/base_s_..._-balance_map_{carrier}.pdf)
+        wc = net_path.stem
 
         regions_path = Path(args.regions) if args.regions else (
             Path("resources") / run_name / f"regions_onshore_base_s_{clusters}.geojson"
@@ -362,8 +364,8 @@ if __name__ == "__main__":
                 regions=str(regions_path),
             ),
             output=[
-                args.out_fig1 or str(maps_dir / "CDR_costs_map.pdf"),
-                args.out_fig2 or str(maps_dir / "CDR_portfolio_map.pdf"),
+                args.out_fig1 or str(maps_dir / f"{wc}-CDR_costs_map.pdf"),
+                args.out_fig2 or str(maps_dir / f"{wc}-CDR_portfolio_map.pdf"),
             ],
             params=SimpleNamespace(plotting=_plotting),
         )
@@ -414,9 +416,9 @@ if __name__ == "__main__":
     lccdr_min = float(all_lccdr.min()) if not all_lccdr.empty else 0.0
     lccdr_max = float(all_lccdr.max()) if not all_lccdr.empty else 1000.0
 
-    # ── Figure 1: 2×2 panels + right legend strip ─────────────────────────────
-    fig1 = plt.figure(figsize=(17, 12), layout="constrained")
-    gs1  = fig1.add_gridspec(2, 3, width_ratios=[1, 1, 0.22], wspace=0.04, hspace=0.08)
+    # ── Figure 1: 2×2 panels, legends anchored on the map (plot_balance_map style) ─
+    fig1 = plt.figure(figsize=(14, 13), layout="constrained")
+    gs1  = fig1.add_gridspec(2, 2, wspace=0.06, hspace=0.1)
 
     map_axes = [
         [fig1.add_subplot(gs1[0, 0], projection=crs),
@@ -424,7 +426,6 @@ if __name__ == "__main__":
         [fig1.add_subplot(gs1[1, 0], projection=crs),
          fig1.add_subplot(gs1[1, 1], projection=crs)],
     ]
-    ax_leg1 = fig1.add_subplot(gs1[:, 2])
 
     for (label, carrier), ax in zip(CDR_TECHS, [map_axes[r][c]
                                                  for r in range(2) for c in range(2)]):
@@ -466,7 +467,11 @@ if __name__ == "__main__":
     )
     cb1.outline.set_edgecolor("none")
 
-    fill_legend_panel(ax_leg1, colors, max_potential)
+    # size legend in the top margin (above row 0); tech legend in the bottom
+    # margin (below row 1) -- keeps both clear of the 2x2 map panels.
+    add_size_legend(map_axes[0][0], max_potential, size_label="Potential (MtCO₂/yr)",
+                     bbox_to_anchor=(0, 1.08))
+    add_tech_legend(map_axes[1][0], colors, unused=True, bbox_to_anchor=(0, -0.18))
 
     Path(snakemake.output[0]).parent.mkdir(parents=True, exist_ok=True)
     fig1.savefig(snakemake.output[0], dpi=150, bbox_inches="tight")
@@ -495,10 +500,13 @@ if __name__ == "__main__":
         default=1.0,
     )
 
-    fig2 = plt.figure(figsize=(13, 10), layout="constrained")
-    gs2  = fig2.add_gridspec(1, 2, width_ratios=[1, 0.22], wspace=0.04)
-    ax2      = fig2.add_subplot(gs2[0, 0], projection=crs)
-    ax_leg2  = fig2.add_subplot(gs2[0, 1])
+    # Extra figure height beyond what the (fixed-aspect) map itself needs gives
+    # constrained_layout blank vertical space above/below the axis to place the
+    # title and floating size/tech legends without collision (mirrors Figure 1's
+    # 2-row headroom, which a single full-bleed axis doesn't have by default).
+    fig2, ax2 = plt.subplots(
+        figsize=(10, 13), subplot_kw={"projection": crs}, layout="constrained",
+    )
 
     reg2 = regions.copy()
     reg2["wlccdr"] = wlccdr_map
@@ -507,6 +515,10 @@ if __name__ == "__main__":
     vmin2 = float(wlccdr_valid.min()) if not wlccdr_valid.empty else lccdr_min
     vmax2 = float(wlccdr_valid.max()) if not wlccdr_valid.empty else lccdr_max
     setup_ax(ax2, reg2, "wlccdr", crs, boundaries, vmin=vmin2, vmax=vmax2)
+    # axes-level title (matches Figure 1 panels / plot_balance_map.py): reserves
+    # layout space tied to ax2's own box, unlike fig.suptitle() which is
+    # anchored to the whole-figure canvas and can collide with the floating
+    # size legend when ax2 nearly fills the figure.
     ax2.set_title(
         "CDR portfolio — deployment mix and weighted marginal CO2 abatement cost per node",
         fontsize=11, fontweight="bold", pad=4,
@@ -524,8 +536,9 @@ if __name__ == "__main__":
     )
     cb2.outline.set_edgecolor("none")
 
-    fill_legend_panel(ax_leg2, colors, max_deployed, show_unused=False,
-                       size_label="Deployed CO2 removal (MtCO₂/yr)")
+    add_size_legend(ax2, max_deployed, size_label="Deployed CO2 removal (MtCO₂/yr)",
+                     bbox_to_anchor=(0, 1.2))
+    add_tech_legend(ax2, colors, unused=False, bbox_to_anchor=(0, -0.18))
 
     fig2.savefig(snakemake.output[1], dpi=150, bbox_inches="tight")
     plt.close(fig2)
