@@ -35,7 +35,7 @@ CDR_TECHS = [
     ("Afforestation",    "co2 afforestation"),
     ("Perennialisation", "co2 perennials"),
     ("Biochar",          "co2 biochar"),
-    ("Rock Weathering",  "co2 rock weathering"),
+    ("ERW",              "co2 rock weathering"),
 ]
 
 MAX_RADIUS = 160_000  # metres in EqualEarth projection
