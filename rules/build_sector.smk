@@ -938,7 +938,7 @@ rule build_biomass_transport_costs:
     script:
         scripts("build_biomass_transport_costs.py")
 
-rule build_perennials_yields_nuts_file:
+rule build_perennials_yields_eurostat_average:
     input:
         nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
         crops_nuts2=rules.retrieve_co2_removal_data.output.eurostat_crops_nuts2,
@@ -947,12 +947,12 @@ rule build_perennials_yields_nuts_file:
     output:
         yields_all=resources("perennials_yields_1G_biofuels.csv"),
     log:
-        logs("build_perennials_yields_nuts_file.log"),
+        logs("build_perennials_yields_eurostat_average.log"),
     script:
-        scripts("build_perennials_crop_yields_nuts2.py")
+        scripts("build_perennials_yields_eurostat_average.py")
 
 
-rule build_perennial_potentials:
+rule build_perennials_yields:
     params:
         biomass=config_provider("biomass"),
     input:
@@ -963,24 +963,35 @@ rule build_perennial_potentials:
     output:
         csv_file = resources("perennials_yields_1G_biofuels_s_{clusters}.csv"),
     log:
-        logs("build_perennial_potentials_s_{clusters}.log"),
+        logs("build_perennials_yields_s_{clusters}.log"),
     resources:
         mem_mb=8000,
     script:
-        scripts("build_perennials_potentials.py")
+        scripts("build_perennials_yields.py")
 
 
 rule determine_carbon_dioxide_removal_availability_matrix:
     message:
         "Determining availability matrix for {wildcards.clusters} clusters and {wildcards.technology} carbon dioxide removal technology"
     params:
-        renewable=config_provider("renewable"),
+        # biochar's land-eligibility settings live under sector.biochar (fully
+        # consolidated there) rather than renewable.biochar like the other
+        # technologies sharing this rule; reshape it back into the
+        # {technology: {...}} lookup determine_availability_matrix.py expects
+        # (params.renewable[technology]) so that script stays untouched.
+        renewable=lambda w: {
+            **config_provider("renewable")(w),
+            "biochar": config_provider("sector", "biochar")(w),
+        },
         plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
     input:
         corine=ancient(rules.retrieve_corine.output["tif_file"]),
         regions=resources("regions_onshore_base_s_{clusters}.geojson"),
         cutout=lambda w: input_cutout(
-            w, config_provider("renewable", w.technology, "cutout")(w)
+            w,
+            config_provider("sector", "biochar", "cutout")(w)
+            if w.technology == "biochar"
+            else config_provider("renewable", w.technology, "cutout")(w),
         ),
     output:
         resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
@@ -1018,13 +1029,14 @@ rule determine_rock_weathering_availability_matrix:
 
 
 rule build_available_land:
-    params:
-        renewable=config_provider("renewable"),
     input:
         availability_matrix=resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
         regions=resources("regions_onshore_base_s_{clusters}.geojson"),
         cutout=lambda w: input_cutout(
-            w, config_provider("renewable", w.technology, "cutout")(w)
+            w,
+            config_provider("sector", "biochar", "cutout")(w)
+            if w.technology == "biochar"
+            else config_provider("renewable", w.technology, "cutout")(w),
         ),
     output:
         csv_file=resources("{technology}_available_land_s_{clusters}.csv"),

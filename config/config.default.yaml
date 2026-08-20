@@ -407,11 +407,6 @@ renewable:
   # land-eligibility settings for alternative carbon dioxide removal technologies,
   # feeding determine_availability_matrix.py (or determine_rock_weathering_availability_matrix.py
   # for rock weathering) the same way onwind/solar do above
-  biochar:
-    corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
-    natura: false
-    cutout: default
-    excluder_resolution: 250
   afforestation:
     corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
     natura: false
@@ -422,7 +417,7 @@ renewable:
     natura: false
     cutout: default
     excluder_resolution: 250
-    min_mean_temp_C: 9 # exclude grid cells with annual mean air temperature below this (weathering kinetics slow in cold climates)
+    min_mean_temp: 9 # exclude grid cells with annual mean air temperature below this (weathering kinetics slow in cold climates)
   hydro:
     cutout: default
     carriers:
@@ -440,7 +435,7 @@ renewable:
 
 # alternative carbon dioxide removal technologies
 perennials:
-  potential_co2: 2 # tCO2e/(ha y) sequestered
+  sequestration_co2: 2 # tCO2e/(ha y) sequestered
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -860,9 +855,21 @@ sector:
   biomethanation_CO2: true
   coal_cc: false
   dac: true
+  # land-eligibility settings (corine/natura/cutout/excluder_resolution) live
+  # here rather than under renewable: because biochar's config, unlike
+  # afforestation's/rock_weathering's, is fully consolidated in one place;
+  # the shared determine_availability_matrix.py rule resolves biochar's
+  # settings from here specifically (see rules/build_sector.smk)
   biochar:
     enable: true
     heat_output: false
+    corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
+    natura: false
+    cutout: default
+    excluder_resolution: 250
+    application_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
+    max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
+    number_years: 25 # years to exhaust the maximum biochar that can be spread per sqkm
   rock_weathering: true
   afforestation: true
   perennials: true
@@ -1095,11 +1102,6 @@ industry:
   reference_year: 2023
   oil_refining_emissions: 0.013
 
-biochar:
-  application_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
-  max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
-  number_years: 25 # aortisation period (years) for biochar CO2 storage
-
 rock_weathering:
   co2_removal_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate-only rate; hot climate is ~1% of eligible EU area, dropped)
   max_land_usage: 0.2 # maximum fraction of suitable area used for rock weathering
@@ -1171,7 +1173,7 @@ clustering:
     buses: {}
   temporal:
     resolution_elec: false
-    resolution_sector: 3h
+    resolution_sector: 168h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#adjustments
 adjustments:

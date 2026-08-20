@@ -789,7 +789,7 @@ def check_perennials_optimal(n_opt):
                 if total_stored == 0:
                     print(f"{WARN}  All perennial stores are empty (not deployed).")
 
-    # capital_cost lives on the "<node> perennials GBR" link and is a single
+    # capital_cost lives on the "<node> perennials refining" link and is a single
     # global constant from technology-data (not node-varying), so a
     # "weighted average by p_nom_opt" of it is meaningless -- the
     # flow-weighted bus price below is the only meaningful per-tCO2 cost
