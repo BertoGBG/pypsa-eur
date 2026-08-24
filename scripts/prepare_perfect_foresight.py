@@ -72,7 +72,7 @@ def get_social_discount(t: int, r: float = 0.01) -> float:
     ----------
     t : int
         Time period in years
-    r : float, default_AU 0.01
+    r : float, default 0.01
         Social discount rate per unit
 
     Returns
@@ -91,7 +91,7 @@ def get_investment_weighting(time_weighting: pd.Series, r: float = 0.01) -> pd.S
     ----------
     time_weighting : pd.Series
         Time weightings for each period
-    r : float, default_AU 0.01
+    r : float, default 0.01
         Social discount rate per unit
 
     Returns
@@ -542,7 +542,7 @@ def apply_time_segmentation_perfect(
         Network to segment
     segments : int
         Number of segments for typical period subdivision
-    solver_name : str, default_AU "cbc"
+    solver_name : str, default "cbc"
         Name of solver to use for segmentation
 
     Returns
@@ -551,7 +551,7 @@ def apply_time_segmentation_perfect(
         Network with segmented time series
     """
     try:
-        import tsam.timeseriesaggregation as tsam
+        import tsam
     except ImportError:
         raise ModuleNotFoundError(
             "Optional dependency 'tsam' not found.Install via 'pip install tsam'"
@@ -577,15 +577,26 @@ def apply_time_segmentation_perfect(
         annual_max = raw_t.max().replace(0, 1)
         raw_t = raw_t.div(annual_max, level=0)
         # get representative segments
-        agg = tsam.TimeSeriesAggregation(
-            raw_t,
-            hoursPerPeriod=len(raw_t),
-            noTypicalPeriods=1,
-            noSegments=int(segments),
-            segmentation=True,
-            solver=solver_name,
-        )
-        segmented = agg.createTypicalPeriods()
+        if hasattr(tsam, "aggregate"):  # tsam >= 3.0
+            agg = tsam.aggregate(
+                raw_t,
+                n_clusters=1,
+                period_duration=len(raw_t),
+                segments=tsam.SegmentConfig(n_segments=int(segments)),
+            )
+            segmented = agg.cluster_representatives
+        else:  # tsam < 3.0
+            from tsam import timeseriesaggregation
+
+            agg = timeseriesaggregation.TimeSeriesAggregation(
+                raw_t,
+                hoursPerPeriod=len(raw_t),
+                noTypicalPeriods=1,
+                noSegments=int(segments),
+                segmentation=True,
+                solver=solver_name,
+            )
+            segmented = agg.createTypicalPeriods()
 
         weightings = segmented.index.get_level_values("Segment Duration")
         offsets = np.insert(np.cumsum(weightings[:-1]), 0, 0)

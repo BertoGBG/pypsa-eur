@@ -2,13 +2,15 @@
 Check script for the biomethanation pipeline in pypsa-eur.
 Run from the pypsa-eur root directory:
 
-    python scripts/check_biometh_pipeline.py --config config/config.CDRs.yaml
+    python scripts/check_biometh_pipeline.py biometh_2050
 
-Wildcards are read from the config file. Override any value on the CLI:
+Wildcards are read from the saved run config automatically.
+Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
+    --config PATH    (direct path to a saved config YAML)
 
-Note: biomethanation has no separate potential calculation step (unlike biochar/ERW/
-afforestation). The two technologies added are:
+Note: biomethanation has no separate potential calculation step (unlike biochar/
+rock_weathering/afforestation). The two technologies added are:
   - biomethanation biogas  (H2 + biogas -> biomethane, in add_biomass)
   - biomethanation CO2     (H2 + CO2   -> biomethane, in add_power_to_gas)
 """

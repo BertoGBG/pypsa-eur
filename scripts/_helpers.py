@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MIT
 
+import atexit
 import contextlib
 import copy
 import logging
@@ -9,20 +10,27 @@ import os
 import re
 import time
 from collections.abc import Callable
-from functools import partial, wraps
+from functools import lru_cache, partial, wraps
+from itertools import takewhile
+from operator import attrgetter
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Literal
 
 import atlite
 import fiona
+import numpy as np
 import pandas as pd
 import pypsa
 import pytz
 import requests
 import xarray as xr
 import yaml
+from dask.distributed import Client, LocalCluster
 from snakemake.utils import update_config
 from tqdm import tqdm
+
+from scripts.lib.validation.config.data import VersionsSchema
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +196,7 @@ def get_opt(opts, expr, flags=None):
     """
     Return the first option matching the regular expression.
 
-    The regular expression is case-insensitive by default_AU.
+    The regular expression is case-insensitive by default.
     """
     if flags is None:
         flags = re.IGNORECASE
@@ -251,8 +259,8 @@ def configure_logging(snakemake, skip_handlers=False):
     ----------
     snakemake : snakemake object
         Your snakemake object containing a snakemake.config and snakemake.log.
-    skip_handlers : True | False (default_AU)
-        Do (not) skip the default_AU handlers created for redirecting output to STDERR and file.
+    skip_handlers : True | False (default)
+        Do (not) skip the default handlers created for redirecting output to STDERR and file.
     """
     import logging
     import sys
@@ -880,9 +888,9 @@ def get_snapshots(
     snapshots : dict
         Dictionary containing time range parameters. 'start' and 'end' can be
         strings or lists of strings for multiple date ranges.
-    drop_leap_day : bool, default_AU False
+    drop_leap_day : bool, default False
         If True, removes February 29th from the DateTimeIndex in leap years.
-    freq : str, default_AU "h"
+    freq : str, default "h"
         Frequency string indicating the time step interval (e.g., "h" for hourly)
     **kwargs : dict
         Additional keyword arguments passed to pd.date_range().
@@ -909,9 +917,7 @@ def get_snapshots(
         )
         time_periods.append(period)
 
-    time = pd.DatetimeIndex([])
-    for period in time_periods:
-        time = time.append(period)
+    time = pd.DatetimeIndex([ts for period in time_periods for ts in period])
 
     if drop_leap_day and time.is_leap_year.any():
         time = time[~((time.month == 2) & (time.day == 29))]
@@ -932,7 +938,7 @@ def sanitize_custom_columns(n: pypsa.Network):
         None
     """
     if "reversed" in n.links.columns:
-        # Replace NA values with default_AU value False
+        # Replace NA values with default value False
         n.links.loc[n.links.reversed.isna(), "reversed"] = False
         n.links.reversed = n.links.reversed.astype(bool)
 
@@ -1025,7 +1031,9 @@ def rename_techs(label: str) -> str:
 
 
 def load_cutout(
-    cutout_files: str | list[str], time: None | pd.DatetimeIndex = None
+    cutout_files: str | list[str],
+    time: None | pd.DatetimeIndex = None,
+    chunks: Literal["auto"] | dict | None = "auto",
 ) -> atlite.Cutout:
     """
     Load and optionally combine multiple cutout files.
@@ -1044,9 +1052,9 @@ def load_cutout(
         Merged cutout with optional time selection applied.
     """
     if isinstance(cutout_files, str):
-        cutout = atlite.Cutout(cutout_files)
+        cutout = atlite.Cutout(cutout_files, chunks=chunks)
     elif isinstance(cutout_files, list):
-        cutout_da = [atlite.Cutout(c).data for c in cutout_files]
+        cutout_da = [atlite.Cutout(c, chunks=chunks).data for c in cutout_files]
         combined_data = xr.concat(cutout_da, dim="time", data_vars="minimal")
         cutout = atlite.Cutout(NamedTemporaryFile().name, data=combined_data)
 
@@ -1054,6 +1062,17 @@ def load_cutout(
         cutout.data = cutout.data.sel(time=time)
 
     return cutout
+
+
+def setup_dask(nprocesses: int) -> dict:
+    if nprocesses > 1:
+        cluster = LocalCluster(n_workers=nprocesses, threads_per_worker=1)
+        client = Client(cluster)
+        atexit.register(client.shutdown)
+    else:
+        client = None
+
+    return dict(scheduler=client)
 
 
 def load_costs(cost_file: str) -> pd.DataFrame:
@@ -1072,3 +1091,147 @@ def load_costs(cost_file: str) -> pd.DataFrame:
     """
 
     return pd.read_csv(cost_file, index_col=0)
+
+
+# 1G biofuel crop groups and their target biomass class names.
+# In the upstream default config these sit in "not included".
+# When sector: perennials=True, resolve_biomass_classes() moves them automatically.
+ONE_G_BIOFUEL_CLASSES = {
+    "Bioethanol barley, wheat, grain maize, oats, other cereals and rye": "biofuels_1G_bioethanol_cereals",
+    "Sugar from sugar beet": "biofuels_1G_bioethanol_sugar",
+    "Rape seed": "biofuels_1G_biodiesel",
+    "Sunflower, soya seed ": "biofuels_1G_biodiesel",
+}
+
+
+def resolve_biomass_classes(classes, perennials_enabled):
+    """
+    Auto-reallocate 1G biofuel crop groups from 'not included' into their
+    biofuels_1G_* target classes when perennials are enabled.
+
+    Cases:
+      perennials=False  → return classes unchanged.
+      perennials=True, all groups in 'not included' → move them (normal case).
+      perennials=True, no groups in 'not included' → raise AssertionError.
+      perennials=True, some groups elsewhere → move available ones, warn about rest.
+    """
+    if not perennials_enabled:
+        return classes
+    classes = copy.deepcopy(classes)
+    not_incl = classes.get("not included", [])
+    in_ni = [g for g in ONE_G_BIOFUEL_CLASSES if g in not_incl]
+    elsewhere = [g for g in ONE_G_BIOFUEL_CLASSES if g not in not_incl]
+    if not in_ni:
+        raise AssertionError(
+            "sector: perennials=true but no 1G-biofuel groups are in "
+            "biomass: classes: 'not included'. Restore upstream defaults "
+            "so the groups can be reallocated automatically."
+        )
+    if elsewhere:
+        logger.warning(
+            "perennials: 1G groups already allocated outside 'not included' "
+            f"— skipped (running perennials only for available groups): {elsewhere}"
+        )
+    for g in in_ni:
+        classes["not included"].remove(g)
+        classes.setdefault(ONE_G_BIOFUEL_CLASSES[g], []).append(g)
+    return classes
+
+
+def _simplify_polys(
+    polys, minarea=100 * 1e6, maxdistance=None, tolerance=None, filterremote=True
+):  # 100*1e6 = 100 km² if CRS is DISTANCE_CRS
+    from shapely.geometry import MultiPolygon
+
+    if isinstance(polys, MultiPolygon):
+        polys = sorted(polys.geoms, key=attrgetter("area"), reverse=True)
+        mainpoly = polys[0]
+        mainlength = np.sqrt(mainpoly.area / (2.0 * np.pi))
+
+        if maxdistance is not None:
+            mainlength = maxdistance
+
+        if mainpoly.area > minarea:
+            polys = MultiPolygon(
+                [
+                    p
+                    for p in takewhile(lambda p: p.area > minarea, polys)
+                    if not filterremote or (mainpoly.distance(p) < mainlength)
+                ]
+            )
+        else:
+            polys = mainpoly
+    if tolerance is not None:
+        polys = polys.simplify(tolerance=tolerance)
+    return polys
+
+
+@lru_cache
+def load_data_versions(*files: Path) -> pd.DataFrame:
+    """
+    Load data versions from multiple CSV or YAML files and combine them into a single DataFrame.
+
+    Parameters
+    ----------
+    *files : Path
+        Paths to the CSV or YAML files containing data version information.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined DataFrame containing the data version information from all files, with, optionally, columns for each tag.
+    """
+    data_versions_list = [
+        _load_data_version(file).set_index(["dataset", "version", "source"])
+        for file in files
+    ]
+    combined_data_versions = pd.concat(data_versions_list)
+
+    deduplicated_data_versions = (
+        combined_data_versions.loc[
+            ~combined_data_versions.index.duplicated(keep="last")
+        ]
+        .sort_index()
+        .reset_index()
+    )
+
+    # Turn space-separated tags into individual columns
+    deduplicated_data_versions["tags"] = deduplicated_data_versions["tags"].str.split()
+    exploded = deduplicated_data_versions.explode("tags")
+    dummies = pd.get_dummies(exploded["tags"], dtype=bool)
+    tags_matrix = dummies.groupby(dummies.index).max()
+    deduplicated_data_versions = deduplicated_data_versions.join(tags_matrix)
+
+    return deduplicated_data_versions
+
+
+def _load_data_version(file: str | Path, validate: bool = True) -> pd.DataFrame:
+    """
+    Load data versions from a CSV or YAML file.
+
+    Parameters
+    ----------
+    file : str
+        Path to the CSV or YAML file containing data version information.
+    validate : bool, default True
+        If True, validate the loaded data against the VersionsSchema.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the data version information, with, optionally, columns for each tag.
+    """
+    if (file_path := Path(file)).suffix.lower() in [".yaml", ".yml"]:
+        data_versions = pd.DataFrame(yaml.safe_load(file_path.read_text()))
+    else:
+        data_versions = pd.read_csv(
+            file_path,
+            dtype=str,
+            na_filter=False,
+            delimiter=",",
+            comment="#",
+        )
+    if validate:
+        data_versions = VersionsSchema.validate(data_versions)
+
+    return data_versions

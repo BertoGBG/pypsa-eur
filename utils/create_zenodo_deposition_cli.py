@@ -138,7 +138,7 @@ def prompt_choice(options: list[str], prompt_text: str) -> str:
     while True:
         # Prompt user for choice
         if len(display_options) == 1:
-            # Only one option, use as default_AU
+            # Only one option, use as default
             choice = typer.prompt("Select (1)", default="1")
         else:
             choice = typer.prompt(f"Select (1-{len(display_options)})")
@@ -341,7 +341,7 @@ def add_version_row(
     note : str
         A note for the new version.
     remove_latest : bool, optional
-        Whether to remove the 'latest' tag from the existing latest version (default_AU is True).
+        Whether to remove the 'latest' tag from the existing latest version (default is True).
 
     Returns
     -------
@@ -428,8 +428,8 @@ def extract_zenodo_deposition_url(record_url: str) -> tuple[str, str]:
         The Zenodo deposition API URL, or None if extraction fails.
     """
     # Match both sandbox and production, with or without /files/...
-    m = re.match(
-        r"https://(?:sandbox\.)?zenodo\.org/records/(\d+)(/files/.*)?", record_url
+    m = re.fullmatch(
+        r"https://(?:sandbox\.)?zenodo\.org/records/(\d+)(/files(/.*)?)?", record_url
     )
     if not m:
         raise ValueError(f"Invalid Zenodo record URL format: {record_url}. ")

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 GEO_CRS = "EPSG:4326"
 DISTANCE_CRS = "EPSG:3035"
 BUS_TOL = (
-    500  # unit: meters, default_AU 5000 - Buses within this distance are grouped together
+    500  # unit: meters, default 5000 - Buses within this distance are grouped together
 )
 
 
@@ -558,7 +558,7 @@ def _import_routes_relation(path_relation):
 
                 df = pd.DataFrame(data["elements"])
                 df["id"] = df["id"].astype(str)
-                df["id"] = df["id"].apply(lambda x: (f"relation/{x}"))
+                df["id"] = df["id"].apply(lambda x: f"relation/{x}")
                 df["country"] = country
 
                 col_tags = [
@@ -1725,10 +1725,12 @@ def _extend_lines_to_substations(gdf_lines, gdf_substations_polygon, tol=BUS_TOL
     gdf = (
         gdf.groupby(["line_id", "voltage_line"])
         .apply(
-            lambda x: x[["bus_id", "geometry_bus"]]
-            .dropna()
-            .set_index("bus_id")["geometry_bus"]
-            .to_dict(),
+            lambda x: (
+                x[["bus_id", "geometry_bus"]]
+                .dropna()
+                .set_index("bus_id")["geometry_bus"]
+                .to_dict()
+            ),
             include_groups=False,
         )
         .reset_index()

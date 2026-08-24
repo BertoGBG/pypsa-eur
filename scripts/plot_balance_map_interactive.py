@@ -41,7 +41,7 @@ def scalar_to_rgba(
         Normalization defining vmin and vmax used for scaling.
     cmap : matplotlib.colors.Colormap
         Colormap used to convert normalized values to RGBA colors.
-    alpha : float, optional (default_AU = 1.0)
+    alpha : float, optional (default = 1.0)
         Opacity in the range [0, 1]. Overrides the colormap's alpha.
 
     Returns
@@ -115,17 +115,33 @@ if __name__ == "__main__":
     b_missing = n.carriers.query("color == '' or color.isnull()").index
     n.carriers.loc[b_missing, "color"] = missing_color
 
-    transmission_carriers = get_transmission_carriers(n, bus_carrier=carrier).rename(
-        {"name": "carrier"}
-    )
+    if carrier == "co2 stored" and "co2 dense" in n.buses.carrier.unique():
+        co2_carriers = ["co2 stored", "co2 dense"]
+        transmission_carriers = get_transmission_carriers(
+            n, bus_carrier=co2_carriers
+        ).rename({"name": "carrier"})
+
+        eb = n.statistics.energy_balance(
+            bus_carrier=co2_carriers,
+            groupby=["bus", "carrier"],
+        )
+        eb = eb.rename(
+            index=lambda value: value.replace("co2 dense", carrier), level="bus"
+        )
+        eb = eb.groupby(level=["component", "bus", "carrier"]).sum()
+    else:
+        transmission_carriers = get_transmission_carriers(
+            n, bus_carrier=carrier
+        ).rename({"name": "carrier"})
+
+        ### Pie charts
+        eb = n.statistics.energy_balance(
+            bus_carrier=carrier,
+            groupby=["bus", "carrier"],
+        )
+
     components = transmission_carriers.unique("component")
     carriers = transmission_carriers.unique("carrier")
-
-    ### Pie charts
-    eb = n.statistics.energy_balance(
-        bus_carrier=carrier,
-        groupby=["bus", "carrier"],
-    )
 
     # Only carriers that are also in the energy balance
     carriers_in_eb = carriers[carriers.isin(eb.index.get_level_values("carrier"))]

@@ -114,7 +114,7 @@ industry:
 solving:
   solver:
     name: highs
-    options: highs-default_AU
+    options: highs-default
   mem: 4000
 
   check_objective:

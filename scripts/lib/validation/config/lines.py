@@ -23,7 +23,7 @@ class _DynamicLineRatingConfig(ConfigModel):
         description="Whether to take dynamic line rating into account.",
     )
     cutout: str | list[str] = Field(
-        "default_AU",
+        "default",
         description="Specifies the weather data cutout file(s) to use.",
     )
     correction_factor: float = Field(

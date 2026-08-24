@@ -65,6 +65,10 @@ class _ClusterNetworkConfig(BaseModel):
         "kmeans",
         description="Clustering algorithm to use.",
     )
+    allow_ac_dc_mixing_in_bus_clusters: bool = Field(
+        False,
+        description="Controls whether clustering is allowed to mix AC and DC buses within a bus cluster. If true, mixed clusters are coerced to AC before aggregation. If false, mixed clusters are kept separate.",
+    )
     hac_features: list[str] = Field(
         default_factory=lambda: ["wnd100m", "influx_direct"],
         description="List of meteorological variables contained in the weather data cutout that should be considered for hierarchical clustering.",
@@ -89,7 +93,7 @@ class _AggregationStrategiesConfig(BaseModel):
 
 
 class _TemporalConfig(BaseModel):
-    """Configuration for `clustering.temporal` settings."""
+    """Configuration for `clustering.temporal` settings.  Follows the convention of {n}{unit}, e.g. 3H to aggregate over 3 hours time periods. `SEG` can be used to create n segments of varying time periods based on network similarities during those time periods."""
 
     resolution_elec: bool | str = Field(
         False,
@@ -140,7 +144,7 @@ class ClusteringConfig(BaseModel):
     )
     consider_efficiency_classes: bool | list[float] = Field(
         False,
-        description="Aggregate each carrier into efficiency classes defined by quantile boundaries. If True, uses [0.1, 0.9] as default_AU quantiles (labels: Q0, Q10, Q90). If a list of floats, defines custom quantile boundaries, e.g. [0.1, 0.5, 0.9].",
+        description="Aggregate each carrier into efficiency classes defined by quantile boundaries. If True, uses [0.1, 0.9] as default quantiles (labels: Q0, Q10, Q90). If a list of floats, defines custom quantile boundaries, e.g. [0.1, 0.5, 0.9].",
     )
     aggregation_strategies: _AggregationStrategiesConfig = Field(
         default_factory=_AggregationStrategiesConfig,

@@ -20,12 +20,12 @@ data is summed by region to show total potential.
 Relevant Settings
 -----------------
 
-.. code:: yaml
-
-    plotting:
-        heat_source_map:
-            temperature_cmap: "Reds"  # Colormap for temperature data
-            energy_cmap: "Oranges"    # Colormap for energy data
+```yaml
+plotting:
+    heat_source_map:
+        temperature_cmap: "Reds"  # Colormap for temperature data
+        energy_cmap: "Oranges"    # Colormap for energy data
+```
 
 Inputs
 ------
@@ -86,17 +86,17 @@ def plot_heat_source_map(
         GeoDataFrame with onshore region geometries for boundary overlay.
     var_name : str
         Name of the variable to plot from the DataArray.
-    longitude_name : str, default_AU 'longitude'
+    longitude_name : str, default 'longitude'
         Name of the longitude coordinate in the DataArray.
-    latitude_name : str, default_AU 'latitude'
+    latitude_name : str, default 'latitude'
         Name of the latitude coordinate in the DataArray.
-    onshore_region_name : str, default_AU 'name'
+    onshore_region_name : str, default 'name'
         Column name in regions_onshore containing region identifiers.
     title : str, optional
         Title for the map legend. If None, uses var_name.
-    cmap : str, default_AU 'viridis'
+    cmap : str, default 'viridis'
         Matplotlib colormap name for data visualization.
-    aggregate_type : str, default_AU 'mean'
+    aggregate_type : str, default 'mean'
         Aggregation method for regional values. Use 'mean' for temperature
         data and 'sum' for energy data.
 

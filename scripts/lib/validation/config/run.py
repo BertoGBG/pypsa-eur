@@ -70,6 +70,14 @@ class RunConfig(ConfigModel):
 
     use_shadow_directory: bool = Field(
         False,
-        description="Set to ``true`` (default_AU) if snakemake shadow directories (``shallow``) should be used. Set to ``false`` if problems occur.",
+        description="Set to ``true`` (default) if snakemake shadow directories (``shallow``) should be used. Set to ``false`` if problems occur.",
         examples=[True],
+    )
+
+    default_target_rule: str | None = Field(
+        "all",
+        description="Default target rule for snakemake. "
+        "This is the default rule that will be executed if no other rule is specified. "
+        "If set to ``None``, snakemake will use its default behavior and execute the first rule in the Snakefile. "
+        "NOTE: This value will be overwritten by any reference to `default_target` made in a specific rule.",
     )

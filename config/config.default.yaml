@@ -3,7 +3,7 @@
 # yaml-language-server: $schema=./schema.default.json
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#version
-version: v2026.02.0
+version: v2026.08.0
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#tutorial
 tutorial: false
@@ -15,8 +15,8 @@ logging:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#remote
 remote:
-  ssh: ""
-  path: ""
+  ssh: "albal@login.genome.au.dk"
+  path: "/home/albal/workspace/pypsa-eur_AA/pypsa-eur"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
@@ -27,9 +27,10 @@ run:
     file: config/scenarios.yaml
   disable_progressbar: false
   shared_resources:
-    policy: false
+    policy: "CDRs_2050"  # reuse resources/CDRs_2050/ (already built at s_90) without touching that run
     exclude: []
   use_shadow_directory: false
+  default_target_rule: all
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: overnight
@@ -41,7 +42,7 @@ scenario:
   opts:
   - ""
   sector_opts:
-  - 168h
+  - 24h
   planning_horizons:
   - 2050
 
@@ -198,7 +199,7 @@ electricity:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#atlite
 atlite:
   default_cutout: "europe-2013-sarah3-era5"
-  nprocesses: 16
+  nprocesses: 1
   show_progress: false
   plot_availability_matrix: false
   cutouts:
@@ -229,7 +230,7 @@ atlite:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#renewable
 renewable:
   onwind:
-    cutout: default_AU
+    cutout: default
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -273,7 +274,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "offwind-ac":
-    cutout: default_AU
+    cutout: default
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -294,7 +295,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 20.0
   "offwind-dc":
-    cutout: default_AU
+    cutout: default
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_2020ATB_5.5MW
@@ -315,7 +316,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 30.0
   "offwind-float":
-    cutout: default_AU
+    cutout: default
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -336,7 +337,7 @@ renewable:
     clip_p_max_pu: 0.01
     landfall_length: 40.0
   solar:
-    cutout: default_AU
+    cutout: default
     resource:
       method: pv
       panel: CSi
@@ -376,7 +377,7 @@ renewable:
     excluder_resolution: 100
     clip_p_max_pu: 0.01
   "solar-hsat":
-    cutout: default_AU
+    cutout: default
     resource:
       method: pv
       panel: CSi
@@ -415,8 +416,22 @@ renewable:
     natura: true
     excluder_resolution: 100
     clip_p_max_pu: 0.01
+  # land-eligibility settings for alternative carbon dioxide removal technologies,
+  # feeding determine_availability_matrix.py (or determine_rock_weathering_availability_matrix.py
+  # for rock weathering) the same way onwind/solar do above
+  afforestation:
+    corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
+    natura: false
+    cutout: default
+    excluder_resolution: 250
+  rock_weathering:
+    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
+    natura: false
+    cutout: default
+    excluder_resolution: 250
+    min_mean_temp: 9 # exclude grid cells with annual mean air temperature below this (weathering kinetics slow in cold climates)
   hydro:
-    cutout: default_AU
+    cutout: default
     carriers:
     - ror
     - PHS
@@ -430,9 +445,9 @@ renewable:
     eia_correct_by_capacity: false
     eia_approximate_missing: false
 
-# alternative CDRs
+# alternative carbon dioxide removal technologies
 perennials:
-  potential_co2: 2 # tCO2e/(ha y) sequestered
+  sequestration_co2: 2 # tCO2e/(ha y) sequestered
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#conventional
 conventional:
@@ -466,7 +481,7 @@ lines:
   under_construction: keep
   dynamic_line_rating:
     activate: false
-    cutout: default_AU
+    cutout: default
     correction_factor: 0.95
     max_voltage_difference: false
     max_line_rating: false
@@ -555,18 +570,15 @@ biomass:
     - Sawdust
     - Residues from landscape care
     not included:
+    - Sugar from sugar beet
+    - Rape seed
+    - 'Sunflower, soya seed '
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
     - Miscanthus, switchgrass, RCG
     - Willow
     - Poplar
     - FuelwoodRW
     - "C&P_RW"
-    biofuels_1G_bioethanol_cereals:
-    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
-    biofuels_1G_bioethanol_sugar:
-    - Sugar from sugar beet
-    biofuels_1G_biodiesel:
-    - Rape seed
-    - 'Sunflower, soya seed '
     biogas:
     - Manure solid, liquid
     - Sludge
@@ -595,7 +607,7 @@ solar_thermal:
   orientation:
     slope: 45.0
     azimuth: 180.0
-  cutout: default_AU
+  cutout: default
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#existing_capacities
 existing_capacities:
@@ -630,6 +642,7 @@ existing_capacities:
   - 2019
   threshold_capacity: 10
   default_heating_lifetime: 20
+  solar_rooftop_ratio: 0.5
   conventional_carriers:
   - lignite
   - coal
@@ -739,7 +752,7 @@ sector:
       - 10
       - 22
   cluster_heat_buses: true
-  heat_demand_cutout: default_AU
+  heat_demand_cutout: default
   bev_dsm_restriction_value: 0.8
   bev_dsm_restriction_time: 7
   transport_heating_deadband_upper: 20.0
@@ -855,11 +868,22 @@ sector:
   biomethanation_CO2: true
   coal_cc: false
   dac: true
+  # land-eligibility settings (corine/natura/cutout/excluder_resolution) live
+  # here rather than under renewable: because biochar's config, unlike
+  # afforestation's/rock_weathering's, is fully consolidated in one place;
+  # the shared determine_availability_matrix.py rule resolves biochar's
+  # settings from here specifically (see rules/build_sector.smk)
   biochar:
     enable: true
-    heat_output: true
-    transport: false
-  ERW: false
+    heat_output: false
+    corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
+    natura: false
+    cutout: default
+    excluder_resolution: 250
+    application_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
+    max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
+    number_years: 25 # years to exhaust the maximum biochar that can be spread per sqkm
+  rock_weathering: true
   afforestation: true
   perennials: true
   co2_vent: false
@@ -878,7 +902,6 @@ sector:
   regional_co2_sequestration_potential:
     enable: true
     attribute:
-    - conservative estimate Mt
     - conservative estimate GAS Mt
     - conservative estimate OIL Mt
     - conservative estimate aquifer Mt
@@ -889,17 +912,24 @@ sector:
   co2_sequestration_potential:
     2020: 0
     2025: 0
-    2030: 40
+    2030: 50
     2035: 100
-    2040: 180
-    2045: 250
-    2050: 250
-  co2_sequestration_cost: 30
+    2040: 200
+    2045: 200
+    2050: 200
+  co2_sequestration_cost: 10
   co2_sequestration_lifetime: 50
   co2_spatial: true
   co2_network: true
   co2_network_cost_factor: 1
+  co2_network_liquefaction: false
   cc_fraction: 0.9
+  cc_capital_cost_factor:
+    gas: 2.0
+    biomass: 1.1
+    coal: 1.1
+    waste: 1.2
+    cement: 1.0
   hydrogen_underground_storage: true
   hydrogen_underground_storage_locations:
   - onshore
@@ -935,12 +965,16 @@ sector:
     enable:
     - DC
     - H2 pipeline
+    - H2 pipeline retrofitted
     - gas pipeline
     - electricity distribution grid
     DC:
       efficiency_static: 0.98
       efficiency_per_1000km: 0.977
     H2 pipeline:
+      efficiency_per_1000km: 1
+      compression_per_1000km: 0.018
+    H2 pipeline retrofitted:
       efficiency_per_1000km: 1
       compression_per_1000km: 0.018
     gas pipeline:
@@ -956,7 +990,7 @@ sector:
   gas_distribution_grid: true
   gas_distribution_grid_cost_factor: 1.0
   biomass_spatial: true
-  biomass_transport: false
+  biomass_transport: true
   biogas_upgrading: true
   biogas_upgrading_cc: false
   conventional_generation:
@@ -1115,31 +1149,17 @@ industry:
   reference_year: 2023
   oil_refining_emissions: 0.013
 
-biochar:
-  corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
-  potential_per_sqkm: 1500 # tonnes of biochar per km² (≈15 t/ha)
-  co2_per_tonne_multiplier: 1 # multiplier on (0.85 tC/t_biochar * 0.7 fraction stable >100y * 44/12)
-  max_land_usage: 0.2 # maximum fraction of suitable CORINE area used for biochar
-  number_years: 25 # aortisation period (years) for biochar CO2 storage
-
-ERW:
-  EW_hot:
-    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
-    potential_per_sqkm: 839 # tonnes CO2 sequestered per sqkm (hot climate)
-    climate: [23, 24, 28, 33, 34, 36] # bioclimatic zone codes for hot regions
-  EW_temperate:
-    corine: [12, 13, 14] # non-irrigated arable land, permanent crops, rice fields
-    potential_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate climate)
-    climate: [10, 11, 14, 15] # bioclimatic zone codes for temperate regions
-  max_land_usage: 0.2 # maximum fraction of suitable area used for ERW
+rock_weathering:
+  co2_removal_per_sqkm: 309 # tonnes CO2 sequestered per sqkm (temperate-only rate; hot climate is ~1% of eligible EU area, dropped)
+  max_land_usage: 0.2 # maximum fraction of suitable area used for rock weathering
 
 afforestation:
-  corine: [29] # CORINE Land Cover code for transitional woodland-shrub (potential afforestation land)
   potential_type: "growth" # "density" (NUTS0 biomass densities) or "growth" (NUTS2 annual growth rates)
   free_mode: false  # (growth mode only) fix p_nom to seasonal peak rate, dispatch unconstrained;  call redistribute_afforestation_seasonal() before temporal plotting
-  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12)
+  use_discount_rate: false  # (growth mode only) use config discount rate in annuity formula; false → no discounting (r=0)
+  co2_per_tonne: 1.83 # tCO2 sequestered per tonne of dry biomass (0.5 * 44/12) ONLY with potential growth set to "density"
   max_land_usage: 0.6 # maximum fraction of suitable CORINE area used for afforestation ONLY with potential growth set to "density"
-  crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
+  crcf_efficiency: 0.85 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
                         # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
                         # Accounts for mandatory uncertainty deduction (min 10%, eq.1 of the methodology)
                         # and buffer-pool contribution (risk rate 8-17% for typical European mixed/broadleaf
@@ -1187,6 +1207,7 @@ clustering:
     remove_stubs_across_borders: false
   cluster_network:
     algorithm: kmeans
+    allow_ac_dc_mixing_in_bus_clusters: false
     hac_features:
     - wnd100m
     - influx_direct
@@ -1231,6 +1252,8 @@ solving:
     skip_iterations: true
     rolling_horizon: false
     seed: 123
+    assign_all_duals: false
+    assign_capacity_duals: true
     custom_extra_functionality: ../data/custom_extra_functionality.py
     io_api:
     track_iterations: false
@@ -1288,6 +1311,13 @@ solving:
       primal_feasibility_tolerance: 1.0e-05
       dual_feasibility_tolerance: 1.0e-05
       random_seed: 123
+    "highs-hipo":
+      solver: hipo
+      parallel: 'on'
+      primal_feasibility_tolerance: 1.0e-05
+      dual_feasibility_tolerance: 1.0e-05
+      random_seed: 123
+      run_crossover: 'off'
     "gurobi-default":
       threads: 32
       method: 2
@@ -1297,6 +1327,7 @@ solving:
       AggFill: 0
       PreDual: 0
       GURO_PAR_BARDENSETHRESH: 200
+      IISMethod: 1
     "gurobi-numeric-focus":
       NumericFocus: 3
       method: 2
@@ -1354,12 +1385,14 @@ solving:
     atol: 1000000
     rtol: 0.01
   oetc:
-  mem_mb: 200000
+  mem_mb: 300000
   memory_logging_frequency: 5
   runtime: 48h
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#data
 data:
+  version_files:
+  - data/versions.csv
   hotmaps_industrial_sites:
     source: archive
     version: latest
@@ -1382,6 +1415,9 @@ data:
     source: archive
     version: latest
   instrat_co2_prices:
+    source: primary
+    version: latest
+  co2_removal_data:
     source: primary
     version: latest
   co2stop:
@@ -1491,7 +1527,7 @@ data:
     version: latest
   costs:
     source: primary
-    version: pypsa-eur_AA
+    version: pypsa-eur_aa
   country_runoff:
     source: archive
     version: latest

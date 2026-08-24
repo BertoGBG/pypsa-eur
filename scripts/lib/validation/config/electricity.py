@@ -209,7 +209,7 @@ class ElectricityConfig(BaseModel):
     )
     powerplants_filter: str | bool = Field(
         "(DateOut > 2025 or DateOut != DateOut) and (DateIn < 2026 or DateIn != DateIn)",
-        description="Filter query for the default_AU powerplant database.",
+        description="Filter query for the default powerplant database.",
     )
     custom_powerplants: str | bool = Field(
         False,

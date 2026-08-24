@@ -16,12 +16,12 @@ The scripts does not use `n.statistics.energy_balance` but calculates the balanc
 Relevant Settings
 -----------------
 
-.. code:: yaml
-
-    plotting:
-        tech_colors: # Color mapping for different technologies/carriers
-        balance_timeseries:
-            bus_name_pattern: # Pattern to filter buses (e.g., 'DE*' for German buses)
+```yaml
+plotting:
+    tech_colors: # Color mapping for different technologies/carriers
+    balance_timeseries:
+        bus_name_pattern: # Pattern to filter buses (e.g., 'DE*' for German buses)
+```
 
 Inputs
 ------
@@ -450,7 +450,7 @@ def plot_energy_balance_timeseries(
 
     # Save as interactive HTML
     if resample is None:
-        resample = f"native-{time if time is not None else 'default_AU'}"
+        resample = f"native-{time if time is not None else 'default'}"
     fn = f"ts-balance-{ylabel.replace(' ', '_')}-{resample}.html"
     fig.write_html(f"{directory}/{fn}")
 

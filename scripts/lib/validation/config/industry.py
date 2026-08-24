@@ -130,7 +130,7 @@ class IndustryConfig(ConfigModel):
     )
     HVC_environment_sequestration_fraction: float = Field(
         0.0,
-        description="The fraction of high value chemicals (HVC) put into landfill resulting in additional carbon sequestration. The default_AU value is 0.",
+        description="The fraction of high value chemicals (HVC) put into landfill resulting in additional carbon sequestration. The default value is 0.",
     )
     waste_to_energy: bool = Field(
         False,
@@ -166,7 +166,7 @@ class IndustryConfig(ConfigModel):
     )
     MWh_elec_per_tHVC_chemical_recycling: float = Field(
         6.9,
-        description="The energy amount of electricity needed to produce a ton of high value chemical (HVC) using chemical recycling. The default_AU value is based on pyrolysis and electric steam cracking. From `Material Economics (2019) <https://materialeconomics.com/latest-updates/industrial-transformation-2050>`_, page 125.",
+        description="The energy amount of electricity needed to produce a ton of high value chemical (HVC) using chemical recycling. The default value is based on pyrolysis and electric steam cracking. From `Material Economics (2019) <https://materialeconomics.com/latest-updates/industrial-transformation-2050>`_, page 125.",
     )
     chlorine_production_today: float = Field(
         9.58,
@@ -206,5 +206,5 @@ class IndustryConfig(ConfigModel):
     )
     oil_refining_emissions: float = Field(
         0.013,
-        description="The emissions from oil fuel processing (e.g. oil in petrochemical refinieries). The default_AU value of 0.013 tCO2/MWh is based on DE statistics for 2019; the EU value is very similar.",
+        description="The emissions from oil fuel processing (e.g. oil in petrochemical refinieries). The default value of 0.013 tCO2/MWh is based on DE statistics for 2019; the EU value is very similar.",
     )

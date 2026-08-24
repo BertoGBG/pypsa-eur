@@ -26,7 +26,7 @@ def ac_dc_network():
 
 @pytest.fixture(scope="session")
 def config():
-    path_config = pathlib.Path(pathlib.Path.cwd(), "config", "config.default_AU.yaml")
+    path_config = pathlib.Path(pathlib.Path.cwd(), "config", "config.default.yaml")
     with open(path_config) as file:
         config_dict = yaml.safe_load(file)
     return config_dict
@@ -163,3 +163,11 @@ def italy_shape(download_natural_earth, tmpdir):
     italy_shape_file_path = pathlib.Path(tmpdir, "italy_shape.geojson")
     italy_shape_file.to_file(italy_shape_file_path, driver="GeoJSON")
     yield italy_shape_file_path
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--fix",
+        action="store_true",
+        help="Attempt fix of issues in the data versions layer CSV files and the default config YAML & schema JSON.",
+    )

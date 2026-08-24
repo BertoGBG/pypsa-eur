@@ -10,12 +10,13 @@ It scales the heat source utilisation potentials to technical potentials by divi
 
 Relevant Settings
 -----------------
-.. code:: yaml
-    sector:
-        district_heating:
-            limited_heat_sources:
-                geothermal:
-                    constant_temperature_celsius
+```yaml
+sector:
+    district_heating:
+        limited_heat_sources:
+            geothermal:
+                constant_temperature_celsius
+```
 
 Inputs
 ------
@@ -227,7 +228,7 @@ if __name__ == "__main__":
     ).to_crs("EPSG:4326")
     lau_regions.index = lau_regions.GISCO_ID
 
-    # temperature scenario that was assumed by Manz et al. when computing potentials is 65C (default_AU) or 85C
+    # temperature scenario that was assumed by Manz et al. when computing potentials is 65C (default) or 85C
     this_temperature_scenario = ISI_TEMPERATURE_SCENARIOS[
         snakemake.params.constant_temperature_celsius
     ]
@@ -244,7 +245,7 @@ if __name__ == "__main__":
             "Unnamed: 2_level_0",
             "Unit",
         )
-    ][0]
+    ].iloc[0]
     geothermal_supply_potentials = isi_heat_potentials[
         (
             f"Supply_potentials_{this_temperature_scenario}",

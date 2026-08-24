@@ -1,0 +1,7 @@
+# Sophia-specific config overrides — pass alongside config.default.yaml
+# Usage: --configfile config/config.default.yaml config/config.sophia.yaml
+
+solving:
+  options:
+    model_kwargs:
+      solver_dir: "/scratch"

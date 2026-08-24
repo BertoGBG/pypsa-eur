@@ -19,9 +19,9 @@ class PtesTemperatureApproximator:
     return_temperature : xr.DataArray
         The return temperature profile from the district heating network.
     max_ptes_top_temperature : float
-        Maximum operational temperature of top layer in PTES, default_AU 90°C.
+        Maximum operational temperature of top layer in PTES, default 90°C.
     min_ptes_bottom_temperature : float
-        Minimum operational temperature of bottom layer in PTES, default_AU 35°C.
+        Minimum operational temperature of bottom layer in PTES, default 35°C.
     """
 
     def __init__(
@@ -41,9 +41,9 @@ class PtesTemperatureApproximator:
         return_temperature : xr.DataArray
             The return temperature profile from the district heating network.
         max_ptes_top_temperature : float, optional
-            Maximum operational temperature of top layer in PTES, default_AU 90°C.
+            Maximum operational temperature of top layer in PTES, default 90°C.
         min_ptes_bottom_temperature : float, optional
-            Minimum operational temperature of bottom layer in PTES, default_AU 35°C.
+            Minimum operational temperature of bottom layer in PTES, default 35°C.
         """
         self.forward_temperature = forward_temperature
         self.return_temperature = return_temperature
