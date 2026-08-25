@@ -1027,7 +1027,15 @@ rule determine_carbon_dioxide_removal_availability_matrix:
             else config_provider("renewable", w.technology, "cutout")(w),
         ),
     output:
-        resources("availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"),
+        nc=resources(
+            "availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.nc"
+        ),
+        plot=branch(
+            config["atlite"]["plot_availability_matrix"],
+            then=resources(
+                "availability_matrix_carbon_dioxide_removal_{clusters}_{technology}.png"
+            ),
+        ),
     log:
         logs("determine_carbon_dioxide_removal_availability_matrix_{clusters}_{technology}.log"),
     wildcard_constraints:
