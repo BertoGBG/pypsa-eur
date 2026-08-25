@@ -1085,7 +1085,7 @@ def add_perennials(n, costs):
         The PyPSA network container object
     costs : pd.DataFrame
         Costs and parameters for different technologies. Must contain a
-        'perennials refining' entry with 'electricity-input', 'biogas-output',
+        'perennials gbr' entry with 'electricity-input', 'biogas-output',
         'capital_cost', 'VOM', and 'lifetime' parameters
 
     Returns
@@ -1146,14 +1146,14 @@ def add_perennials(n, costs):
        bus2=nodes.values,
        bus3=spatial.gas.biogas,
        efficiency=1,
-       efficiency2=-costs.at["perennials refining", "electricity-input"] * perennial_CO2_seq,
-       efficiency3=costs.at["perennials refining", "biogas-output"] * perennial_CO2_seq,
+       efficiency2=-costs.at["perennials gbr", "electricity-input"] * perennial_CO2_seq,
+       efficiency3=costs.at["perennials gbr", "biogas-output"] * perennial_CO2_seq,
        carrier="co2 perennials",
        p_nom_extendable=True,
        p_max_pu=p_max_pu,
-       capital_cost=costs.at["perennials refining", "capital_cost"] * perennial_CO2_seq,
-       marginal_cost=costs.at["perennials refining", "VOM"] * perennial_CO2_seq,
-       lifetime=costs.at["perennials refining", "lifetime"],
+       capital_cost=costs.at["perennials gbr", "capital_cost"] * perennial_CO2_seq,
+       marginal_cost=costs.at["perennials gbr", "VOM"] * perennial_CO2_seq,
+       lifetime=costs.at["perennials gbr", "lifetime"],
     )
 
     n.add(
