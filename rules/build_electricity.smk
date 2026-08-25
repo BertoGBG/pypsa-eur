@@ -198,7 +198,7 @@ rule build_nuts3_shapes:
         benchmarks("build_nuts3_shapes")
     threads: 1
     resources:
-        mem_mb=1500,
+        mem_mb=8000,
     params:
         countries=config_provider("countries"),
     message:
