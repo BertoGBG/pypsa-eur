@@ -2115,7 +2115,9 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     )
 
 
-def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
+def add_co2limit(
+    n, options, co2_totals_file, countries, nyears, limit, lulucf_deviation=0.0
+):
     """
     Add a global CO2 emissions constraint to the network.
 
@@ -2134,6 +2136,12 @@ def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
         Number of years for the CO2 budget, by default 1.0
     limit : float, optional
         CO2 limit as a fraction of 1990 levels
+    lulucf_deviation : float, optional
+        Deviation of the real-world LULUCF land-use carbon sink from the
+        amount its assumed performance is baked into `limit`, in MtCO2/yr.
+        Positive = sink underperforms (tightens the budget by that much);
+        negative = sink overperforms (loosens it). See
+        top-level `lulucf_deviation` / `lulucf_deviation_values` config.
 
     Returns
     -------
@@ -2146,7 +2154,16 @@ def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     The function reads historical CO2 emissions data, calculates a total limit
     based on the specified countries and sectors, and adds a global constraint
     to the network. The limit is calculated as a fraction of historical emissions
-    multiplied by the number of years.
+    multiplied by the number of years. `lulucf_deviation` is then applied as a
+    straight annual MtCO2 correction on top: `sectors` (determine_emission_sectors)
+    covers only CO2 from the modelled energy/industry/transport/agricultural-
+    machinery sectors -- it never includes LULUCF, and non-CO2 AFOLU emissions
+    (N2O, CH4) aren't modelled here at all, since this is a CO2-only budget.
+    The overall net-zero target `limit` is calibrated against a pledge that
+    implicitly relies on the real-world LULUCF sink performing as expected;
+    if it under/overperforms, the budget on the modelled sectors must shrink
+    (or grow) by the shortfall (or surplus) to keep the same net climate
+    outcome.
     """
     if limit is None:
         return
@@ -2161,6 +2178,14 @@ def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
     co2_limit = co2_totals.loc[countries, sectors].sum().sum()
 
     co2_limit *= limit * nyears
+
+    if lulucf_deviation:
+        logger.info(
+            f"Adjusting CO2Limit for LULUCF/agriculture sink deviation of "
+            f"{lulucf_deviation:+.3f} MtCO2/yr "
+            f"({'tightening' if lulucf_deviation > 0 else 'loosening'} the budget)."
+        )
+        co2_limit -= lulucf_deviation * 1e6 * nyears
 
     n.add(
         "GlobalConstraint",
@@ -6706,7 +6731,9 @@ def add_shipping(
     p_set = all_navigation * 1e6 / nhours
 
     if options["shipping_endogenous"]:
-        _add_shipping_endogenous(n, costs, p_set, nodes, options, spatial)
+        _add_shipping_endogenous(
+            n, costs, p_set, nodes, options, spatial, investment_year
+        )
     else:
         _add_shipping_exogenous(
             n, costs, p_set, nodes, options, spatial, investment_year
@@ -6720,6 +6747,7 @@ def _add_shipping_endogenous(
     nodes: pd.Index,
     options: dict,
     spatial: SimpleNamespace,
+    investment_year: int,
 ) -> None:
     """
     Endogenous shipping: one shared per-node "<node> shipping"
@@ -6742,19 +6770,24 @@ def _add_shipping_endogenous(
 
     Individual fuels are toggled independently via options["shipping_oil"]
     / ["shipping_methanol"] / ["shipping_gas"] / ["shipping_hydrogen"]
-    (all bool) -- at least one must be true. The mix is entirely a model
-    outcome, constrained only by whatever economy-wide (CO2Limit/
-    fossil_fuel_limit) or, if enabled, shipping-specific
-    (add_shipping_co2_constraint in solve_network.py) emissions limits
-    apply.
+    (each a flat bool or a year-indexed dict, resolved at investment_year)
+    -- at least one must be true for this investment_year. The mix is
+    entirely a model outcome, constrained only by the economy-wide
+    CO2Limit/fossil_fuel_limit (no shipping-specific emissions cap --
+    every downstream oil/gas consumer tags a fixed nominal fossil CO2
+    intensity regardless of the shared pool's actual blend, so a
+    sector-specific cap on it wouldn't measure anything real).
     """
-    if not any(
-        options[f"shipping_{fuel}"]
+    fuel_enabled = {
+        fuel: bool(get(options[f"shipping_{fuel}"], investment_year))
         for fuel in ["oil", "methanol", "gas", "hydrogen"]
-    ):
+    }
+
+    if not any(fuel_enabled.values()):
         raise ValueError(
             "At least one of sector.shipping_oil/shipping_methanol/"
-            "shipping_gas/shipping_hydrogen must be true."
+            "shipping_gas/shipping_hydrogen must be true for "
+            f"investment_year={investment_year}."
         )
 
     n.add("Carrier", "shipping")
@@ -6775,7 +6808,7 @@ def _add_shipping_endogenous(
 
     oil_efficiency = options["shipping_oil_efficiency"]
 
-    if options["shipping_oil"]:
+    if fuel_enabled["oil"]:
         n.add(
             "Link",
             nodes + " shipping oil",
@@ -6788,7 +6821,7 @@ def _add_shipping_endogenous(
             efficiency2=costs.at["oil", "CO2 intensity"],
         )
 
-    if options["shipping_methanol"]:
+    if fuel_enabled["methanol"]:
         n.add(
             "Link",
             nodes + " shipping methanol",
@@ -6801,7 +6834,7 @@ def _add_shipping_endogenous(
             efficiency2=costs.at["methanolisation", "carbondioxide-input"],
         )
 
-    if options["shipping_gas"]:
+    if fuel_enabled["gas"]:
         n.add(
             "Link",
             nodes + " shipping gas",
@@ -6814,7 +6847,7 @@ def _add_shipping_endogenous(
             efficiency2=costs.at["gas", "CO2 intensity"],
         )
 
-    if options["shipping_hydrogen"]:
+    if fuel_enabled["hydrogen"]:
         if options["shipping_hydrogen_liquefaction"]:
             n.add(
                 "Bus",
@@ -8228,6 +8261,14 @@ if __name__ == "__main__":
         limit = co2_cap.loc[investment_year]
     else:
         limit = get(co2_budget, investment_year)
+
+    lulucf_deviation = 0.0
+    if snakemake.config.get("lulucf_deviation", False):
+        lulucf_deviation = (
+            get(snakemake.config.get("lulucf_deviation_values", {}), investment_year)
+            or 0.0
+        )
+
     add_co2limit(
         n,
         options,
@@ -8235,6 +8276,7 @@ if __name__ == "__main__":
         snakemake.params.countries,
         nyears,
         limit,
+        lulucf_deviation=lulucf_deviation,
     )
 
     maxext = snakemake.params["lines"]["max_extension"]

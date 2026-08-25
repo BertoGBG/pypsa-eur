@@ -372,18 +372,6 @@ class _ImportsConfig(BaseModel):
     )
 
 
-class _ShippingCO2LimitConfig(BaseModel):
-    """Configuration for `sector.shipping_co2_limit` settings."""
-
-    enable: bool = Field(
-        False,
-        description="Enable a sector-specific cap on shipping's combustion CO2 emissions (oil + gas routes).",
-    )
-    limit: float = Field(
-        0.0, description="Cap on shipping combustion CO2 emissions (MtCO2/year)."
-    )
-
-
 class SectorConfig(BaseModel):
     """Configuration for `sector` settings."""
 
@@ -563,18 +551,22 @@ class SectorConfig(BaseModel):
     # Endogenous shipping: each enabled fuel below competes on a shared
     # per-node demand bus (add_shipping in prepare_sector_network.py); the
     # optimiser picks the cost-minimal mix rather than following a fixed
-    # exogenous share. At least one of the four must be true.
-    shipping_oil: bool = Field(
+    # exogenous share. At least one of the four must be true (resolved per
+    # investment_year when given as a year-indexed dict). Each can be a
+    # flat bool, or a year-indexed dict (e.g. {2030: false, 2035: true}) to
+    # unlock/retire a fuel at a given planning horizon under myopic
+    # foresight.
+    shipping_oil: bool | dict[int, bool] = Field(
         True, description="Whether oil is an available fuel for shipping."
     )
-    shipping_methanol: bool = Field(
+    shipping_methanol: bool | dict[int, bool] = Field(
         True, description="Whether methanol is an available fuel for shipping."
     )
-    shipping_gas: bool = Field(
+    shipping_gas: bool | dict[int, bool] = Field(
         True,
         description="Whether gas/LNG (drawn from the existing gas bus/network) is an available fuel for shipping.",
     )
-    shipping_hydrogen: bool = Field(
+    shipping_hydrogen: bool | dict[int, bool] = Field(
         True, description="Whether hydrogen is an available fuel for shipping."
     )
     # Exogenous shipping (shipping_endogenous: false): fixed shares per year,
@@ -587,7 +579,7 @@ class SectorConfig(BaseModel):
             2035: 0,
             2040: 0,
             2045: 0,
-            2050: 0.1,
+            2050: 0,
         },
         description="The share of ships powered by hydrogen in a given year (exogenous mode only).",
     )
@@ -599,7 +591,7 @@ class SectorConfig(BaseModel):
             2035: 0.35,
             2040: 0.55,
             2045: 0.8,
-            2050: 0.5,
+            2050: 1,
         },
         description="The share of ships powered by methanol in a given year (exogenous mode only).",
     )
@@ -611,7 +603,7 @@ class SectorConfig(BaseModel):
             2035: 0.65,
             2040: 0.45,
             2045: 0.2,
-            2050: 0.1,
+            2050: 0,
         },
         description="The share of ships powered by oil in a given year (exogenous mode only).",
     )
@@ -623,9 +615,9 @@ class SectorConfig(BaseModel):
             2035: 0,
             2040: 0,
             2045: 0,
-            2050: 0.3,
+            2050: 0,
         },
-        description="The share of ships powered by gas/LNG in a given year (exogenous mode only).",
+        description="The share of ships powered by gas/LNG in a given year (exogenous mode only). No upstream pypsa-eur equivalent (shipping gas is this fork's own addition) -- fixed at 0 to match the upstream reference pathway.",
     )
     shipping_methanol_efficiency: float = Field(
         0.46,
@@ -638,10 +630,6 @@ class SectorConfig(BaseModel):
     shipping_gas_efficiency: float = Field(
         0.45,
         description="Placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust once a technology-data-sourced figure is available.",
-    )
-    shipping_co2_limit: _ShippingCO2LimitConfig = Field(
-        default_factory=lambda: _ShippingCO2LimitConfig(),
-        description="Optional sector-specific cap on shipping's combustion CO2 emissions (oil + gas routes), enforced via extra_functionality in solve_network.py. Off by default -- shipping is then constrained only by the economy-wide CO2Limit/fossil_fuel_limit, same as land transport.",
     )
 
     aviation_demand_factor: float = Field(

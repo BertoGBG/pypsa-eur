@@ -1205,36 +1205,6 @@ def add_import_limit_constraint(n: pypsa.Network, sns: pd.DatetimeIndex):
     n.model.add_constraints(lhs, limit_sense, rhs, name="import_limit")
 
 
-def add_shipping_co2_constraint(n: pypsa.Network, sns: pd.DatetimeIndex):
-    """
-    Optional sector-specific cap on shipping's combustion CO2 emissions.
-
-    Scoped to just the "shipping oil" and "shipping gas" links -- methanol's
-    combustion emission is offset elsewhere in the network by its own
-    upstream synthesis from captured CO2, and hydrogen (fuel cell) doesn't
-    emit at the point of use, so neither belongs in a combustion-emissions
-    cap. Independent of, and in addition to, the economy-wide CO2Limit/
-    fossil_fuel_limit constraints. See sector.shipping_co2_limit.
-    """
-    nyears = n.snapshot_weightings.generators.sum() / 8760
-
-    shipping_co2_links = n.links.loc[
-        n.links.carrier.isin(["shipping oil", "shipping gas"])
-    ].index
-
-    if shipping_co2_links.empty:
-        return
-
-    weightings = n.snapshot_weightings.loc[sns, "generators"]
-    co2_intensity = n.links.loc[shipping_co2_links, "efficiency2"]
-
-    p = n.model["Link-p"].loc[sns, shipping_co2_links]
-
-    lhs = (p * co2_intensity * weightings).sum()
-    rhs = n.config["sector"]["shipping_co2_limit"]["limit"] * 1e6 * nyears
-
-    n.model.add_constraints(lhs <= rhs, name="shipping_co2_limit")
-
 
 def add_co2_atmosphere_constraint(n, snapshots):
     glcs = n.global_constraints[n.global_constraints.type == "co2_atmosphere"]
@@ -1330,9 +1300,6 @@ def extra_functionality(
 
     if config["sector"]["imports"]["enable"]:
         add_import_limit_constraint(n, snapshots)
-
-    if config["sector"]["shipping_co2_limit"]["enable"]:
-        add_shipping_co2_constraint(n, snapshots)
 
     if n.params.custom_extra_functionality:
         source_path = n.params.custom_extra_functionality

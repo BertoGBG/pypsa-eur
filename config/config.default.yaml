@@ -21,7 +21,7 @@ remote:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   prefix: ""
-  name: "F_limit_H_ind_test"
+  name: "myopic_LULUCF_biometh_test"
   scenarios:
     enable: false
     file: config/scenarios.yaml
@@ -33,7 +33,7 @@ run:
   default_target_rule: all
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
-foresight: overnight
+foresight: myopic
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 scenario:
@@ -44,6 +44,8 @@ scenario:
   sector_opts:
   - 168h
   planning_horizons:
+  - 2030
+  - 2040
   - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
@@ -113,6 +115,74 @@ fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, 
   2040: 129
   2045: 103
   2050: 78
+
+# LULUCF (land-use) carbon sink deviation correction.
+# co2_budget's `limit` (fraction of 1990 sectoral CO2 emissions) never
+# includes LULUCF in its own sector list (see determine_emission_sectors)
+# -- this is a CO2-only budget, "agriculture" here is only CO2 from
+# agricultural-machinery fuel combustion, not the full N2O/CH4 AFOLU
+# account. The net-zero target `limit` is calibrated against a pledge that
+# implicitly relies on the real-world LULUCF sink performing as expected.
+# If it under/overperforms, the CO2Limit GlobalConstraint on the modelled
+# sectors is tightened/loosened by the same amount to keep the same net
+# climate outcome (add_co2limit in prepare_sector_network.py). By 2050
+# co2_budget's own `limit` is already 0 (net-zero within the modelled
+# sectors alone), so a positive deviation there forces the model's own
+# sectors net-negative -- coherent if the EU-wide net-zero pledge is read
+# as economy+LULUCF combined rather than sectors-only.
+# Positive value [MtCO2/yr] = sink underperforms -> CO2Limit reduced by
+# that amount. Negative = sink overperforms -> CO2Limit increased.
+#
+# Values below: EU-27 net LULUCF sink, WEM ("with existing measures",
+# i.e. no further policy action -- the precautionary/business-as-usual
+# case) scenario, deviation = binding target minus WEM-projected actual.
+#   2020: 0 (assumed starting point -- not empirically derived; treated
+#           as the year co2_budget's implicit LULUCF assumption still
+#           roughly holds)
+#   2025: 64 (linearly interpolated 2020->2030, see 2030 sourcing --
+#           NOT a directly reported figure)
+#   2030: 127 = -310 (binding 2030 target) - (-183) (WEM 2030 projection).
+#           Target: LULUCF Regulation (EU) 2023/839, Art. 4/Annex IIa.
+#           WEM projection: EEA Member State GHG projections (2024
+#           submissions), relayed in CAP Reform, "LULUCF targets
+#           off-course" (2025), https://capreform.eu/lulucf-targets-off-course/
+#           Corroborating actuals: 2023 = -198 MtCO2e, 2024 est. = -212
+#           MtCO2e (same source; also EC, EU Climate Action Progress
+#           Report 2025, Ch.4 "Land use sector",
+#           https://climate.ec.europa.eu/eu-action/climate-strategies-targets/progress-climate-action/eu-climate-action-progress-report-2025/chapter-4-land-use-sector_en
+#           and EEA newsroom, "Europe's land carbon sink declines but its
+#           potential stays high" (2024/2025),
+#           https://www.eea.europa.eu/en/newsroom/news/europes-land-carbon-sink-declines-but-its-potential-stays-high
+#           -- net sink fell ~30% from 2014-2023 vs. the prior decade).
+#           An alternative WAM ("with additional/planned measures")
+#           projection of -233 MtCO2e (same CAP Reform source) would give
+#           a smaller 77 MtCO2/yr gap instead -- not used here.
+#   2035-2050: 191 / 254 / 318 / 381 -- NOT literature-sourced. The
+#           LULUCF Regulation sets no binding EU sub-target beyond 2030,
+#           and no robust WEM/WAM projection past 2030 was found. These
+#           are a straight-line extrapolation of the 2020->2030 WEM slope
+#           (12.7 MtCO2/yr^2), i.e. a modelling assumption that the same
+#           rate of relative underperformance continues, not a sourced
+#           fact. Peer-reviewed support is only directional: Migliavacca,
+#           Grassi et al., "Securing the forest carbon sink for the
+#           European Union's climate ambition", Nature 643, 1203-1213
+#           (2025), https://www.nature.com/articles/s41586-025-08967-3
+#           -- finds the EU forest sink "rapidly declining" due to
+#           ageing stands, increased harvest, and climate-driven
+#           disturbances, with no sign of the trend reversing under
+#           current policy. Treat 2035-2050 values as a placeholder
+#           scenario choice; revisit if/when the EC's 2040 Climate Target
+#           Impact Assessment SWD (not yet checked here) publishes actual
+#           post-2030 LULUCF projections.
+lulucf_deviation: true  # set to true to activate the values below
+lulucf_deviation_values:  # MtCO2/yr deviation from the assumed LULUCF offset
+  2020: 0
+  2025: 64
+  2030: 127
+  2035: 191
+  2040: 254
+  2045: 318
+  2050: 381
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#electricity
 electricity:
@@ -803,9 +873,8 @@ sector:
   shipping_hydrogen_liquefaction: false
   # true: endogenous -- each enabled fuel below (shipping_oil/methanol/gas/
   #   hydrogen) competes on a shared per-node demand bus, the optimiser
-  #   picks the cost-minimal mix subject to whatever emissions limits apply
-  #   (economy-wide CO2Limit/fossil_fuel_limit always; shipping_co2_limit
-  #   below if enabled). At least one of the four must be true.
+  #   picks the cost-minimal mix subject to the economy-wide
+  #   CO2Limit/fossil_fuel_limit. At least one of the four must be true.
   # false: exogenous (original behaviour) -- shipping_*_share below fixes
   #   each fuel's share per year regardless of relative cost; shares should
   #   sum to 1.
@@ -813,7 +882,11 @@ sector:
   shipping_oil: true
   shipping_methanol: true
   shipping_gas: true
-  shipping_hydrogen: true
+  shipping_hydrogen: false
+  # shares below match upstream pypsa-eur/pypsa-eur config.default.yaml
+  # (exogenous mode only, i.e. shipping_endogenous: false). shipping_gas
+  # is our branch's own addition -- no upstream equivalent, so its
+  # exogenous share is fixed at 0 throughout.
   shipping_hydrogen_share:
     2020: 0
     2025: 0
@@ -821,7 +894,7 @@ sector:
     2035: 0
     2040: 0
     2045: 0
-    2050: 0.1
+    2050: 0
   shipping_methanol_share:
     2020: 0
     2025: 0
@@ -829,7 +902,7 @@ sector:
     2035: 0.35
     2040: 0.55
     2045: 0.8
-    2050: 0.5
+    2050: 1
   shipping_oil_share:
     2020: 1
     2025: 1
@@ -837,7 +910,7 @@ sector:
     2035: 0.65
     2040: 0.45
     2045: 0.2
-    2050: 0.1
+    2050: 0
   shipping_gas_share:
     2020: 0
     2025: 0
@@ -845,25 +918,12 @@ sector:
     2035: 0
     2040: 0
     2045: 0
-    2050: 0.3
+    2050: 0
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
   # placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust
   # once a technology-data-sourced figure is available
   shipping_gas_efficiency: 0.45
-  # optional sector-specific cap on shipping's combustion emissions (oil +
-  # gas routes; methanol/hydrogen don't emit at point of combustion here),
-  # enforced in solve_network.py's add_shipping_co2_constraint via
-  # extra_functionality. Off by default -- shipping is then constrained
-  # only by the economy-wide CO2Limit/fossil_fuel_limit, same as land
-  # transport today. limit is in MtCO2/year, applied at whatever
-  # investment_year the run solves.
-  shipping_co2_limit:
-    enable: true
-    # 0.1 (oil_share reference) * 526,953,843 MWh (total shipping demand,
-    # from the fully-endogenous no-limit run) * 0.2571 tCO2/MWh (oil CO2
-    # intensity, resources/CDRs_2050/costs_2030_processed.csv) = 13.548 MtCO2/yr
-    limit: 13.548
   aviation_demand_factor: 1.0
   HVC_demand_factor: 1.0
   time_dep_hp_cop: true
