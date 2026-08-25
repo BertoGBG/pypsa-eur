@@ -556,6 +556,10 @@ class SectorConfig(BaseModel):
         False,
         description="Whether to include liquefaction costs for hydrogen demand in shipping.",
     )
+    shipping_endogenous: bool = Field(
+        True,
+        description="If true, shipping fuel choice is endogenous: enabled fuels (shipping_oil/methanol/gas/hydrogen) compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix. If false, falls back to the original fixed year-indexed shipping_*_share behaviour.",
+    )
     # Endogenous shipping: each enabled fuel below competes on a shared
     # per-node demand bus (add_shipping in prepare_sector_network.py); the
     # optimiser picks the cost-minimal mix rather than following a fixed
@@ -572,6 +576,56 @@ class SectorConfig(BaseModel):
     )
     shipping_hydrogen: bool = Field(
         True, description="Whether hydrogen is an available fuel for shipping."
+    )
+    # Exogenous shipping (shipping_endogenous: false): fixed shares per year,
+    # should sum to 1.
+    shipping_hydrogen_share: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 0,
+            2025: 0,
+            2030: 0,
+            2035: 0,
+            2040: 0,
+            2045: 0,
+            2050: 0.1,
+        },
+        description="The share of ships powered by hydrogen in a given year (exogenous mode only).",
+    )
+    shipping_methanol_share: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 0,
+            2025: 0,
+            2030: 0.15,
+            2035: 0.35,
+            2040: 0.55,
+            2045: 0.8,
+            2050: 0.5,
+        },
+        description="The share of ships powered by methanol in a given year (exogenous mode only).",
+    )
+    shipping_oil_share: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 1,
+            2025: 1,
+            2030: 0.85,
+            2035: 0.65,
+            2040: 0.45,
+            2045: 0.2,
+            2050: 0.1,
+        },
+        description="The share of ships powered by oil in a given year (exogenous mode only).",
+    )
+    shipping_gas_share: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 0,
+            2025: 0,
+            2030: 0,
+            2035: 0,
+            2040: 0,
+            2045: 0,
+            2050: 0.3,
+        },
+        description="The share of ships powered by gas/LNG in a given year (exogenous mode only).",
     )
     shipping_methanol_efficiency: float = Field(
         0.46,

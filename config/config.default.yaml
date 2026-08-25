@@ -801,15 +801,51 @@ sector:
   agriculture_machinery_fuel_efficiency: 0.7
   agriculture_machinery_electric_efficiency: 0.3
   shipping_hydrogen_liquefaction: false
-  # endogenous shipping: each enabled fuel below competes on a shared
-  # per-node demand bus, the optimiser picks the cost-minimal mix subject
-  # to whatever emissions limits apply (economy-wide CO2Limit/
-  # fossil_fuel_limit always; shipping_co2_limit below if enabled).
-  # At least one of the four must be true.
+  # true: endogenous -- each enabled fuel below (shipping_oil/methanol/gas/
+  #   hydrogen) competes on a shared per-node demand bus, the optimiser
+  #   picks the cost-minimal mix subject to whatever emissions limits apply
+  #   (economy-wide CO2Limit/fossil_fuel_limit always; shipping_co2_limit
+  #   below if enabled). At least one of the four must be true.
+  # false: exogenous (original behaviour) -- shipping_*_share below fixes
+  #   each fuel's share per year regardless of relative cost; shares should
+  #   sum to 1.
+  shipping_endogenous: true
   shipping_oil: true
   shipping_methanol: true
   shipping_gas: true
   shipping_hydrogen: true
+  shipping_hydrogen_share:
+    2020: 0
+    2025: 0
+    2030: 0
+    2035: 0
+    2040: 0
+    2045: 0
+    2050: 0.1
+  shipping_methanol_share:
+    2020: 0
+    2025: 0
+    2030: 0.15
+    2035: 0.35
+    2040: 0.55
+    2045: 0.8
+    2050: 0.5
+  shipping_oil_share:
+    2020: 1
+    2025: 1
+    2030: 0.85
+    2035: 0.65
+    2040: 0.45
+    2045: 0.2
+    2050: 0.1
+  shipping_gas_share:
+    2020: 0
+    2025: 0
+    2030: 0
+    2035: 0
+    2040: 0
+    2045: 0
+    2050: 0.3
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
   # placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust
