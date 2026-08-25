@@ -1,0 +1,24 @@
+# Diagnostic override, layered on top of config.default.yaml via
+# `--configfile config/config.default.yaml --configfile config/test_2040_standalone.yaml`.
+#
+# Isolates the 2040 planning horizon as a standalone overnight-mode run (no
+# myopic brownfield capacity carried over from 2030) with fossil_limit_values
+# temporarily set to 2030's value (1378, instead of 2040's default 129) to
+# test whether the 1378->129 single-step cut (91% drop, zero CCS credit) is
+# what makes the myopic 3-horizon test's 2040 horizon infeasible_or_unbounded.
+#
+# Not a proposed permanent value -- purely a diagnostic probe. Delete this
+# file once the diagnosis is done.
+run:
+  name: "standalone_2040_test"
+foresight: overnight
+scenario:
+  planning_horizons:
+  - 2040
+fossil_limit_values:
+  2025: 2600
+  2030: 1378
+  2035: 456
+  2040: 1378
+  2045: 103
+  2050: 78
