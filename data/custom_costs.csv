@@ -11,3 +11,9 @@ all,battery inverter,marginal_cost,0,EUR/MWh,Default value to prevent mathematic
 all,home battery storage,marginal_cost,0,EUR/MWh,Default value to prevent mathematical degeneracy in optimisation,
 all,water tank charger,marginal_cost,0.03,EUR/MWh,Default value to prevent mathematical degeneracy in optimisation,
 all,central water pit charger,marginal_cost,0.025,EUR/MWh,Default value to prevent mathematical degeneracy in optimisation,
+all,perennials refining,FOM,0.0,%/year,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,
+all,perennials refining,VOM,44.9712,EUR/tDM,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,Includes purchase of perennials and revenue from protein concentrate; incl. wages/maintenance/aux costs (R1)
+all,perennials refining,biogas-output,0.1947,MWh/tDM,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,
+all,perennials refining,electricity-input,0.0733,MWh/tDM,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,
+all,perennials refining,investment,1107190.6751,EUR/tDM/h,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,Includes GBR plant and scaled biogas plant without upgrading
+all,perennials refining,lifetime,25.0,years,https://doi.org/10.1016/B978-0-323-95879-0.50147-8,
