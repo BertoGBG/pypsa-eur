@@ -808,7 +808,7 @@ sector:
     2035: 0
     2040: 0
     2045: 0
-    2050: 0
+    2050: 0.1
   shipping_methanol_share:
     2020: 0
     2025: 0
@@ -816,7 +816,7 @@ sector:
     2035: 0.35
     2040: 0.55
     2045: 0.8
-    2050: 1
+    2050: 0.5
   shipping_oil_share:
     2020: 1
     2025: 1
@@ -824,7 +824,7 @@ sector:
     2035: 0.65
     2040: 0.45
     2045: 0.2
-    2050: 0
+    2050: 0.1
   # LNG/gas-fuelled shipping (draws directly from the existing gas bus/network;
   # emissions accounted the same way as "gas for industry" via CO2 intensity).
   # Off (0) by default -- opt in by giving this a nonzero share per year, and
@@ -836,7 +836,7 @@ sector:
     2035: 0
     2040: 0
     2045: 0
-    2050: 0
+    2050: 0.3
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
   # placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust
