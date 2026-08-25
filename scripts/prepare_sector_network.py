@@ -6691,8 +6691,14 @@ def add_shipping(
     shipping_hydrogen_share = get(options["shipping_hydrogen_share"], investment_year)
     shipping_methanol_share = get(options["shipping_methanol_share"], investment_year)
     shipping_oil_share = get(options["shipping_oil_share"], investment_year)
+    shipping_gas_share = get(options["shipping_gas_share"], investment_year)
 
-    total_share = shipping_hydrogen_share + shipping_methanol_share + shipping_oil_share
+    total_share = (
+        shipping_hydrogen_share
+        + shipping_methanol_share
+        + shipping_oil_share
+        + shipping_gas_share
+    )
     if total_share != 1:
         logger.warning(
             f"Total shipping shares sum up to {total_share:.2%}, corresponding to increased or decreased demand assumptions."
@@ -6828,6 +6834,39 @@ def add_shipping(
             carrier="shipping oil",
             p_nom_extendable=True,
             efficiency2=costs.at["oil", "CO2 intensity"],
+        )
+
+    if shipping_gas_share:
+        efficiency = (
+            options["shipping_oil_efficiency"] / options["shipping_gas_efficiency"]
+        )
+        p_set_gas = shipping_gas_share * p_set.rename(lambda x: x + " shipping gas") * efficiency
+
+        n.add(
+            "Bus",
+            nodes + " shipping gas",
+            location=nodes,
+            carrier="shipping gas",
+            unit="MWh_LHV",
+        )
+
+        n.add(
+            "Load",
+            nodes + " shipping gas",
+            bus=nodes + " shipping gas",
+            carrier="shipping gas",
+            p_set=p_set_gas,
+        )
+
+        n.add(
+            "Link",
+            nodes + " shipping gas",
+            bus0=spatial.gas.df.loc[nodes, "nodes"].values,
+            bus1=nodes + " shipping gas",
+            bus2="co2 atmosphere",
+            carrier="shipping gas",
+            p_nom_extendable=True,
+            efficiency2=costs.at["gas", "CO2 intensity"],
         )
 
 
