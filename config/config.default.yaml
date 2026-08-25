@@ -875,7 +875,9 @@ sector:
   # settings from here specifically (see rules/build_sector.smk)
   biochar:
     enable: true
-    heat_output: false
+    # where pyrolysis heat goes: waste | urban_central_heat | medium_T_industry | high_T_industry
+    # (non-waste modes still overflow to waste at nodes/times the target bus can't absorb it)
+    heat_output: waste
     corine: [12, 13, 14] # CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land)
     natura: false
     cutout: default

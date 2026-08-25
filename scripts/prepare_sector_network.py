@@ -1516,18 +1516,22 @@ def add_biochar(n, costs):
     """
     Add biochar (CDR via biomass pyrolysis and stable-carbon soil storage)
     to the network as Bus, Store, and Link components, all sharing a single
-    "co2 biochar" carrier; optionally exports pyrolysis waste heat to urban
-    central heating.
+    "co2 biochar" carrier; pyrolysis waste heat is routed to one of four
+    destinations selected by ``sector.biochar.heat_output``: "waste" (the
+    biochar heat waste store), "urban_central_heat", "medium_T_industry", or
+    "high_T_industry".
 
     A single pyrolysis Link per node converts solid biomass (bus2) and
     electricity (bus3) into stored biochar-carbon (bus1, drawn from the
-    atmosphere via bus0) and, if enabled, district heat (bus4, with an
-    overflow Store for heat that cannot be absorbed by the local heat
-    network). The store's capacity is dimensioned from the eligible CORINE
-    land area (see ``determine_availability_matrix.py`` and
-    ``build_available_land.py``) multiplied by a per-km2 application rate
-    and the stable-carbon fraction (``co2_per_tonne``), amortised over an
-    assumed storage horizon.
+    atmosphere via bus0) and heat (bus4, "<node> biochar heat"). From there,
+    heat flows to the selected destination bus where it exists at that node,
+    with a free overflow Store ("<node> biochar heat waste") for heat that
+    cannot or should not be absorbed by that destination, so pyrolysis
+    dispatch is never heat-demand-constrained. The store's capacity is
+    dimensioned from the eligible CORINE land area (see
+    ``determine_availability_matrix.py`` and ``build_available_land.py``)
+    multiplied by a per-km2 application rate and the stable-carbon fraction
+    (``co2_per_tonne``), amortised over an assumed storage horizon.
 
     Parameters
     ----------
@@ -1543,14 +1547,15 @@ def add_biochar(n, costs):
     -------
     None
         Modifies the network object in-place by adding the biochar Bus,
-        Store, and Link (and, if enabled, heat-output Bus/Link/Store)
+        Store, and Link, plus the biochar-heat Bus/Link/Store network
 
     Notes
     -----
     Reads ``snakemake.input.biochar_potentials`` (eligible area in km2 per
     node) and ``snakemake.config["sector"]["biochar"]["application_per_sqkm"]``
-    / ``["max_land_usage"]`` / ``["number_years"]``. Heat output is gated by
-    ``sector.heating`` and ``sector.biochar.heat_output``.
+    / ``["max_land_usage"]`` / ``["number_years"]``. Heat destination is set by
+    ``sector.biochar.heat_output`` (one of "waste", "urban_central_heat",
+    "medium_T_industry", "high_T_industry").
     """
     logger.info("Adding biochar.")
 
@@ -1590,44 +1595,62 @@ def add_biochar(n, costs):
     else:
         biomass_buses = spatial.nodes + " solid biomass"
 
-    # heat output into urban central heat system
-    if snakemake.config["sector"]["heating"] and snakemake.config["sector"]["biochar"]["heat_output"]:
-        logger.info("Adding biochar heat output to urban central heat system.")
-        biochar_heat_buses = []
-        for node in spatial.nodes:
-            if (node + " urban central heat") in n.buses.index:
-                biochar_heat_bus = node + " biochar heat"
-                biochar_heat_buses.append(biochar_heat_bus)
-                n.add("Bus", biochar_heat_bus, carrier="biochar heat")
-                n.add(
-                    "Link",
-                    biochar_heat_bus,
-                    bus0=biochar_heat_bus,
-                    bus1=node + " urban central heat",
-                    p_nom_extendable=True,
-                    carrier="biochar heat",
-                )
-                biochar_heat_waste = node + " biochar heat waste"
-                n.add("Bus", biochar_heat_waste, carrier="biochar heat")
-                n.add(
-                    "Store",
-                    biochar_heat_waste,
-                    bus=biochar_heat_waste,
-                    e_nom_extendable=True,
-                    carrier="biochar heat",
-                )
-                n.add(
-                    "Link",
-                    biochar_heat_waste,
-                    bus0=biochar_heat_bus,
-                    bus1=biochar_heat_waste,
-                    p_nom_extendable=True,
-                    carrier="biochar heat",
-                )
-            else:
-                biochar_heat_buses.append(None)
-    else:
-        biochar_heat_buses = [None]
+    # heat output: where pyrolysis heat is sent.
+    #   "waste"               -> discarded via the biochar heat waste store (default)
+    #   "urban_central_heat"  -> sold into the district heating network
+    #   "medium_T_industry"   -> sold into the endogenous medium-T industry heat bus
+    #   "high_T_industry"     -> sold into the endogenous high-T industry heat bus
+    # For the three non-waste modes, any heat not absorbed by the target bus (or at
+    # nodes where that bus doesn't exist, e.g. no district heating) still has a free
+    # escape valve into the waste store, so pyrolysis dispatch is never heat-demand-
+    # constrained.
+    heat_output_mode = snakemake.config["sector"]["biochar"]["heat_output"]
+    heat_sink_suffix = {
+        "urban_central_heat": " urban central heat",
+        "medium_T_industry": " mediumT industry",
+        "high_T_industry": " highT industry",
+    }
+    if heat_output_mode not in {"waste", *heat_sink_suffix}:
+        raise ValueError(
+            f"sector.biochar.heat_output={heat_output_mode!r} is not one of "
+            f"{sorted({'waste', *heat_sink_suffix})}"
+        )
+    sink_suffix = heat_sink_suffix.get(heat_output_mode)
+    logger.info(f"Adding biochar heat output ({heat_output_mode}).")
+
+    biochar_heat_buses = []
+    for node in spatial.nodes:
+        biochar_heat_bus = node + " biochar heat"
+        biochar_heat_buses.append(biochar_heat_bus)
+        n.add("Bus", biochar_heat_bus, carrier="biochar heat")
+
+        if sink_suffix is not None and (node + sink_suffix) in n.buses.index:
+            n.add(
+                "Link",
+                biochar_heat_bus,
+                bus0=biochar_heat_bus,
+                bus1=node + sink_suffix,
+                p_nom_extendable=True,
+                carrier="biochar heat",
+            )
+
+        biochar_heat_waste = node + " biochar heat waste"
+        n.add("Bus", biochar_heat_waste, carrier="biochar heat")
+        n.add(
+            "Store",
+            biochar_heat_waste,
+            bus=biochar_heat_waste,
+            e_nom_extendable=True,
+            carrier="biochar heat",
+        )
+        n.add(
+            "Link",
+            biochar_heat_waste,
+            bus0=biochar_heat_bus,
+            bus1=biochar_heat_waste,
+            p_nom_extendable=True,
+            carrier="biochar heat",
+        )
 
     n.add(
         "Link",
