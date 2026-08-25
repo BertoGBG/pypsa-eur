@@ -419,7 +419,14 @@ rule build_renewable_profiles:
         technology="(?!hydro).*",  # Any technology other than hydro
     threads: config["atlite"].get("nprocesses", 4)
     resources:
-        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
+        # solar/solar-hsat convert the SARAH3 satellite irradiance cutout,
+        # which is far heavier than the ERA5-only wind technologies and
+        # OOMs at the default nprocesses*5000 allocation on a full 90-node run.
+        mem_mb=lambda w: (
+            40000
+            if w.technology.startswith("solar")
+            else config["atlite"].get("nprocesses", 4) * 5000
+        ),
     params:
         snapshots=config_provider("snapshots"),
         drop_leap_day=config_provider("enable", "drop_leap_day"),
