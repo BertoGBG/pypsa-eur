@@ -1013,9 +1013,9 @@ sector:
     2025: 0
     2030: 50
     2035: 100
-    2040: 200
+    2040: 500
     2045: 200
-    2050: 200
+    2050: 500
   co2_sequestration_cost: 10
   co2_sequestration_lifetime: 50
   co2_spatial: true
