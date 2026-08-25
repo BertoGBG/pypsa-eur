@@ -859,8 +859,11 @@ sector:
   # transport today. limit is in MtCO2/year, applied at whatever
   # investment_year the run solves.
   shipping_co2_limit:
-    enable: false
-    limit: 0
+    enable: true
+    # 0.1 (oil_share reference) * 526,953,843 MWh (total shipping demand,
+    # from the fully-endogenous no-limit run) * 0.2571 tCO2/MWh (oil CO2
+    # intensity, resources/CDRs_2050/costs_2030_processed.csv) = 13.548 MtCO2/yr
+    limit: 13.548
   aviation_demand_factor: 1.0
   HVC_demand_factor: 1.0
   time_dep_hp_cop: true
