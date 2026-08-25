@@ -372,6 +372,18 @@ class _ImportsConfig(BaseModel):
     )
 
 
+class _ShippingCO2LimitConfig(BaseModel):
+    """Configuration for `sector.shipping_co2_limit` settings."""
+
+    enable: bool = Field(
+        False,
+        description="Enable a sector-specific cap on shipping's combustion CO2 emissions (oil + gas routes).",
+    )
+    limit: float = Field(
+        0.0, description="Cap on shipping combustion CO2 emissions (MtCO2/year)."
+    )
+
+
 class SectorConfig(BaseModel):
     """Configuration for `sector` settings."""
 
@@ -544,41 +556,22 @@ class SectorConfig(BaseModel):
         False,
         description="Whether to include liquefaction costs for hydrogen demand in shipping.",
     )
-    shipping_hydrogen_share: dict[int, float] = Field(
-        default_factory=lambda: {
-            2020: 0,
-            2025: 0,
-            2030: 0,
-            2035: 0,
-            2040: 0,
-            2045: 0,
-            2050: 0,
-        },
-        description="The share of ships powered by hydrogen in a given year.",
+    # Endogenous shipping: each enabled fuel below competes on a shared
+    # per-node demand bus (add_shipping in prepare_sector_network.py); the
+    # optimiser picks the cost-minimal mix rather than following a fixed
+    # exogenous share. At least one of the four must be true.
+    shipping_oil: bool = Field(
+        True, description="Whether oil is an available fuel for shipping."
     )
-    shipping_methanol_share: dict[int, float] = Field(
-        default_factory=lambda: {
-            2020: 0,
-            2025: 0,
-            2030: 0.15,
-            2035: 0.35,
-            2040: 0.55,
-            2045: 0.8,
-            2050: 1,
-        },
-        description="The share of ships powered by methanol in a given year.",
+    shipping_methanol: bool = Field(
+        True, description="Whether methanol is an available fuel for shipping."
     )
-    shipping_oil_share: dict[int, float] = Field(
-        default_factory=lambda: {
-            2020: 1,
-            2025: 1,
-            2030: 0.85,
-            2035: 0.65,
-            2040: 0.45,
-            2045: 0.2,
-            2050: 0,
-        },
-        description="The share of ships powered by oil in a given year.",
+    shipping_gas: bool = Field(
+        True,
+        description="Whether gas/LNG (drawn from the existing gas bus/network) is an available fuel for shipping.",
+    )
+    shipping_hydrogen: bool = Field(
+        True, description="Whether hydrogen is an available fuel for shipping."
     )
     shipping_methanol_efficiency: float = Field(
         0.46,
@@ -587,6 +580,14 @@ class SectorConfig(BaseModel):
     shipping_oil_efficiency: float = Field(
         0.40,
         description="The efficiency of oil-powered ships in the conversion of oil to meet shipping needs (propulsion). Base value derived from 2011.",
+    )
+    shipping_gas_efficiency: float = Field(
+        0.45,
+        description="Placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust once a technology-data-sourced figure is available.",
+    )
+    shipping_co2_limit: _ShippingCO2LimitConfig = Field(
+        default_factory=lambda: _ShippingCO2LimitConfig(),
+        description="Optional sector-specific cap on shipping's combustion CO2 emissions (oil + gas routes), enforced via extra_functionality in solve_network.py. Off by default -- shipping is then constrained only by the economy-wide CO2Limit/fossil_fuel_limit, same as land transport.",
     )
 
     aviation_demand_factor: float = Field(

@@ -801,47 +801,30 @@ sector:
   agriculture_machinery_fuel_efficiency: 0.7
   agriculture_machinery_electric_efficiency: 0.3
   shipping_hydrogen_liquefaction: false
-  shipping_hydrogen_share:
-    2020: 0
-    2025: 0
-    2030: 0
-    2035: 0
-    2040: 0
-    2045: 0
-    2050: 0.1
-  shipping_methanol_share:
-    2020: 0
-    2025: 0
-    2030: 0.15
-    2035: 0.35
-    2040: 0.55
-    2045: 0.8
-    2050: 0.5
-  shipping_oil_share:
-    2020: 1
-    2025: 1
-    2030: 0.85
-    2035: 0.65
-    2040: 0.45
-    2045: 0.2
-    2050: 0.1
-  # LNG/gas-fuelled shipping (draws directly from the existing gas bus/network;
-  # emissions accounted the same way as "gas for industry" via CO2 intensity).
-  # Off (0) by default -- opt in by giving this a nonzero share per year, and
-  # adjust shipping_hydrogen/methanol/oil_share so the total still sums to 1.
-  shipping_gas_share:
-    2020: 0
-    2025: 0
-    2030: 0
-    2035: 0
-    2040: 0
-    2045: 0
-    2050: 0.3
+  # endogenous shipping: each enabled fuel below competes on a shared
+  # per-node demand bus, the optimiser picks the cost-minimal mix subject
+  # to whatever emissions limits apply (economy-wide CO2Limit/
+  # fossil_fuel_limit always; shipping_co2_limit below if enabled).
+  # At least one of the four must be true.
+  shipping_oil: true
+  shipping_methanol: true
+  shipping_gas: true
+  shipping_hydrogen: true
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
   # placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust
   # once a technology-data-sourced figure is available
   shipping_gas_efficiency: 0.45
+  # optional sector-specific cap on shipping's combustion emissions (oil +
+  # gas routes; methanol/hydrogen don't emit at point of combustion here),
+  # enforced in solve_network.py's add_shipping_co2_constraint via
+  # extra_functionality. Off by default -- shipping is then constrained
+  # only by the economy-wide CO2Limit/fossil_fuel_limit, same as land
+  # transport today. limit is in MtCO2/year, applied at whatever
+  # investment_year the run solves.
+  shipping_co2_limit:
+    enable: false
+    limit: 0
   aviation_demand_factor: 1.0
   HVC_demand_factor: 1.0
   time_dep_hp_cop: true
