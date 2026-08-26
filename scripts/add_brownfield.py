@@ -104,10 +104,26 @@ def add_brownfield(
                 ],
             )
 
+        # must-run industry-heat links (add_*_t_industry in prepare_sector_network.py)
+        # can force a fixed vintage to overshoot demand if it falls in a later
+        # horizon; keep them extendable but capped at their old p_nom (shrink-only,
+        # capital_cost=0 since sunk) so the model can retire the excess instead of
+        # going infeasible. New capacity still grows via the current horizon's link.
+        industry_heat_i = (
+            c.static.index[
+                c.static.bus1.str.endswith(
+                    (" lowT industry", " mediumT industry", " highT industry")
+                )
+            ]
+            if c.name == "Link"
+            else c.static.index[[]]
+        )
+
         n_p.remove(
             c.name,
             c.static.index[
                 (c.static[f"{attr}_nom_extendable"] & ~c.static.index.isin(chp_heat))
+                & ~c.static.index.isin(industry_heat_i)
                 & (c.static[f"{attr}_nom_opt"] < capacity_threshold)
             ],
         )
@@ -115,6 +131,14 @@ def add_brownfield(
         # copy over assets but fix their capacity
         c.static[f"{attr}_nom"] = c.static[f"{attr}_nom_opt"]
         c.static[f"{attr}_nom_extendable"] = False
+
+        if len(industry_heat_i) > 0:
+            c.static.loc[industry_heat_i, f"{attr}_nom_max"] = c.static.loc[
+                industry_heat_i, f"{attr}_nom_opt"
+            ]
+            c.static.loc[industry_heat_i, f"{attr}_nom_min"] = 0.0
+            c.static.loc[industry_heat_i, f"{attr}_nom_extendable"] = True
+            c.static.loc[industry_heat_i, "capital_cost"] = 0.0
 
         n.add(c.name, c.static.index, **c.static)
 
