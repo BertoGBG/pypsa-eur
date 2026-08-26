@@ -828,6 +828,11 @@ def add_existing_industry(
     valid_mask = valid_mask & plant_data["build_year"].notna()
     valid_years = plant_data.loc[valid_mask, "build_year"]
     indices = np.searchsorted(grouping_years, valid_years, side="right")
+    # searchsorted returns len(grouping_years) for any build_year past the
+    # last grouping boundary (e.g. built 2025-2029 with baseyear=2030 and
+    # grouping_years ending at 2025) -- clip into the last bucket instead of
+    # indexing out of bounds.
+    indices = np.clip(indices, 0, len(grouping_years) - 1)
     plant_data.loc[valid_years.index, "grouping_year"] = np.array(grouping_years)[
         indices
     ]
