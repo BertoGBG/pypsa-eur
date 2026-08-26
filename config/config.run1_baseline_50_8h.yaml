@@ -1,21 +1,25 @@
 %YAML 1.1
 ---
 # Overrides layered on top of config.default.yaml via
-#   --configfile config/config.default.yaml config/config.run1_baseline_39_8h.yaml
+#   --configfile config/config.default.yaml config/config.run1_baseline_50_8h.yaml
 #
-# Run 1: vanilla-equivalent baseline. 39 nodes, 8h resolution, myopic,
+# Run 1: vanilla-equivalent baseline. 50 nodes, 8h resolution, myopic,
 # 2025-2050 in 5-year steps. All of this fork's own additions turned off:
 # no CDR, no LULUCF deviation, no endogenous industry/heat/shipping,
 # no fossil_limit -- basically upstream pypsa-eur behaviour.
+#
+# Note: 39 nodes was tried first and is infeasible for this fork's
+# 34-country list (cluster_network requires >=40, at least one cluster
+# per country); 50 gives headroom above that floor.
 
 run:
-  name: "base_myopic_39_8h"
+  name: "base_myopic_50_8h"
   shared_resources:
     policy: false
 
 scenario:
   clusters:
-  - 40
+  - 50
   sector_opts:
   - 8h
   planning_horizons:
