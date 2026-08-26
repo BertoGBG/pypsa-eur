@@ -1593,6 +1593,12 @@ if __name__ == "__main__":
 
     # Check results
     if not rolling_horizon:
+        # linopy's Model.solve() returns plain strings (`.value` of its enums), not
+        # the SolverStatus/TerminationCondition enum members compared against below;
+        # since neither enum is a str subclass, those comparisons silently pass through
+        # as no-ops unless normalized here first.
+        status = SolverStatus(status)
+        condition = TerminationCondition(condition)
         if status != SolverStatus.ok:
             logger.warning(
                 f"Solving status '{status}' with termination condition '{condition}'"
