@@ -1749,6 +1749,27 @@ def input_heat_source_power(w):
     }
 
 
+rule build_industry_plants:
+    params:
+        countries=config_provider("countries"),
+    input:
+        regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
+        ammonia="data/ammonia_plants.csv",
+        isi_database="data/1-s2.0-S0196890424010586-mmc2.xlsx",
+        gem_gcct=rules.retrieve_gem_cement_concrete_tracker.output["xlsx"],
+    output:
+        industry_plants=resources("industry_plants_{clusters}.csv"),
+    threads: 1
+    resources:
+        mem_mb=2000,
+    log:
+        logs("build_industry_plants_{clusters}.log"),
+    benchmark:
+        benchmarks("build_industry_plants_{clusters}")
+    script:
+        "../scripts/build_industry_plants.py"
+
+
 rule prepare_sector_network:
     input:
         unpack(input_profile_offwind),
@@ -1902,6 +1923,11 @@ rule prepare_sector_network:
         perennials_yields_1G_biofuels=lambda w: (
             resources("perennials_yields_1G_biofuels_s_{clusters}.csv")
             if config_provider("sector", "perennials")(w)
+            else []
+        ),
+        industry_sector_ratios=lambda w: (
+            resources("industry_sector_ratios_{planning_horizons}.csv")
+            if config_provider("sector", "endogenous_sectors", "enable")(w)
             else []
         ),
     output:

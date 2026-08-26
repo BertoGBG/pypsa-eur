@@ -4,6 +4,8 @@
 
 
 rule add_existing_baseyear:
+    message:
+        "Adding existing infrastructure for base year for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizons, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
     input:
         network=resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -17,6 +19,13 @@ rule add_existing_baseyear:
             "existing_heating_distribution_base_s_{clusters}_{planning_horizons}.csv"
         ),
         heating_efficiencies=resources("heating_efficiencies.csv"),
+        industry_plants=lambda w: (
+            (
+                resources("industry_plants_{clusters}.csv")
+                if config_provider("sector", "industry")(w)
+                else []
+            ),
+        ),
     output:
         resources(
             "networks/base_s_{clusters}_{opts}_{sector_opts}_{planning_horizons}_brownfield.nc"
@@ -45,8 +54,8 @@ rule add_existing_baseyear:
         costs=config_provider("costs"),
         heat_pump_sources=config_provider("sector", "heat_pump_sources"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
-    message:
-        "Adding existing infrastructure for base year for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizons, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
+        MWh_NH3_per_tNH3=config_provider("industry", "MWh_NH3_per_tNH3"),
+        MWh_MeOH_per_tMeOH=config_provider("industry", "MWh_MeOH_per_tMeOH"),
     script:
         scripts("add_existing_baseyear.py")
 
