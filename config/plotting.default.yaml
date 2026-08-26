@@ -670,6 +670,7 @@ plotting:
     SMR: '#870c71'
     SMR CC: '#4f1745'
     H2 liquefaction: '#d647bd'
+    CH4 liquefaction: '#b08968'
     hydrogen storage: '#bf13a0'
     H2 Store: '#bf13a0'
     H2 storage: '#bf13a0'

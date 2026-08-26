@@ -544,6 +544,10 @@ class SectorConfig(BaseModel):
         False,
         description="Whether to include liquefaction costs for hydrogen demand in shipping.",
     )
+    shipping_gas_liquefaction: bool = Field(
+        False,
+        description="Whether to include LNG liquefaction costs (own plant, not a ship retrofit) for gas demand in shipping.",
+    )
     shipping_endogenous: bool = Field(
         True,
         description="If true, shipping fuel choice is endogenous: enabled fuels (shipping_oil/methanol/gas/hydrogen) compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix. If false, falls back to the original fixed year-indexed shipping_*_share behaviour.",

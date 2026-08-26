@@ -6768,6 +6768,17 @@ def _add_shipping_endogenous(
     from captured CO2 (methanolisation); hydrogen (via fuel cell) emits
     nothing at the point of use.
 
+    If options["shipping_gas_liquefaction"] is true, gas is first liquefied
+    to LNG (own "CH4 liquefaction" Link, real capital cost -- an LNG plant,
+    not a ship retrofit) before the "shipping gas" Link draws from that LNG
+    bus instead of directly from the gas network, mirroring the optional
+    hydrogen liquefaction step below. The liquefaction step is
+    electricity-driven, not gas-combusting: CH4 passes through at
+    efficiency=1 (no gas is burned to run the process, matching the
+    technology-data "methane-input" of 1.0), and the parasitic refrigeration
+    load is drawn separately from the node's electricity bus via bus2
+    ("electricity-input" from technology-data).
+
     Individual fuels are toggled independently via options["shipping_oil"]
     / ["shipping_methanol"] / ["shipping_gas"] / ["shipping_hydrogen"]
     (each a flat bool or a year-indexed dict, resolved at investment_year)
@@ -6835,10 +6846,38 @@ def _add_shipping_endogenous(
         )
 
     if fuel_enabled["gas"]:
+        gas_bus = spatial.gas.df.loc[nodes, "nodes"].values
+
+        if options["shipping_gas_liquefaction"]:
+            n.add(
+                "Bus",
+                nodes,
+                suffix=" LNG",
+                carrier="LNG",
+                location=nodes,
+                unit="MWh_LHV",
+            )
+
+            n.add(
+                "Link",
+                nodes + " CH4 liquefaction",
+                bus0=gas_bus,
+                bus1=nodes + " LNG",
+                bus2=nodes,
+                carrier="CH4 liquefaction",
+                efficiency=1.0,
+                efficiency2=-costs.at["CH4 liquefaction", "electricity-input"],
+                capital_cost=costs.at["CH4 liquefaction", "capital_cost"],
+                p_nom_extendable=True,
+                lifetime=costs.at["CH4 liquefaction", "lifetime"],
+            )
+
+            gas_bus = nodes + " LNG"
+
         n.add(
             "Link",
             nodes + " shipping gas",
-            bus0=spatial.gas.df.loc[nodes, "nodes"].values,
+            bus0=gas_bus,
             bus1=nodes + " shipping",
             bus2="co2 atmosphere",
             carrier="shipping gas",

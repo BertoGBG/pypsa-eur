@@ -45,9 +45,7 @@ scenario:
   - 168h
   planning_horizons:
   - 2030
-  - 2035
   - 2040
-  - 2045
   - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
@@ -879,6 +877,7 @@ sector:
   agriculture_machinery_fuel_efficiency: 0.7
   agriculture_machinery_electric_efficiency: 0.3
   shipping_hydrogen_liquefaction: false
+  shipping_gas_liquefaction: true
   # true: endogenous -- each enabled fuel below (shipping_oil/methanol/gas/
   #   hydrogen) competes on a shared per-node demand bus, the optimiser
   #   picks the cost-minimal mix subject to the economy-wide
@@ -1019,12 +1018,12 @@ sector:
   co2_sequestration_potential:
     2020: 0
     2025: 0
-    2030: 50
+    2030: 40
     2035: 100
-    2040: 500
-    2045: 200
-    2050: 500
-  co2_sequestration_cost: 10
+    2040: 180
+    2045: 250
+    2050: 250
+  co2_sequestration_cost: 30
   co2_sequestration_lifetime: 50
   co2_spatial: true
   co2_network: true

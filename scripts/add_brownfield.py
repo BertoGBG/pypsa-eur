@@ -106,9 +106,14 @@ def add_brownfield(
 
         # must-run industry-heat links (add_*_t_industry in prepare_sector_network.py)
         # can force a fixed vintage to overshoot demand if it falls in a later
-        # horizon; keep them extendable but capped at their old p_nom (shrink-only,
-        # capital_cost=0 since sunk) so the model can retire the excess instead of
-        # going infeasible. New capacity still grows via the current horizon's link.
+        # horizon. Split each into a frozen copy (same p_nom, non-extendable,
+        # keeps paying its full annuity forever, p forced to 0) and a near-zero
+        # cost extendable proxy capped at the old p_nom, so the model can shed
+        # the excess must-run floor without going infeasible - and without
+        # getting a capital-cost credit for capacity it already paid for, since
+        # every other brownfield asset's capital charge is dispatch-independent
+        # too. New capacity growth still goes through the current horizon's own
+        # separately-extendable vintage link.
         industry_heat_i = (
             c.static.index[
                 c.static.bus1.str.endswith(
@@ -128,19 +133,29 @@ def add_brownfield(
             ],
         )
 
+        industry_heat_min_pu = c.static.loc[industry_heat_i, f"{attr}_min_pu"].copy()
+
         # copy over assets but fix their capacity
         c.static[f"{attr}_nom"] = c.static[f"{attr}_nom_opt"]
         c.static[f"{attr}_nom_extendable"] = False
 
         if len(industry_heat_i) > 0:
-            c.static.loc[industry_heat_i, f"{attr}_nom_max"] = c.static.loc[
-                industry_heat_i, f"{attr}_nom_opt"
-            ]
-            c.static.loc[industry_heat_i, f"{attr}_nom_min"] = 0.0
-            c.static.loc[industry_heat_i, f"{attr}_nom_extendable"] = True
-            c.static.loc[industry_heat_i, "capital_cost"] = 0.0
+            c.static.loc[industry_heat_i, f"{attr}_min_pu"] = 0.0
+            c.static.loc[industry_heat_i, f"{attr}_max_pu"] = 0.0
 
         n.add(c.name, c.static.index, **c.static)
+
+        if len(industry_heat_i) > 0:
+            derated = c.static.loc[industry_heat_i].copy()
+            derated.index = derated.index + "-derated"
+            derated[f"{attr}_nom"] = 0.0
+            derated[f"{attr}_nom_extendable"] = True
+            derated[f"{attr}_nom_min"] = 0.0
+            derated[f"{attr}_nom_max"] = derated[f"{attr}_nom_opt"]
+            derated[f"{attr}_min_pu"] = industry_heat_min_pu.values
+            derated[f"{attr}_max_pu"] = 1.0
+            derated["capital_cost"] = 1e-3
+            n.add(c.name, derated.index, **derated)
 
         # copy time-dependent
         selection = n.component_attrs[c.name].type.str.contains(

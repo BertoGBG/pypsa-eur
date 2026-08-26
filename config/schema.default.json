@@ -4468,6 +4468,11 @@
           "description": "Whether to include liquefaction costs for hydrogen demand in shipping.",
           "type": "boolean"
         },
+        "shipping_gas_liquefaction": {
+          "default": false,
+          "description": "Whether to include LNG liquefaction costs (own plant, not a ship retrofit) for gas demand in shipping.",
+          "type": "boolean"
+        },
         "shipping_hydrogen_share": {
           "additionalProperties": {
             "type": "number"
@@ -10973,6 +10978,11 @@
         "shipping_hydrogen_liquefaction": {
           "default": false,
           "description": "Whether to include liquefaction costs for hydrogen demand in shipping.",
+          "type": "boolean"
+        },
+        "shipping_gas_liquefaction": {
+          "default": false,
+          "description": "Whether to include LNG liquefaction costs (own plant, not a ship retrofit) for gas demand in shipping.",
           "type": "boolean"
         },
         "shipping_hydrogen_share": {

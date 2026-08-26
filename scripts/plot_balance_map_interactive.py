@@ -5,6 +5,8 @@
 Create interactive energy balance maps for the defined carriers using `n.explore()`.
 """
 
+import logging
+
 import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -19,6 +21,8 @@ from scripts._helpers import (
     update_config_from_wildcards,
 )
 from scripts.add_electricity import sanitize_carriers
+
+logger = logging.getLogger(__name__)
 
 VALID_MAP_STYLES = PydeckPlotter.VALID_MAP_STYLES
 
@@ -251,24 +255,48 @@ if __name__ == "__main__":
         auto_highlight=True,
     )
 
-    map = n.explore(
-        branch_components=branch_components,
-        bus_size=bus_size.div(unit_conversion),
-        bus_split_circle=True,
-        line_width=line_flow.div(unit_conversion),
-        line_flow=line_flow.div(unit_conversion),
-        line_color="rosybrown",
-        link_width=link_flow.div(unit_conversion),
-        link_flow=link_flow.div(unit_conversion),
-        link_color=branch_color,
-        arrow_size_factor=arrow_size_factor,
-        tooltip=tooltip,
-        auto_scale=True,
-        branch_width_max=branch_width_max,
-        bus_size_max=bus_size_max,
-        map_style=map_style,
-    )
+    try:
+        map = n.explore(
+            branch_components=branch_components,
+            bus_size=bus_size.div(unit_conversion),
+            bus_split_circle=True,
+            line_width=line_flow.div(unit_conversion),
+            line_flow=line_flow.div(unit_conversion),
+            line_color="rosybrown",
+            link_width=link_flow.div(unit_conversion),
+            link_flow=link_flow.div(unit_conversion),
+            link_color=branch_color,
+            arrow_size_factor=arrow_size_factor,
+            tooltip=tooltip,
+            auto_scale=True,
+            branch_width_max=branch_width_max,
+            bus_size_max=bus_size_max,
+            map_style=map_style,
+        )
 
-    map.layers.insert(0, regions_layer)
+        map.layers.insert(0, regions_layer)
 
-    map.to_html(snakemake.output[0], offline=True)
+        map.to_html(snakemake.output[0], offline=True)
+    except KeyError as e:
+        # n.explore()'s pie-chart layer builds an empty polygon list when
+        # every bus's balance for this carrier rounds/scales to zero (e.g. a
+        # CDR/CCS carrier barely used this early in the horizon -- can happen
+        # even with bus_size non-empty, since pypsa's own auto-scaling can
+        # collapse tiny values to a zero radius), then crashes trying to
+        # index a "bus" column that was never created -- a pypsa bug, not
+        # fixable here. Skip the pie-chart map and write a placeholder
+        # instead of failing the whole pipeline over a carrier with nothing
+        # meaningful to show.
+        if "bus" not in str(e):
+            raise
+        logger.warning(
+            f"pypsa's n.explore() failed building the pie-chart layer for "
+            f"carrier '{carrier}' (likely all-zero/negligible balance) -- "
+            f"skipping interactive balance map, writing placeholder instead. "
+            f"Original error: {e}"
+        )
+        with open(snakemake.output[0], "w") as f:
+            f.write(
+                "<html><body>No meaningful non-zero balance for carrier "
+                f"'{carrier}' in this network.</body></html>"
+            )
