@@ -16,7 +16,7 @@ run:
 
 scenario:
   clusters:
-  - 39
+  - 40
   sector_opts:
   - 8h
   planning_horizons:
