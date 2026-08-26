@@ -45,7 +45,9 @@ scenario:
   - 168h
   planning_horizons:
   - 2030
+  - 2035
   - 2040
+  - 2045
   - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
@@ -112,14 +114,13 @@ fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, 
   2025: 2600
   2030: 1378
   2035: 456
-  # 2040 temporarily held at 2030's value (was 129, a 91% single-step cut
-  # from 2030 -- confirmed via a standalone overnight-mode diagnostic test
-  # (config/test_2040_standalone.yaml) that this was infeasible on its own,
-  # with zero CCS credit and still-substantial exogenous fossil demand
-  # (land transport ICE share, naphtha feedstock). Testing whether relaxing
-  # it here also resolves the myopic chain's 2040 infeasibility (isolates
-  # fossil_limit from the myopic brownfield-carryover question).
-  2040: 1378
+  # Reverted to the real value (was temporarily 1378 = 2030's value, to
+  # isolate fossil_limit from the myopic brownfield-carryover question --
+  # see git history. That standalone-solved but myopic-still-infeasible,
+  # so the carryover itself is a contributing factor. Now testing finer
+  # planning_horizons steps (added 2035/2045) instead, with the real
+  # values restored.
+  2040: 129
   2045: 103
   2050: 78
 
