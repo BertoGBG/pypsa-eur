@@ -1,0 +1,36 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.run2_full_39_8h.yaml
+#
+# Run 2: full fork feature set. Same 39 nodes / 8h / 2025-2050 5-year
+# steps as run1_baseline. All CDR techs on (already the config.default.yaml
+# default), LULUCF deviation on with the real sourced values (also
+# already default), endogenous industry/heat/shipping all on. Only
+# fossil_limit stays off, matching run1.
+
+run:
+  name: "full_myopic_39_8h"
+  shared_resources:
+    policy: false
+
+scenario:
+  clusters:
+  - 39
+  sector_opts:
+  - 8h
+  planning_horizons:
+  - 2025
+  - 2030
+  - 2035
+  - 2040
+  - 2045
+  - 2050
+
+fossil_limit: false
+
+sector:
+  biomethanation_biogas: true
+  biomethanation_CO2: true
+  endogenous_sectors:
+    enable: true

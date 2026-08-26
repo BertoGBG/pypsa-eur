@@ -1,0 +1,44 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.run1_baseline_39_8h.yaml
+#
+# Run 1: vanilla-equivalent baseline. 39 nodes, 8h resolution, myopic,
+# 2025-2050 in 5-year steps. All of this fork's own additions turned off:
+# no CDR, no LULUCF deviation, no endogenous industry/heat/shipping,
+# no fossil_limit -- basically upstream pypsa-eur behaviour.
+
+run:
+  name: "base_myopic_39_8h"
+  shared_resources:
+    policy: false
+
+scenario:
+  clusters:
+  - 39
+  sector_opts:
+  - 8h
+  planning_horizons:
+  - 2025
+  - 2030
+  - 2035
+  - 2040
+  - 2045
+  - 2050
+
+fossil_limit: false
+lulucf_deviation: false
+
+sector:
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false
