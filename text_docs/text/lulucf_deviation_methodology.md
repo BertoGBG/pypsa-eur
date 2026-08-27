@@ -115,21 +115,26 @@ performance).
   <https://ieep.eu/publications/eu-lulucf-sink-development-until-2040-trends-projections-and-uncertainties/>,
   PDF:
   <https://ieep.eu/wp-content/uploads/2025/03/EU-LULUCF-sink-development-until-2040-Trends-projections-and-uncertainties-IEEP-2025.pdf>.
-  This is the only source found that models the EU-27 LULUCF sink out to
-  2040 under the Commission's own core policy scenarios (S1/S2/S3, varying
-  overall climate ambition and associated land-use/bioeconomy policy). The
-  reported 2040 range is approximately **-215 to -218 MtCO2e/yr** under the
-  weakest scenario (little additional LULUCF-specific policy beyond what's
-  already legislated) up to **-317 to -376 MtCO2e/yr** under stronger
-  scenarios (active post-2030 land-sink policy).
-  **Caveat, important**: I was not able to extract clean text from the
-  primary PDF (it returned as a compressed/scanned stream) or reach the
-  Commission's own Impact Assessment SWD directly. The numbers above are
-  triangulated from two different secondary search summaries and differ
-  slightly between them (215 vs. 217/218; the identity of which scenario
-  produces which number is not confirmed). **Before this is used for
-  anything beyond an internal working assumption, the primary SWD should be
-  located and these numbers re-extracted directly.**
+  **Verified directly from the downloaded PDF** (`text_docs/literature/IEEP_2025_EU_LULUCF_sink_2040.pdf`,
+  page 9, Table 3, sourced there to "EC, 2024"). The Impact Assessment's
+  three core scenarios (S1: <=80% GHG reduction by 2040, Fit-for-55 trends
+  only, no dedicated non-CO2/land ambition; S2: 85-90%, deeper land + non-CO2
+  ambition; S3: 90-95%, closest to the Commission's actual recommended 2040
+  target) differ only modestly from each other. The real spread comes from
+  an assumed **carbon price for land-sector mitigation** (EUR0/50/200 per
+  tCO2e), given as "lower/central/upper" for each scenario:
+
+  | | S1 | S2 | S3 |
+  |---|---:|---:|---:|
+  | Lower (EUR0/tCO2e) | -218 | -213 | -215 |
+  | Central (EUR50/tCO2e) | -319 | -316 | -317 |
+  | Upper (EUR200/tCO2e) | -376 | -374 | -376 |
+
+  All values MtCO2e, 2040. S3 is the scenario the IEEP brief identifies as
+  aligned with the Commission's actual recommended target, so S3's lower
+  and upper bounds (-215 and -376) are used below as the 2040 anchors for
+  the two optimistic scenarios (BAU continues to use the independent
+  WEM-trend extrapolation, not an S3 number).
 - No literature was found projecting the EU-27 LULUCF sink specifically for
   2045 or 2050. Both the BAU and optimistic scenarios below hold their 2040
   value flat beyond 2040, purely for lack of any sourced alternative — this
@@ -184,8 +189,8 @@ independently sourced.
   even this BAU line may be optimistic relative to reality, not pessimistic.
 - **Optimistic — weak new policy** = 2030 WEM anchor (-183 MtCO2e/yr, same
   as BAU's 2030 point by construction) interpolated/extrapolated to the
-  EC's own weakest 2040 Impact-Assessment scenario (~-216.5 MtCO2e/yr,
-  midpoint of the 215-218 range), then held flat 2040-2050 for lack of
+  EC's own S3 lower-bound 2040 Impact-Assessment value (-215 MtCO2e/yr,
+  Table 3, EUR0/tCO2e land carbon price), then held flat 2040-2050 for lack of
   further sourced data. Represents "existing EU policy continues, no new
   *dedicated* LULUCF intervention, but the EC's own assumed baseline
   policy trajectory holds" — already an improvement on pure trend
@@ -209,9 +214,8 @@ independently sourced.
   Section 4. If a case worse than the plain WEM-trend continuation is
   wanted, it needs to be built (e.g. a steeper decline rate reflecting the
   disturbance-acceleration literature), not assumed.
-- Verify the IEEP-relayed EC Impact Assessment numbers (215/218/317/376)
-  against the primary Commission SWD directly; current sourcing is two
-  secondary summaries that don't fully agree.
+- ~~Verify the IEEP-relayed EC Impact Assessment numbers~~ — done: confirmed
+  directly from the downloaded PDF's Table 3 (see Section 3).
 - Confirm author list and exact figures for the Nature Geoscience (2026)
   paper by reading the full text (currently paywalled to automated fetch).
 - Read "Alarming decline in the carbon sink of European forests driven by
