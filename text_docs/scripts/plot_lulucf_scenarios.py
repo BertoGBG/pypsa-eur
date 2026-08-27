@@ -12,20 +12,20 @@ out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 # MtCO2/yr deviation from the flat -310 MtCO2e/yr 2030 target held as the
 # reference for all years (see methodology doc section 1 for why).
 SCENARIOS = {
-    "Pessimistic (WEM trend continuation)": {
+    "BAU / central (WEM trend continuation)": {
         2020: 0, 2025: 64, 2030: 127, 2035: 191, 2040: 254, 2045: 318, 2050: 381,
     },
-    "BAU (EC weak post-2030 scenario)": {
+    "Optimistic - weak new policy (EC S1)": {
         2020: 0, 2025: 64, 2030: 127, 2035: 110, 2040: 94, 2045: 94, 2050: 94,
     },
-    "Optimistic (EC strong post-2030 scenario)": {
+    "Optimistic - strong new policy (EC S3)": {
         2020: 0, 2025: 39, 2030: 77, 2035: 6, 2040: -66, 2045: -66, 2050: -66,
     },
 }
 COLORS = {
-    "Pessimistic (WEM trend continuation)": "#8c1d1d",
-    "BAU (EC weak post-2030 scenario)": "#d9822b",
-    "Optimistic (EC strong post-2030 scenario)": "#2b7a4b",
+    "BAU / central (WEM trend continuation)": "#8c1d1d",
+    "Optimistic - weak new policy (EC S1)": "#d9822b",
+    "Optimistic - strong new policy (EC S3)": "#2b7a4b",
 }
 
 fig, ax = plt.subplots(figsize=(8, 5))

@@ -13,6 +13,15 @@ of "agriculture" is CO2 from agricultural-machinery fuel combustion — not the
 full N2O/CH4 AFOLU account (see `determine_emission_sectors` in
 `scripts/prepare_sector_network.py`).
 
+**Scope note**: this document currently addresses only the **LULUCF sink**
+side of that gap (Sections 2-4 below). It does **not** yet address the
+**agriculture non-CO2 (N2O/CH4)** side — the full AFOLU account beyond
+machinery-fuel CO2 — which is a separate, additive correction that belongs
+alongside `lulucf_deviation_values`, not inside it. That work has not
+started: no literature review, no numbers, no scenario. Treat everything
+below as half of the intended scope until agriculture non-CO2 gets its own
+equivalent section.
+
 The EU's own net-zero framing, however, is economy-wide **including**
 LULUCF: the pledge implicitly assumes the land sink absorbs a specific amount
 of CO2 every year, on top of the modelled sectors' own reductions. If the real
@@ -128,6 +137,24 @@ performance).
 
 ## 4. Three scenarios
 
+**Relabeling note**: an earlier draft of this table called the EC's weakest
+2040 policy scenario "BAU" and the pure historical-trend extrapolation
+"pessimistic," because the former was numerically less severe. That
+labeling was backwards. The EC's Impact Assessment scenarios (S1/S2/S3) are
+all *policy* scenarios — even the weakest one almost certainly embeds
+continued Green Deal-era action, not a genuine no-further-action baseline.
+The literal continuation of the observed WEM decline is the more honest
+**BAU/central** case (it assumes nothing changes, which is what "business as
+usual" means), and the EC's modelled scenarios are better read as two
+flavours of **optimistic** (the EC only ever models pathways where the EU
+keeps acting — there is no "policy stalls" scenario in their own Impact
+Assessment to draw a true pessimistic case from). Relabeled below
+accordingly. Note this also means we currently have **no sourced case worse
+than the plain trend continuation** — a genuine pessimistic tier (e.g.
+reflecting the literature's "accelerating, disturbance-driven, no sign of
+reversal" finding as a *steeper* decline than the historical WEM slope) does
+not exist yet and would need to be constructed separately, not assumed.
+
 All values are `lulucf_deviation_values` in MtCO2/yr (positive =
 tighten CO2Limit, i.e. sink underperforms the flat -310 MtCO2e/yr
 reference). 2020 = 0 in all scenarios (assumed on-track starting point,
@@ -135,41 +162,53 @@ not empirically derived). 2025 values are linear interpolations between
 2020's assumed 0 and each scenario's own sourced 2030 anchor — not
 independently sourced.
 
-| Year | Pessimistic | BAU (central) | Optimistic |
-|-----:|------------:|---------------:|-----------:|
-| 2020 |           0 |              0 |          0 |
-| 2025 |          64 |             64 |         39 |
-| 2030 |         127 |            127 |         77 |
-| 2035 |         191 |            110 |          6 |
-| 2040 |         254 |             94 |        -66 |
-| 2045 |         318 |             94 |        -66 |
-| 2050 |         381 |             94 |        -66 |
+| Year | BAU (central, WEM trend) | Optimistic — weak new policy (EC S1) | Optimistic — strong new policy (EC S3) |
+|-----:|--------------------------:|---------------------------------------:|------------------------------------------:|
+| 2020 |                         0 |                                       0 |                                          0 |
+| 2025 |                        64 |                                      64 |                                         39 |
+| 2030 |                       127 |                                     127 |                                         77 |
+| 2035 |                       191 |                                     110 |                                          6 |
+| 2040 |                       254 |                                      94 |                                        -66 |
+| 2045 |                       318 |                                      94 |                                        -66 |
+| 2050 |                       381 |                                      94 |                                        -66 |
 
 **How each column is built:**
 
-- **Pessimistic** = straight-line continuation of the 2020->2030 WEM
+- **BAU (central)** = straight-line continuation of the 2020->2030 WEM
   decline slope (12.7 MtCO2/yr^2). This is the scenario currently active in
-  `config.default.yaml` (unchanged numbers). Justification for calling it
-  *pessimistic* rather than *central*: the peer-reviewed literature (Section
-  2) reports an accelerating, disturbance-driven decline with "no sign of
-  reversal," so a naive continuation of even the historical WEM slope may
-  understate the true risk, not overstate it.
-- **BAU (central)** = 2030 WEM anchor (-183 MtCO2e/yr, same as pessimistic's
-  2030 point by construction) interpolated/extrapolated to the EC's own
-  weakest 2040 Impact-Assessment scenario (~-216.5 MtCO2e/yr, midpoint of
-  the 215-218 range), then held flat 2040-2050 for lack of further sourced
-  data. Represents "existing EU policy continues, no new dedicated LULUCF
-  intervention" — the EC's own default assumption, which happens to be less
-  severe than the pure trend extrapolation.
-- **Optimistic** = 2030 WAM anchor (-233 MtCO2e/yr, "with additional
-  measures") interpolated/extrapolated to the EC's strongest 2040 scenario
-  (-376 MtCO2e/yr), held flat thereafter. Represents effective new
-  post-2030 EU land-sink/bioeconomy policy landing as intended — this
-  scenario actually **overshoots** the 2030 target by 2040 (negative
-  deviation, i.e. CO2Limit would be loosened, not tightened).
+  `config.default.yaml` (unchanged numbers). It is the most literal reading
+  of "current trends continue, no new policy materializes" — consistent
+  with the peer-reviewed literature (Section 2), which reports an
+  accelerating, disturbance-driven decline with "no sign of reversal."
+  Because that literature suggests the decline could accelerate further,
+  even this BAU line may be optimistic relative to reality, not pessimistic.
+- **Optimistic — weak new policy** = 2030 WEM anchor (-183 MtCO2e/yr, same
+  as BAU's 2030 point by construction) interpolated/extrapolated to the
+  EC's own weakest 2040 Impact-Assessment scenario (~-216.5 MtCO2e/yr,
+  midpoint of the 215-218 range), then held flat 2040-2050 for lack of
+  further sourced data. Represents "existing EU policy continues, no new
+  *dedicated* LULUCF intervention, but the EC's own assumed baseline
+  policy trajectory holds" — already an improvement on pure trend
+  continuation, since the EC's baseline embeds some continued effort.
+- **Optimistic — strong new policy** = 2030 WAM anchor (-233 MtCO2e/yr,
+  "with additional measures") interpolated/extrapolated to the EC's
+  strongest 2040 scenario (-376 MtCO2e/yr), held flat thereafter.
+  Represents effective new post-2030 EU land-sink/bioeconomy policy landing
+  as intended — this scenario actually **overshoots** the 2030 target by
+  2040 (negative deviation, i.e. CO2Limit would be loosened, not
+  tightened).
 
 ## 5. Open items / next steps
 
+- **Agriculture non-CO2 (N2O/CH4) gap is entirely unaddressed** (see Section
+  1 scope note). This is not a refinement of the existing numbers — it is a
+  missing second half of the intended correction, and should get its own
+  literature review, sourcing, and scenario table before this document is
+  considered complete.
+- **No sourced pessimistic tier exists** — see the relabeling note in
+  Section 4. If a case worse than the plain WEM-trend continuation is
+  wanted, it needs to be built (e.g. a steeper decline rate reflecting the
+  disturbance-acceleration literature), not assumed.
 - Verify the IEEP-relayed EC Impact Assessment numbers (215/218/317/376)
   against the primary Commission SWD directly; current sourcing is two
   secondary summaries that don't fully agree.
