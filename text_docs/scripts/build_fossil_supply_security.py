@@ -3,8 +3,10 @@ Build the fossil-supply-security curves documented in
 text_docs/text/fossil_supply_security_methodology.md:
 
 1. A sigmoid transition of the TOTAL fossil-use limit (MtCO2-eq/yr) from a
-   real historical anchor (~2018, EEA/UNFCCC data, this fork's own 34-country
-   scope) down to a 2050 floor set by Norway+UK production alone.
+   real historical anchor (genuine 2020 actual, Eurostat Complete Energy
+   Balances / nrg_bal_c, Gross Inland Consumption, this fork's own
+   33-country data scope) down to a 2050 floor set by Norway+UK production
+   alone.
 2. Norway (SODIR/Norwegian Offshore Directorate) + UK (NSTA) production,
    converted to MtCO2-eq/yr, as the "European-safe" supply ceiling.
 3. The ratio of (2) over (1) per year -- how much of the allowed total
@@ -25,14 +27,20 @@ out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 YEARS = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
 
 # ---------------------------------------------------------------------------
-# 1. Historical anchor: 2018 fossil-combustion CO2, this fork's own
-#    EEA/UNFCCC data (scripts/build_co2_totals.py), summed over individual
-#    EU28+CH+NO+GB countries (not the EU28 aggregate row, to avoid double
-#    counting). 2018 is the latest year in the locally-archived UNFCCC_v23
-#    data; used as a proxy for "2020" per the methodology doc's caveat
-#    (2020 itself was a COVID-depressed outlier year, so 2018 is arguably a
-#    more representative "pre-transition" anchor anyway).
-ANCHOR_2018_MTCO2 = 2765.4
+# 1. Historical anchor: GENUINE 2020 actual (not a proxy), Eurostat Complete
+#    Energy Balances (nrg_bal_c), Gross Inland Consumption (GIC) of natural
+#    gas (G3000) + oil & petroleum products excl. biofuels (O4000XBIO) +
+#    solid fossil fuels (C0000X0350-0370), summed across this fork's
+#    33-country scope (all 34 minus CH, which this Eurostat dataset does not
+#    cover). Source: data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz
+#    on the cluster (this fork's own live-pipeline data cache, published by
+#    Eurostat, archived there Feb 2026) -- a compact per-country extract is
+#    saved at text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv.
+#    Cross-check years also computed: 2018=3616.4, 2023=2628.7, 2024=2554.9
+#    MtCO2-eq -- note 2024 (latest actual) sits close to this config's own
+#    assumed fossil_limit_values[2025]=2600, a reassuring cross-validation.
+ANCHOR_YEAR = 2020
+ANCHOR_2020_MTCO2 = 2739.0  # genuine 2020 actual, MtCO2-eq -- see comment above.
 
 # ---------------------------------------------------------------------------
 # 2. Norway: Norwegian Offshore Directorate (Sodir) "Resource Report 2024",
@@ -101,10 +109,10 @@ ceiling[2020] = no_mtco2(2020) + uk_mtco2(2025)  # no UK trend info before 2025;
 FLOOR_2050 = ceiling[2050]
 
 # ---------------------------------------------------------------------------
-# Sigmoid total-fossil-limit transition: ceiling (2018 anchor) -> floor (2050,
+# Sigmoid total-fossil-limit transition: ceiling (2020 anchor) -> floor (2050,
 # European-safe supply). Three steepness variants for sensitivity, per the
 # "shape matters in the middle years" discussion.
-def sigmoid(year, t0, k, top=ANCHOR_2018_MTCO2, bottom=FLOOR_2050):
+def sigmoid(year, t0, k, top=ANCHOR_2020_MTCO2, bottom=FLOOR_2050):
     return bottom + (top - bottom) / (1 + np.exp(k * (year - t0)))
 
 VARIANTS = {
@@ -181,7 +189,7 @@ for y in ceiling_years:
 print(f"\nUK decay fit: e0={UK_E0_TWH:.1f} TWh/yr, budget={UK_BUDGET_TWH:.1f} TWh, m={UK_M:.4f}/yr")
 print(f"UK blended intensity: {UK_BLENDED_INTENSITY:.4f} tCO2/MWh")
 print(f"\nFLOOR_2050 (Norway+UK central): {FLOOR_2050:.1f} MtCO2-eq/yr")
-print(f"ANCHOR_2018: {ANCHOR_2018_MTCO2} MtCO2-eq/yr")
+print(f"ANCHOR_2020: {ANCHOR_2020_MTCO2} MtCO2-eq/yr")
 print("\nCentral sigmoid vs existing fossil_limit_values vs Norway+UK ceiling, and ratio:")
 for y in sig_years:
     ex = existing.get(y)

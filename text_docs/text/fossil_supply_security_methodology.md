@@ -48,25 +48,36 @@ exact Victoria et al. formula for exactly this reason.
 
 `limit(t) = floor + (ceiling - floor) / (1 + exp(k(t - t0)))`
 
-- **Ceiling** (2020/pre-transition level): **2765.4 MtCO2-eq/yr**. Computed
-  directly from this fork's own historical-emissions pipeline
-  (`scripts/build_co2_totals.py::build_eea_co2`, EEA/UNFCCC data,
-  `data/ghg_emissions/archive/v23/UNFCCC_v23.csv`), summing all
-  combustion-related IPCC sectors (electricity, buildings, transport,
-  navigation, aviation, waste, other, indirect — excluding LULUCF and
-  industrial process emissions) across the individual EU28+CH+NO+GB
-  countries in that dataset (not the EU28 aggregate row, to avoid double
-  counting). **Caveat**: the locally-archived data only goes up to **2018**,
-  not 2020 — 2018 is used as the proxy. This is arguably fine or even
-  preferable: 2020 itself was a COVID-depressed outlier year (EU fossil CO2
-  fell ~10% that year per Eurostat), so 2018 is a more representative
-  "business as usual, pre-transition" anchor than the real 2020 figure would
-  be. This total is also missing the Balkan countries in this fork's full
-  34-country scope (AL, BA, ME, MK, RS, XK) — the EEA/UNFCCC dataset used
-  doesn't cover them — so the true anchor for the full model scope is
-  somewhat higher than 2765.4. For scale: this is close to the existing
-  `fossil_limit_values[2025] = 2600`, which cross-validates the two
-  independent numbers reasonably well.
+- **Ceiling** (2020, genuine historical actual — not a proxy): **2739.0
+  MtCO2-eq/yr**. Computed from **Eurostat's Complete Energy Balances**
+  (`nrg_bal_c`), **Gross Inland Consumption (GIC)** — i.e. real physical
+  fuel-supply volumes, not derived emissions — of natural gas (SIEC
+  `G3000`) + oil & petroleum products excl. biofuels (`O4000XBIO`) + solid
+  fossil fuels (`C0000X0350-0370`), summed across 33 of this fork's 34
+  countries (all except Switzerland, which this Eurostat dataset does not
+  cover). Source file: `data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz`
+  on the cluster — this fork's own live-pipeline data cache (Eurostat's own
+  published data, archived there Feb 2026, so genuinely current). A compact
+  per-country/per-fuel extract is saved at
+  `text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv` for
+  reproducibility (the 273MB raw bulk file itself was not committed — it is
+  pypsa-eur's own re-fetchable data cache, not at risk of being lost the way
+  a manually-written note would be).
+
+  This supersedes an earlier draft of this document that used a **2018,
+  emissions-based** proxy (EEA/UNFCCC `build_co2_totals.py` pipeline, which
+  the fork only has archived up to 2018) — that number ALSO originally
+  undercounted by omitting direct industrial fuel combustion and
+  agriculture-machinery fuel. Both problems are now fixed: real 2020 data,
+  full sector/fuel coverage via Eurostat's economy-wide GIC measure (which
+  by construction includes every combustion sector — power, industry,
+  transport including road gasoline/diesel, buildings, agriculture — with no
+  per-sector column list to accidentally miss one from).
+
+  Cross-check years from the same source: 2018 = 3616.4, 2023 = 2628.7,
+  **2024 (latest actual) = 2554.9** MtCO2-eq. The 2024 actual sits close to
+  this config's own assumed `fossil_limit_values[2025] = 2600` — a
+  reassuring independent cross-validation of that existing assumption.
 - **Floor** (2050): the Norway+UK production ceiling, **181.6 MtCO2-eq/yr**
   central case (Section 4).
 - **t0, k** (inflection year, steepness): **not settled** — this is exactly
@@ -145,13 +156,13 @@ downloaded but is the 2019 vintage, not the current one — see open items).
 
 | Year | Norway (MtCO2eq) | UK (MtCO2eq) | **NO+UK ceiling** | Existing `fossil_limit_values` | Sigmoid (central) | NO+UK share of sigmoid |
 |-----:|------:|------:|------:|------:|------:|------:|
-| 2020 | 529.3 | (n/a, held at 2025 rate) | 685.2 | -- | 2736.4 | 25.0% |
-| 2025 | 529.3 | 156.0 | 685.2 | 2600 | 2651.9 | 25.8% |
-| 2030 | 468.3 |  88.5 | 556.8 | 1378 | 2359.5 | 23.6% |
-| 2035 | 348.5 |  32.4 | 380.9 |  456 | 1653.2 | 23.0% |
-| 2040 | 292.6 |  10.2 | 302.8 |  129 |  817.2 | 37.0% |
-| 2045 | 236.7 |   3.0 | 239.7 |  103 |  374.0 | 64.1% |
-| 2050 | 180.8 |   0.8 | 181.6 |   78 |  231.9 | 78.3% |
+| 2020 | 529.3 | (n/a, held at 2025 rate) | 685.2 | -- | 2710.3 | 25.3% |
+| 2025 | 529.3 | 156.0 | 685.2 | 2600 | 2626.6 | 26.1% |
+| 2030 | 468.3 |  88.5 | 556.8 | 1378 | 2337.2 | 23.8% |
+| 2035 | 348.5 |  32.4 | 380.9 |  456 | 1638.2 | 23.3% |
+| 2040 | 292.6 |  10.2 | 302.8 |  129 |  810.8 | 37.3% |
+| 2045 | 236.7 |   3.0 | 239.7 |  103 |  372.0 | 64.4% |
+| 2050 | 180.8 |   0.8 | 181.6 |   78 |  231.4 | 78.5% |
 
 **The key finding**: the existing (climate-driven) `fossil_limit_values`
 falls *below* the Norway+UK physical ceiling from 2040 onward — by 2040 the
