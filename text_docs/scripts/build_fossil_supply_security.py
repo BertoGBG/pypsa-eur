@@ -1,16 +1,20 @@
 """
-Build the fossil-supply-security curves documented in
-text_docs/text/fossil_supply_security_methodology.md:
+Build the fossil-supply-security plot documented in
+text_docs/text/fossil_supply_security_methodology.md: a single figure with
 
 1. A sigmoid transition of the TOTAL fossil-use limit (MtCO2-eq/yr) from a
    real historical anchor (genuine 2020 actual, Eurostat Complete Energy
    Balances / nrg_bal_c, Gross Inland Consumption, this fork's own
    33-country data scope) down to a 2050 floor set by Norway+UK production
-   alone.
+   alone. Uses the "early transition" (t0=2032, k=0.35) shape as the single
+   reference curve, since it's the only one of the three originally-plotted
+   variants that actually reaches the Norway+UK floor by 2050.
 2. Norway (SODIR/Norwegian Offshore Directorate) + UK (NSTA) production,
    converted to MtCO2-eq/yr, as the "European-safe" supply ceiling.
-3. The ratio of (2) over (1) per year -- how much of the allowed total
-   fossil use could, in principle, be met from Norway+UK alone.
+3. The current CO2Limit trajectory (~1.9C pathway), extended back to 2020.
+4. On the secondary axis: the ratio of (2) over (1) per year -- how much of
+   the allowed total fossil use could, in principle, be met from Norway+UK
+   alone.
 
 All conversion factors and anchors are documented inline and in the
 methodology .md; nothing here is a hidden assumption.
@@ -110,76 +114,58 @@ FLOOR_2050 = ceiling[2050]
 
 # ---------------------------------------------------------------------------
 # Sigmoid total-fossil-limit transition: ceiling (2020 anchor) -> floor (2050,
-# European-safe supply). Three steepness variants for sensitivity, per the
-# "shape matters in the middle years" discussion.
+# European-safe supply). Reference: the "early, steep" variant (t0=2032,
+# k=0.35) -- chosen because, unlike the central/late variants, it actually
+# reaches the Norway+UK floor by 2050 rather than still being well above it.
 def sigmoid(year, t0, k, top=ANCHOR_2020_MTCO2, bottom=FLOOR_2050):
     return bottom + (top - bottom) / (1 + np.exp(k * (year - t0)))
 
-VARIANTS = {
-    "Early transition (t0=2032, steep)": dict(t0=2032, k=0.35),
-    "Central transition (t0=2036, medium)": dict(t0=2036, k=0.28),
-    "Late transition (t0=2040, gradual)": dict(t0=2040, k=0.22),
-}
+REFERENCE = dict(t0=2032, k=0.35)  # "early transition"
 
 years_fine = np.linspace(2020, 2050, 121)
-
-# ---------------------------------------------------------------------------
-# Plot 1: sigmoid variants + NO+UK ceiling + existing config values
-fig, ax1 = plt.subplots(figsize=(9, 5.5))
-for label, p in VARIANTS.items():
-    ax1.plot(years_fine, [sigmoid(y, **p) for y in years_fine], lw=2, label=label)
-
 ceiling_years = sorted(ceiling)
-ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black",
-          lw=1.5, label="Norway+UK ceiling (central)")
 
-existing = {2025: 2600, 2030: 1378, 2035: 456, 2040: 129, 2045: 103, 2050: 78}
-ax1.plot(list(existing), list(existing.values()), "s:", color="tab:red",
-          lw=1.5, label="Existing fossil_limit_values (medium scenario)")
+sig_years = YEARS
+sig_vals = {y: sigmoid(y, **REFERENCE) for y in sig_years}
+ratio = {y: 100 * ceiling[y] / sig_vals[y] for y in sig_years}
 
 # Current CO2Limit trajectory (net, CCS-credited), from this config's
 # co2_budget fractions of 1990 levels -- corresponds to a ~1.9C global
 # temperature-increase pathway (per user's own model calibration).
-CO2LIMIT_1P9C = {2025: 2983.3, 2030: 2071.8, 2035: 1151.0, 2040: 460.4, 2045: 230.2, 2050: 0.0}
-ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
-          lw=1.5, label="CO2Limit, current config (~1.9C)")
-
-ax1.axhline(FLOOR_2050, color="grey", lw=0.8, ls=":")
-ax1.set_xlabel("Year")
-ax1.set_ylabel("Total fossil-use limit (MtCO2-eq/yr)")
-ax1.set_title("Fossil-use limit transition: sigmoid shapes vs. Norway+UK ceiling")
-ax1.legend(fontsize=8, loc="upper right")
-fig.tight_layout()
-fig.savefig(f"{out_dir}/fossil_supply_sigmoid_variants.png", dpi=150)
-plt.close(fig)
+# 2020 added: CO2Limit(year) = base_1990 x co2_budget_fraction[year], with
+# base_1990 back-solved from the 2025-2050 values (base_1990 = 2983.3/0.648
+# = 4603.6 MtCO2, consistent to within rounding across all five points).
+# co2_budget fractions: 2020=0.72, 2025=0.648, 2030=0.45, 2035=0.25,
+# 2040=0.1, 2045=0.05, 2050=0.0.
+CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
+                 2040: 460.4, 2045: 230.2, 2050: 0.0}
 
 # ---------------------------------------------------------------------------
-# Plot 2: central sigmoid + ratio of NO+UK ceiling / sigmoid on secondary axis
-central = VARIANTS["Central transition (t0=2036, medium)"]
-sig_years = YEARS
-sig_vals = {y: sigmoid(y, **central) for y in sig_years}
-ratio = {y: 100 * ceiling[y] / sig_vals[y] for y in sig_years}
-
-fig, ax1 = plt.subplots(figsize=(8, 5))
-ax1.plot(years_fine, [sigmoid(y, **central) for y in years_fine], color="tab:blue", lw=2,
-          label="Total fossil-use limit (sigmoid, central)")
+# Single combined plot: left axis = MtCO2-eq/yr (sigmoid, NO+UK ceiling,
+# CO2Limit); right axis = NO+UK share of the sigmoid (%).
+fig, ax1 = plt.subplots(figsize=(9, 5.5))
+ax1.plot(years_fine, [sigmoid(y, **REFERENCE) for y in years_fine], color="tab:blue", lw=2,
+          label="Total fossil-use limit (sigmoid, early transition)")
 ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
           label="Norway+UK ceiling (central)")
 ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
           lw=1.5, label="CO2Limit, current config (~1.9C)")
+ax1.axhline(FLOOR_2050, color="grey", lw=0.8, ls=":")
 ax1.set_xlabel("Year")
 ax1.set_ylabel("MtCO2-eq/yr")
+
 ax2 = ax1.twinx()
 ax2.plot(sig_years, [ratio[y] for y in sig_years], "^-", color="tab:green", lw=2,
           label="Norway+UK share of total limit (%)")
 ax2.set_ylabel("Norway+UK share of total fossil-use limit (%)")
 ax2.set_ylim(0, max(110, max(ratio.values()) * 1.1))
+
 lines1, labels1 = ax1.get_legend_handles_labels()
 lines2, labels2 = ax2.get_legend_handles_labels()
 ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", fontsize=8)
-ax1.set_title("Central sigmoid vs. Norway+UK self-sufficiency share")
+ax1.set_title("Fossil-use limit (early-transition sigmoid) vs. Norway+UK self-sufficiency")
 fig.tight_layout()
-fig.savefig(f"{out_dir}/fossil_supply_security_ratio.png", dpi=150)
+fig.savefig(f"{out_dir}/fossil_supply_security.png", dpi=150)
 plt.close(fig)
 
 # ---------------------------------------------------------------------------
@@ -190,10 +176,9 @@ print(f"\nUK decay fit: e0={UK_E0_TWH:.1f} TWh/yr, budget={UK_BUDGET_TWH:.1f} TW
 print(f"UK blended intensity: {UK_BLENDED_INTENSITY:.4f} tCO2/MWh")
 print(f"\nFLOOR_2050 (Norway+UK central): {FLOOR_2050:.1f} MtCO2-eq/yr")
 print(f"ANCHOR_2020: {ANCHOR_2020_MTCO2} MtCO2-eq/yr")
-print("\nCentral sigmoid vs existing fossil_limit_values vs Norway+UK ceiling, and ratio:")
+print("\nEarly-transition sigmoid vs Norway+UK ceiling vs CO2Limit, and ratio:")
 for y in sig_years:
-    ex = existing.get(y)
-    print(f"  {y}: sigmoid={sig_vals[y]:.1f}  existing={ex}  NO+UK_ceiling={ceiling[y]:.1f}  ratio={ratio[y]:.1f}%")
+    print(f"  {y}: sigmoid={sig_vals[y]:.1f}  NO+UK_ceiling={ceiling[y]:.1f}  "
+          f"CO2Limit={CO2LIMIT_1P9C.get(y)}  ratio={ratio[y]:.1f}%")
 
-print(f"\nSaved {out_dir}/fossil_supply_sigmoid_variants.png")
-print(f"Saved {out_dir}/fossil_supply_security_ratio.png")
+print(f"\nSaved {out_dir}/fossil_supply_security.png")

@@ -80,18 +80,16 @@ exact Victoria et al. formula for exactly this reason.
   reassuring independent cross-validation of that existing assumption.
 - **Floor** (2050): the Norway+UK production ceiling, **181.6 MtCO2-eq/yr**
   central case (Section 4).
-- **t0, k** (inflection year, steepness): **not settled** — this is exactly
-  the "shape matters in the middle years" question. Three variants are
-  plotted for comparison:
-
-  | Variant | t0 | k |
-  |---|---:|---:|
-  | Early, steep | 2032 | 0.35 |
-  | Central, medium | 2036 | 0.28 |
-  | Late, gradual | 2040 | 0.22 |
-
-  These are placeholder choices for discussion, not derived from anything.
-  See `fossil_supply_sigmoid_variants.png`.
+- **t0, k** (inflection year, steepness): three shapes were originally
+  compared (early/steep, central/medium, late/gradual). **"Early transition"
+  (t0=2032, k=0.35) is now used as the single reference curve**, because it
+  is the only one of the three that actually reaches the Norway+UK floor by
+  2050 (186.3 MtCO2-eq at 2050, vs. the floor's 181.6) — the central and
+  late variants were still well above the floor at 2050, which would have
+  meant "European-safe by 2050" wasn't actually achieved under those
+  shapes. This is still a placeholder choice for discussion, not derived
+  from anything beyond that consistency requirement.
+  See `fossil_supply_security.png` (single combined figure, Section 4.3).
 
 ## 4. The Norway+UK ceiling ("European-safe" fossil supply)
 
@@ -154,32 +152,37 @@ downloaded but is the 2019 vintage, not the current one — see open items).
 
 ### 4.3. Combined ceiling and comparison
 
-| Year | Norway (MtCO2eq) | UK (MtCO2eq) | **NO+UK ceiling** | Existing `fossil_limit_values` | Sigmoid (central) | NO+UK share of sigmoid |
+| Year | Norway (MtCO2eq) | UK (MtCO2eq) | **NO+UK ceiling** | Sigmoid (early transition) | CO2Limit (~1.9C) | NO+UK share of sigmoid |
 |-----:|------:|------:|------:|------:|------:|------:|
-| 2020 | 529.3 | (n/a, held at 2025 rate) | 685.2 | -- | 2710.3 | 25.3% |
-| 2025 | 529.3 | 156.0 | 685.2 | 2600 | 2626.6 | 26.1% |
-| 2030 | 468.3 |  88.5 | 556.8 | 1378 | 2337.2 | 23.8% |
-| 2035 | 348.5 |  32.4 | 380.9 |  456 | 1638.2 | 23.3% |
-| 2040 | 292.6 |  10.2 | 302.8 |  129 |  810.8 | 37.3% |
-| 2045 | 236.7 |   3.0 | 239.7 |  103 |  372.0 | 64.4% |
-| 2050 | 180.8 |   0.8 | 181.6 |   78 |  231.4 | 78.5% |
+| 2020 | 529.3 | (n/a, held at 2025 rate) | 685.2 | 2701.2 | 3314.9 | 25.4% |
+| 2025 | 529.3 | 156.0 | 685.2 | 2535.8 | 2983.3 | 27.0% |
+| 2030 | 468.3 |  88.5 | 556.8 | 1890.4 | 2071.8 | 29.5% |
+| 2035 | 348.5 |  32.4 | 380.9 |  844.5 | 1151.0 | 45.1% |
+| 2040 | 292.6 |  10.2 | 302.8 |  328.2 |  460.4 | 92.3% |
+| 2045 | 236.7 |   3.0 | 239.7 |  208.3 |  230.2 | **115.0%** |
+| 2050 | 180.8 |   0.8 | 181.6 |  186.3 |    0.0 | 97.5% |
 
-**The key finding**: the existing (climate-driven) `fossil_limit_values`
-falls *below* the Norway+UK physical ceiling from 2040 onward — by 2040 the
-existing cap (129) is only 43% of what Norway+UK alone could still supply
-(303). In other words, **from ~2040 the climate constraint is already
-tighter than the security-of-supply constraint** — hitting the existing
-medium-scenario CO2 target would automatically keep the model within
-Norway+UK's safe capacity, with no additional security-driven restriction
-needed. The years where security-of-supply might actually be the *binding*
-concern (i.e. total fossil use plausibly wants to exceed 100% domestic-safe
-capacity) are **2025-2035**, where the ratio sits at only 23-26% — meaning
-under a purely climate-driven trajectory, Europe would still be relying on
-non-European sources (Africa pipeline + LNG, per your framing) for roughly
-three-quarters of its fossil supply through the mid-2030s.
+**The key finding**: under the early-transition sigmoid, Norway+UK
+self-sufficiency climbs sharply from ~25-30% in 2020-2030 to ~45% by 2035
+and **over 90% by 2040**, briefly exceeding 100% in 2045 — meaning by the
+early-2040s Norway+UK alone could, in principle, supply as much fossil
+energy as the security-driven sigmoid even allows. The years where
+security-of-supply is clearly the *binding* concern are **2020-2035**,
+where 55-75% of allowed fossil use would still need non-European sources
+(Africa pipeline + LNG, per your framing).
 
-See `fossil_supply_security_ratio.png` for the central-sigmoid version of
-this comparison (secondary axis).
+**A sharper tension worth flagging**: at 2050 the sigmoid (186.3, essentially
+at the Norway+UK floor) sits *above* the current CO2Limit's 2050 value of
+**zero**. These aren't strictly comparable (the sigmoid is a GROSS supply
+measure like `fossil_limit_values`, no CCS credit, while CO2Limit is NET,
+CCS-credited) — but at face value it says full domestic-fossil energy
+security and the model's own net-zero-by-2050 pathway are not
+automatically compatible; reconciling them requires either CCS on
+essentially all of that remaining Norway+UK-sourced supply by 2050, or
+accepting some residual non-zero net fossil use, or a floor slightly below
+what NO+UK could physically still produce.
+
+See `fossil_supply_security.png` for the combined figure.
 
 ## 5. Coal
 
