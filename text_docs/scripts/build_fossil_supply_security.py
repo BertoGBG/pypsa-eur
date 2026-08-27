@@ -129,6 +129,13 @@ existing = {2025: 2600, 2030: 1378, 2035: 456, 2040: 129, 2045: 103, 2050: 78}
 ax1.plot(list(existing), list(existing.values()), "s:", color="tab:red",
           lw=1.5, label="Existing fossil_limit_values (medium scenario)")
 
+# Current CO2Limit trajectory (net, CCS-credited), from this config's
+# co2_budget fractions of 1990 levels -- corresponds to a ~1.9C global
+# temperature-increase pathway (per user's own model calibration).
+CO2LIMIT_1P9C = {2025: 2983.3, 2030: 2071.8, 2035: 1151.0, 2040: 460.4, 2045: 230.2, 2050: 0.0}
+ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
+          lw=1.5, label="CO2Limit, current config (~1.9C)")
+
 ax1.axhline(FLOOR_2050, color="grey", lw=0.8, ls=":")
 ax1.set_xlabel("Year")
 ax1.set_ylabel("Total fossil-use limit (MtCO2-eq/yr)")
@@ -150,6 +157,8 @@ ax1.plot(years_fine, [sigmoid(y, **central) for y in years_fine], color="tab:blu
           label="Total fossil-use limit (sigmoid, central)")
 ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
           label="Norway+UK ceiling (central)")
+ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
+          lw=1.5, label="CO2Limit, current config (~1.9C)")
 ax1.set_xlabel("Year")
 ax1.set_ylabel("MtCO2-eq/yr")
 ax2 = ax1.twinx()
