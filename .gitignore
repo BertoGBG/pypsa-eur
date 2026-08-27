@@ -16,7 +16,6 @@ gurobi.log
 *.orig
 .idea
 
-/text_docs
 /results
 
 /bak
