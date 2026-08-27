@@ -113,21 +113,51 @@ ceiling[2020] = no_mtco2(2020) + uk_mtco2(2025)  # no UK trend info before 2025;
 FLOOR_2050 = ceiling[2050]
 
 # ---------------------------------------------------------------------------
-# Sigmoid total-fossil-limit transition: ceiling (2020 anchor) -> floor (2050,
-# European-safe supply). Reference: the "early, steep" variant (t0=2032,
-# k=0.35) -- chosen because, unlike the central/late variants, it actually
-# reaches the Norway+UK floor by 2050 rather than still being well above it.
-def sigmoid(year, t0, k, top=ANCHOR_2020_MTCO2, bottom=FLOOR_2050):
-    return bottom + (top - bottom) / (1 + np.exp(k * (year - t0)))
+# Total-fossil-limit curves, constructed so the Norway+UK share is bounded
+# by construction (never exceeds its own 2050 target) rather than picked
+# freehand and checked after the fact (which is how the earlier draft ended
+# up with a >100% share at 2045).
+#
+# Method: define a SHARE curve share(t) = NO+UK(t) / TOTAL(t) directly,
+# using a smoothstep polynomial (3x^2 - 2x^3, x in [0,1]) that starts at the
+# real, empirically-grounded 2020 share (NO+UK(2020) / ANCHOR_2020, ~25%)
+# and reaches EXACTLY a chosen target share at 2050 -- smoothstep is a
+# genuine polynomial, monotonic, and hits both endpoints exactly (unlike a
+# logistic sigmoid, which only approaches its asymptote). Then invert:
+# TOTAL(t) = NO+UK(t) / share(t). Three variants share the same shape,
+# scaled to different 2050 targets (100% / 80% / 60% self-sufficiency),
+# per your request -- all three necessarily agree at 2020 (they all reduce
+# to TOTAL(2020) = ANCHOR_2020 exactly, since share(2020) is defined as
+# NO+UK(2020)/ANCHOR_2020 for every variant).
+def ceiling_continuous(year):
+    return no_mtco2(year) + (uk_mtco2(year) if year >= 2025 else uk_mtco2(2025))
 
-REFERENCE = dict(t0=2032, k=0.35)  # "early transition"
+def smoothstep(x):
+    x = np.clip(x, 0.0, 1.0)
+    return 3 * x**2 - 2 * x**3
+
+SHARE_2020 = ceiling_continuous(2020) / ANCHOR_2020_MTCO2
+
+SHARE_TARGETS = {
+    "100% Norway+UK by 2050": 1.00,
+    "80% Norway+UK by 2050": 0.80,
+    "60% Norway+UK by 2050": 0.60,
+}
+VARIANT_COLORS = {
+    "100% Norway+UK by 2050": "tab:blue",
+    "80% Norway+UK by 2050": "tab:orange",
+    "60% Norway+UK by 2050": "tab:red",
+}
+
+def share_curve(year, target):
+    x = (year - 2020) / (2050 - 2020)
+    return SHARE_2020 + (target - SHARE_2020) * smoothstep(x)
+
+def total_curve(year, target):
+    return ceiling_continuous(year) / share_curve(year, target)
 
 years_fine = np.linspace(2020, 2050, 121)
 ceiling_years = sorted(ceiling)
-
-sig_years = YEARS
-sig_vals = {y: sigmoid(y, **REFERENCE) for y in sig_years}
-ratio = {y: 100 * ceiling[y] / sig_vals[y] for y in sig_years}
 
 # Current CO2Limit trajectory (net, CCS-credited), from this config's
 # co2_budget fractions of 1990 levels -- corresponds to a ~1.9C global
@@ -141,29 +171,33 @@ CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
                  2040: 460.4, 2045: 230.2, 2050: 0.0}
 
 # ---------------------------------------------------------------------------
-# Single combined plot: left axis = MtCO2-eq/yr (sigmoid, NO+UK ceiling,
-# CO2Limit); right axis = NO+UK share of the sigmoid (%).
-fig, ax1 = plt.subplots(figsize=(9, 5.5))
-ax1.plot(years_fine, [sigmoid(y, **REFERENCE) for y in years_fine], color="tab:blue", lw=2,
-          label="Total fossil-use limit (sigmoid, early transition)")
+# Single combined plot: left axis = MtCO2-eq/yr (three total-limit curves,
+# NO+UK ceiling, CO2Limit); right axis = the three share curves, dotted,
+# each colour-matched to its total-limit curve.
+fig, ax1 = plt.subplots(figsize=(9.5, 6))
+ax2 = ax1.twinx()
+
+for label, target in SHARE_TARGETS.items():
+    color = VARIANT_COLORS[label]
+    ax1.plot(years_fine, [total_curve(y, target) for y in years_fine], color=color, lw=2,
+              label=f"Total fossil-use limit ({label})")
+    ax2.plot(years_fine, [100 * share_curve(y, target) for y in years_fine], color=color,
+              lw=1.5, ls=":", label=f"Norway+UK share ({label})")
+
 ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
           label="Norway+UK ceiling (central)")
 ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
           lw=1.5, label="CO2Limit, current config (~1.9C)")
-ax1.axhline(FLOOR_2050, color="grey", lw=0.8, ls=":")
 ax1.set_xlabel("Year")
 ax1.set_ylabel("MtCO2-eq/yr")
 
-ax2 = ax1.twinx()
-ax2.plot(sig_years, [ratio[y] for y in sig_years], "^-", color="tab:green", lw=2,
-          label="Norway+UK share of total limit (%)")
 ax2.set_ylabel("Norway+UK share of total fossil-use limit (%)")
-ax2.set_ylim(0, max(110, max(ratio.values()) * 1.1))
+ax2.set_ylim(0, 110)
 
 lines1, labels1 = ax1.get_legend_handles_labels()
 lines2, labels2 = ax2.get_legend_handles_labels()
-ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", fontsize=8)
-ax1.set_title("Fossil-use limit (early-transition sigmoid) vs. Norway+UK self-sufficiency")
+ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=7.5)
+ax1.set_title("Fossil-use limit variants (Norway+UK share reaches 100%/80%/60% by 2050)")
 fig.tight_layout()
 fig.savefig(f"{out_dir}/fossil_supply_security.png", dpi=150)
 plt.close(fig)
@@ -174,11 +208,13 @@ for y in ceiling_years:
     print(f"  {y}: NO={no_mtco2(y):.1f}  UK={uk_mtco2(y) if y>=2025 else float('nan'):.1f}  total={ceiling[y]:.1f}")
 print(f"\nUK decay fit: e0={UK_E0_TWH:.1f} TWh/yr, budget={UK_BUDGET_TWH:.1f} TWh, m={UK_M:.4f}/yr")
 print(f"UK blended intensity: {UK_BLENDED_INTENSITY:.4f} tCO2/MWh")
-print(f"\nFLOOR_2050 (Norway+UK central): {FLOOR_2050:.1f} MtCO2-eq/yr")
+print(f"\nSHARE_2020 (Norway+UK / ANCHOR_2020): {SHARE_2020*100:.1f}%")
 print(f"ANCHOR_2020: {ANCHOR_2020_MTCO2} MtCO2-eq/yr")
-print("\nEarly-transition sigmoid vs Norway+UK ceiling vs CO2Limit, and ratio:")
-for y in sig_years:
-    print(f"  {y}: sigmoid={sig_vals[y]:.1f}  NO+UK_ceiling={ceiling[y]:.1f}  "
-          f"CO2Limit={CO2LIMIT_1P9C.get(y)}  ratio={ratio[y]:.1f}%")
+print("\nThree total-limit variants vs Norway+UK ceiling vs CO2Limit:")
+for label, target in SHARE_TARGETS.items():
+    print(f"\n-- {label} --")
+    for y in YEARS:
+        print(f"  {y}: total={total_curve(y, target):.1f}  NO+UK_ceiling={ceiling[y]:.1f}  "
+              f"CO2Limit={CO2LIMIT_1P9C.get(y)}  share={100*share_curve(y, target):.1f}%")
 
 print(f"\nSaved {out_dir}/fossil_supply_security.png")
