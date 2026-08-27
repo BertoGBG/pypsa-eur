@@ -5,7 +5,8 @@ Branch: `heat_industry`. Relates to `fossil_limit` / `fossil_limit_values` in
 `scripts/prepare_sector_network.py`.
 
 Companion script: `text_docs/scripts/build_fossil_supply_security.py`
-(produces the two plots below and prints the full numeric table).
+(produces `fossil_supply_security.png` and `fossil_supply_mix_2050.png`,
+and prints the full numeric table).
 
 ## 1. The idea
 
@@ -53,17 +54,18 @@ producing a >100% share at 2045 for one variant. The share cannot exceed
 100% by definition (Norway+UK cannot supply more than exists), so the
 share needs to be bounded **by construction**, not by accident.
 
-Fixed method: define the **share** curve `share(t) = NO+UK(t) / limit(t)`
+Fixed method: define the **share** curve `share(t) = (NO+UK+coal)(t) / limit(t)`
 directly, using a **smoothstep polynomial** `3x^2 - 2x^3` (`x` normalized
 to [0,1] over 2020-2050) — a genuine polynomial, monotonic, and one that
 hits both of its endpoints *exactly* (unlike a logistic sigmoid, which only
 asymptotically approaches its limit). `share(2020)` is fixed at the real,
-empirically-grounded value `NO+UK(2020) / ceiling` (~25.0%) for every
-variant; `share(2050)` is set to a chosen target (100%, 80%, or 60%
-self-sufficiency). Then invert: `limit(t) = NO+UK(t) / share(t)`. Because
-all three variants share the same `share(2020)`, they necessarily all
-start at exactly the same 2020 point (`limit(2020) = ceiling` for every
-variant), diverging only as they head toward different 2050 outcomes.
+empirically-grounded value `(NO+UK+coal)(2020) / ceiling` (~47.6%, once
+coal is included — see Section 4.3) for every variant; `share(2050)` is
+set to a chosen target (100%, 80%, or 60% self-sufficiency). Then invert:
+`limit(t) = (NO+UK+coal)(t) / share(t)`. Because all three variants share
+the same `share(2020)`, they necessarily all start at exactly the same
+2020 point (`limit(2020) = ceiling` for every variant), diverging only as
+they head toward different 2050 outcomes.
 
 - **Ceiling** (2020, genuine historical actual — not a proxy): **2739.0
   MtCO2-eq/yr**. Computed from **Eurostat's Complete Energy Balances**
@@ -95,34 +97,33 @@ variant), diverging only as they head toward different 2050 outcomes.
   **2024 (latest actual) = 2554.9** MtCO2-eq. The 2024 actual sits close to
   this config's own assumed `fossil_limit_values[2025] = 2600` — a
   reassuring independent cross-validation of that existing assumption.
-- **Floor** (2050): the Norway+UK production ceiling, **181.6 MtCO2-eq/yr**
+- **Floor** (2050): the Norway+UK+coal production ceiling, **798.8 MtCO2-eq/yr**
   central case (Section 4) — this is exactly the "100% by 2050" variant's
-  endpoint; the 80% and 60% variants have higher 2050 endpoints (227.0 and
-  302.7 MtCO2-eq respectively), since they deliberately leave room for
+  endpoint; the 80% and 60% variants have higher 2050 endpoints (998.5 and
+  1331.3 MtCO2-eq respectively), since they deliberately leave room for
   non-European sources (Africa pipeline + LNG) even at 2050.
 - **Three variants**, same shape, different 2050 self-sufficiency target:
 
   | Variant | Share(2020) | Share(2050) | Total limit(2050) |
   |---|---:|---:|---:|
-  | 100% Norway+UK by 2050 | 25.0% | 100.0% | 181.6 |
-  | 80% Norway+UK by 2050 | 25.0% | 80.0% | 227.0 |
-  | 60% Norway+UK by 2050 | 25.0% | 60.0% | 302.7 |
+  | 100% NO+UK+coal by 2050 | 47.6% | 100.0% | 798.8 |
+  | 80% NO+UK+coal by 2050 | 47.6% | 80.0% | 998.5 |
+  | 60% NO+UK+coal by 2050 | 47.6% | 60.0% | 1331.3 |
 
   The shape/steepness itself (how fast the share climbs between 2020 and
   2050) is still a free choice baked into the smoothstep polynomial's fixed
   form — this is the remaining "shape matters in the middle years"
   question, now scoped to just that, rather than also needing to separately
   verify the share stays bounded.
-  See `fossil_supply_security.png` (single combined figure, Section 4.3).
+  See `fossil_supply_security.png` (single combined figure, Section 4.4).
 
-## 4. The Norway+UK ceiling ("European-safe" fossil supply)
+## 4. The Norway+UK+coal ceiling ("European-safe" fossil supply)
 
-**Scope decision needed**: currently strictly Norway+UK. Post-Groningen
-closure (NL, 2023/24, induced-seismicity driven), remaining EU-domestic
-production (Denmark's declining North Sea fields, Romania's Neptun Deep gas
-development, Poland's small conventional/shale output) is real but small and
-**not yet included**. Worth a decision on whether to add a "second EU-domestic
-tier" alongside Norway+UK, or fold it into the pipeline/LNG residual.
+**Scope**: Norway + UK (gas+oil) + EU-domestic coal (Section 4.3). Beyond
+that, remaining EU-domestic production (Denmark's declining North Sea
+fields, Romania's Neptun Deep gas development, Poland's small conventional/
+shale gas output) is real but small and **still not included** — a
+possible "tier 2" if more precision is wanted later.
 
 ### 4.1. Norway
 
@@ -174,84 +175,100 @@ downloaded but is the 2019 vintage, not the current one — see open items).
 - Blended intensity (energy-weighted from the 218 Mt oil / 2060 TWh gas
   split): **0.2306 tCO2/MWh**.
 
-### 4.3. Combined ceiling and comparison
+### 4.3. EU-domestic coal
+
+**Treated symmetrically with Norway/UK gas+oil, per your explicit
+direction**: coal is included as a full available domestic resource, not
+pre-excluded by an assumed political phase-out date. The reasoning: if coal
+ends up unused in an actual model run, that should be because the CO2Limit
+constraint made it uneconomic/infeasible to burn — not because this
+security-ceiling calculation silently assumed it away first. Baking a
+phase-out schedule into the *ceiling* would be circular: it would make coal
+"secure but unavailable" by construction, pre-empting exactly the question
+the CO2 constraint is supposed to answer.
+
+Unlike UK's North Sea fields, coal's binding constraint isn't geological
+depletion — Germany's lignite basins and Poland's coal reserves alone cover
+decades at current extraction rates. Absent a production-decline curve
+grounded in actual mine-closure schedules (a real research task, time-boxed
+out of this session), the simplest defensible choice is to **hold domestic
+coal supply flat at its 2020 actual level for the whole 2020-2050 horizon**.
+This is a deliberate upper-bound simplification — it ignores mines/plants
+already retired since 2020 — not a forecast of likely coal demand.
+
+Source: same Eurostat GIC extraction as the historical anchor (Section 3),
+SIEC code `C0000X0350-0370` (solid fossil fuels), same 33-country scope.
+**2020: 617.2 MtCO2-eq** (intensity 0.34 tCO2/MWh, a blended coal/lignite
+value). Top contributors: **Germany (176.6), Poland (161.8), Czechia
+(48.6)** MtCO2-eq — i.e. concentrated in a handful of countries with large
+domestic reserves, not spread evenly, and not import-dependent at all.
+
+(The phase-out timeline research done earlier — Beyond Fossil Fuels,
+"National coal phase-out announcements in Europe," 2021,
+`text_docs/literature/BeyondFossilFuels_2021_coal_phaseout_announcements.pdf`
+— most of Western/Southern Europe targeting 2025-2033, Poland the outlier
+at 2049 — remains useful context for interpreting model *output*, i.e. for
+sanity-checking whether the solved model's own coal phase-down looks
+plausible against real policy commitments. It is deliberately NOT used to
+constrain the security ceiling itself, per the reasoning above.)
+
+### 4.4. Combined ceiling and comparison
 
 All three variants share the same 2020 point (`limit(2020) = 2739.0`,
-`share = 25.0%`) by construction, and reach their target share EXACTLY at
+`share = 47.6%`) by construction, and reach their target share EXACTLY at
 2050 — no more checking after the fact whether the share exceeded 100%.
 
-| Year | NO+UK ceiling | **100% by 2050** total (share) | **80% by 2050** total (share) | **60% by 2050** total (share) | CO2Limit (~1.9C) |
+| Year | NO+UK+coal ceiling | **100% by 2050** total (share) | **80% by 2050** total (share) | **60% by 2050** total (share) | CO2Limit (~1.9C) |
 |-----:|------:|------:|------:|------:|------:|
-| 2020 | 685.2 | 2739.0 (25.0%) | 2739.0 (25.0%) | 2739.0 (25.0%) | 3314.9 |
-| 2025 | 685.2 | 2241.4 (30.6%) | 2355.5 (29.1%) | 2481.9 (27.6%) | 2983.3 |
-| 2030 | 556.8 | 1252.3 (44.5%) | 1417.7 (39.3%) | 1633.3 (34.1%) | 2071.8 |
-| 2035 | 380.9 |  609.3 (62.5%) |  725.4 (52.5%) |  896.0 (42.5%) | 1151.0 |
-| 2040 | 302.8 |  375.9 (80.6%) |  460.5 (65.7%) |  594.5 (50.9%) |  460.4 |
-| 2045 | 239.7 |  253.8 (94.4%) |  315.6 (75.9%) |  417.5 (57.4%) |  230.2 |
-| 2050 | 181.6 |  181.6 (100.0%) |  227.0 (80.0%) |  302.7 (60.0%) |    0.0 |
+| 2020 | 1302.4 | 2739.0 (47.6%) | 2739.0 (47.6%) | 2739.0 (47.6%) | 3314.9 |
+| 2025 | 1302.4 | 2532.1 (51.4%) | 2607.2 (50.0%) | 2686.9 (48.5%) | 2983.3 |
+| 2030 | 1174.0 | 1919.8 (61.1%) | 2097.7 (56.0%) | 2311.9 (50.8%) | 2071.8 |
+| 2035 |  998.1 | 1352.9 (73.8%) | 1565.0 (63.8%) | 1856.0 (53.8%) | 1151.0 |
+| 2040 |  920.0 | 1064.8 (86.4%) | 1285.1 (71.6%) | 1620.5 (56.8%) |  460.4 |
+| 2045 |  856.9 |  891.5 (96.1%) | 1104.2 (77.6%) | 1450.4 (59.1%) |  230.2 |
+| 2050 |  798.8 |  798.8 (100.0%) |  998.5 (80.0%) | 1331.3 (60.0%) |    0.0 |
 
-**Key findings**:
-- The share now behaves sensibly by construction: monotonically increasing,
-  never exceeding its target, exactly hitting 100%/80%/60% at 2050.
-- Under the **80% by 2050** variant, the total limit at 2040 (460.5) lands
-  almost exactly on the current CO2Limit's 2040 value (460.4) — a striking,
-  probably coincidental, crossing point worth noting but not over-reading.
-- The **100% by 2050** variant declines faster than CO2Limit throughout —
-  it's below CO2Limit at every year from 2025 onward, meaning a full
-  domestic-only security target would be *more* restrictive than the
-  current climate target alone in the near term (2025-2040), even though by
-  2050 the two converge in spirit (security floor 181.6 vs. climate target
-  of exactly 0 — see the tension noted below).
-- The **60% by 2050** variant stays above CO2Limit until 2040, then falls
-  below it — the most forgiving of the three, leaving room for non-European
-  sources throughout.
+**Key findings, now with coal properly counted**:
+- **Domestic-safe share at 2020 nearly doubles once coal is counted
+  correctly: 25.0% -> 47.6%.** Roughly half of Europe's 2020 fossil
+  consumption could, in principle, already come from Norway+UK+domestic
+  coal alone — the earlier gas+oil-only framing significantly overstated
+  import dependence by lumping domestically-mined coal in with genuinely
+  imported fuels.
+- **From 2040 onward, the NO+UK+coal ceiling (920, 857, 799) far exceeds
+  CO2Limit (460, 230, 0).** This directly confirms your framing: coal
+  availability is not the constraint late in the horizon — the climate
+  target is. Whatever coal *does* get used (or doesn't) in an actual model
+  run past 2040 will be an emissions-driven outcome, not a resource
+  availability one.
+- All three self-sufficiency variants' 2050 floors (799 / 999 / 1331) sit
+  **far above** CO2Limit's 2050 value of zero — an even starker version of
+  the earlier security-vs-net-zero tension than the gas+oil-only framing
+  showed. Reconciling "use domestic coal for security" with "net-zero by
+  2050" essentially requires CCS on nearly all coal-fired generation/
+  industry by 2050, or accepting that coal (however "secure") simply isn't
+  used at that point regardless of availability.
 
-**A tension worth flagging regardless of variant**: at 2050 all three
-security-driven totals (181.6 / 227.0 / 302.7) sit *above* the current
-CO2Limit's 2050 value of **zero**. These aren't strictly comparable (the
-security totals are GROSS supply measures like `fossil_limit_values`, no
-CCS credit, while CO2Limit is NET, CCS-credited) — but at face value it
-says full (or even partial) domestic-fossil energy security and the
-model's own net-zero-by-2050 pathway are not automatically compatible;
-reconciling them requires either CCS on most of that remaining
-Norway+UK-sourced supply by 2050, or accepting some residual non-zero net
-fossil use, or a self-sufficiency target below 100%.
+See `fossil_supply_security.png` for the combined figure and
+`fossil_supply_mix_2050.png` for the 2020-vs-2050 resource-mix breakdown
+(Norway / UK / EU-domestic coal, stacked).
 
-See `fossil_supply_security.png` for the combined figure.
+## 5. Open items / next steps
 
-## 5. Coal
-
-Not yet incorporated into the ceiling/floor calculation above (Sections 3-4
-treat "fossil" as gas+oil only, matching Norway/UK's actual output). Your
-suggestion: keep a coal allowance in the early years, phased out around
-2030, using whatever aggregate target is available.
-
-Source found: Beyond Fossil Fuels, "National coal phase-out announcements in
-Europe" (2021) —
-`text_docs/literature/BeyondFossilFuels_2021_coal_phaseout_announcements.pdf`
-— plus more recent tracker updates via
-<https://beyondfossilfuels.org/europes-coal-exit/>. Picture: most Western/
-Southern European coal-burning countries target **2025-2033** (Greece 2025,
-Spain/Slovakia 2030, Croatia/Slovenia 2033), a middle cluster around
-**2032-2040** (Romania 2032, Bulgaria 2038-40, Germany legally 2038 though
-its current government is discussing 2030), and **Poland is the major
-outlier**, holding a 2049 hard-coal phase-out date. A single "EU coal
-phase-out by 2030" simplification is reasonable for most of Europe but
-materially wrong for Poland specifically, which is not a small producer.
-**Not yet modelled numerically** — needs a decision on whether to (a)
-ignore Poland's later date as a simplification, explicitly flagged, or (b)
-carry a small residual coal allowance out to ~2040-2049 to reflect it.
-
-## 6. Open items / next steps
-
-- **Scope decision**: Norway+UK only, or add a small "EU-domestic tier 2"
-  (Denmark, Romania Neptun Deep, Poland)?
-- **Sigmoid shape (t0, k)**: needs discussion — the three variants above are
-  placeholders. Worth deciding whether the choice should itself be
-  anchored to something (e.g. matching the NO+UK ceiling's own inflection
-  shape) rather than picked freely.
-- **Coal**: not yet quantified; needs the 2030-vs-Poland decision above
-  before adding numbers.
+- **Coal decline curve**: currently held flat at the 2020 level for the
+  whole horizon (a deliberate upper bound, see Section 4.3) rather than
+  reflecting actual mine/plant retirements already underway. A real
+  production-decline curve grounded in national retirement schedules
+  (Germany's Kohleausstiegsgesetz, Poland's PEP2040, etc.) would tighten
+  this, but was time-boxed out of this session.
+  Additionally: consider a "second EU-domestic tier" for Denmark, Romania
+  (Neptun Deep gas), and Poland's small conventional/shale gas output,
+  which are still folded into the non-European residual.
+- **Smoothstep shape**: the three variants' *target* endpoints (100/80/60%
+  by 2050) are now bounded correctly by construction, but the *steepness*
+  of the climb between 2020 and 2050 is still a free choice baked into the
+  smoothstep polynomial's fixed form — worth discussing whether that should
+  itself be anchored to something.
 - **Download Sodir's primary Resource Report 2024 PDF** directly (currently
   only searched/summarized, not saved to `text_docs/literature/`).
 - **NSTA source is the 2019-vintage PDF**, not the current 2025 data used
@@ -259,8 +276,8 @@ carry a small residual coal allowance out to ~2040-2049 to reflect it.
   NSTA's more recent output, not a directly downloaded primary document).
   Should locate and download NSTA's current production-projection report.
 - **African pipeline tier and LNG residual** (your second/third tiers)
-  entirely unaddressed — this document only covers the Norway+UK "safe
-  domestic" tier.
+  entirely unaddressed — this document only covers the "safe domestic"
+  tier (Norway + UK + EU coal).
 - Norway's 2030/2040/2045 figures are back-solved/interpolated, not
   directly reported — flagged inline above, worth tightening if the Sodir
   primary report has more granular year-by-year figures.
