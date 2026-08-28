@@ -3562,6 +3562,7 @@ def add_land_transport(
             costs=costs,
             transport_demand_file=transport_demand_file,
             temp_air_total_file=temp_air_total_file,
+            cf_industry=cf_industry,
             options=options,
             spatial=spatial,
             nodes=nodes,
@@ -3705,6 +3706,7 @@ def _add_land_transport_endogenous(
     costs: pd.DataFrame,
     transport_demand_file: str,
     temp_air_total_file: str,
+    cf_industry: dict,
     options: dict,
     spatial: SimpleNamespace,
     nodes: pd.Index,
@@ -3793,7 +3795,7 @@ def _add_land_transport_endogenous(
     # --- ICE (oil) route ---
     add_carrier_buses(
         n=n, carrier="oil", costs=costs, spatial=spatial, options=options,
-        cf_industry=None,
+        cf_industry=cf_industry,
     )
     ice_efficiency = get_temp_efficency(
         options["transport_ice_efficiency"], temperature,
