@@ -1,0 +1,43 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.landtransport_test_myopic.yaml
+#
+# Follow-up myopic test for endogenous land transport, only run once the
+# overnight single-year 2050 test (config.landtransport_test_overnight.yaml)
+# has confirmed the core competition mechanism solves without issues.
+# 3 planning horizons, 168h (1 week) resolution for speed. Same "base
+# case" feature toggles otherwise.
+
+run:
+  name: "landtransport_test_myopic_168h"
+  shared_resources:
+    policy: false
+
+scenario:
+  clusters:
+  - 50
+  sector_opts:
+  - 168h
+  planning_horizons:
+  - 2030
+  - 2040
+  - 2050
+
+fossil_limit: false
+lulucf_deviation: false
+
+sector:
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false
+  land_transport_endogenous: true

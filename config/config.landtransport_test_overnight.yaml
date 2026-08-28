@@ -1,0 +1,44 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.landtransport_test_overnight.yaml
+#
+# Fast sanity/feasibility test for endogenous land transport
+# (land_transport_endogenous: true), on the land_transport_endogenous
+# branch. Single-year overnight run, 2050, 168h (1 week) resolution for
+# speed. Same "base case" feature toggles as config.run1_baseline_50_8h.yaml
+# (all other fork additions off) so the ONLY new thing being tested is
+# land transport endogenisation.
+
+run:
+  name: "landtransport_test_overnight_2050_168h"
+  shared_resources:
+    policy: false
+
+foresight: overnight
+
+scenario:
+  clusters:
+  - 50
+  sector_opts:
+  - 168h
+  planning_horizons:
+  - 2050
+
+fossil_limit: false
+lulucf_deviation: false
+
+sector:
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false
+  land_transport_endogenous: true
