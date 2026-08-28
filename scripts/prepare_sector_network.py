@@ -3549,6 +3549,55 @@ def add_land_transport(
     nodes,
 ) -> None:
     """
+    Add land transport demand, either endogenously (competing vehicle/fuel
+    Links on a shared demand bus, the optimiser picks the mix) or
+    exogenously (fixed year-indexed engine-type shares), selected by
+    ``options["land_transport_endogenous"]``. See
+    ``_add_land_transport_endogenous`` / ``_add_land_transport_exogenous``
+    for details of each.
+    """
+    if options.get("land_transport_endogenous", False):
+        _add_land_transport_endogenous(
+            n=n,
+            costs=costs,
+            transport_demand_file=transport_demand_file,
+            temp_air_total_file=temp_air_total_file,
+            options=options,
+            spatial=spatial,
+            nodes=nodes,
+        )
+    else:
+        _add_land_transport_exogenous(
+            n=n,
+            costs=costs,
+            transport_demand_file=transport_demand_file,
+            transport_data_file=transport_data_file,
+            avail_profile_file=avail_profile_file,
+            dsm_profile_file=dsm_profile_file,
+            temp_air_total_file=temp_air_total_file,
+            cf_industry=cf_industry,
+            options=options,
+            spatial=spatial,
+            investment_year=investment_year,
+            nodes=nodes,
+        )
+
+
+def _add_land_transport_exogenous(
+    n,
+    costs,
+    transport_demand_file,
+    transport_data_file,
+    avail_profile_file,
+    dsm_profile_file,
+    temp_air_total_file,
+    cf_industry,
+    options,
+    spatial,
+    investment_year,
+    nodes,
+) -> None:
+    """
     Add land transport demand and infrastructure to the network.
 
     Parameters
@@ -3649,6 +3698,157 @@ def add_land_transport(
             spatial,
             options,
         )
+
+
+def _add_land_transport_endogenous(
+    n: pypsa.Network,
+    costs: pd.DataFrame,
+    transport_demand_file: str,
+    temp_air_total_file: str,
+    options: dict,
+    spatial: SimpleNamespace,
+    nodes: pd.Index,
+) -> None:
+    """
+    Endogenous land transport: a single shared "land transport" demand bus
+    (fixed total service demand, same reference profile the exogenous path
+    uses before applying its config-defined shares) is fed by three
+    competing, freely-extendable Links -- oil (ICE), electricity (BEV),
+    hydrogen (FCEV) -- each converting from its own fuel bus at its own
+    temperature-corrected engine efficiency, so the optimiser picks the
+    technology mix from relative (fuel + annualised vehicle capex) cost,
+    instead of it being pinned by config-defined year-indexed shares.
+
+    Deliberately simplified relative to the exogenous path's ``add_EVs``:
+    no separate BEV charger/battery Store, no DSM, no V2G, no charging
+    availability profile. Those add real value for charging-flexibility
+    questions, but they were also the source of a known infeasibility
+    failure mode in earlier attempts at this feature upstream (fixed
+    profiles interacting badly with brownfield capacity carryover -- the
+    same failure pattern already root-caused and fixed for industry-heat
+    must-run capacity on this branch). Dropping them keeps this first pass
+    focused on the actual question of interest -- does the optimiser make
+    a sensible endogenous fuel/technology choice -- without inheriting a
+    known source of numerical trouble. Charging flexibility can be added
+    back later once the core competition is validated.
+
+    Vehicle capital costs are NOT in technology-data (checked: no
+    "Passenger car"-type cost entries exist for this fork) and are
+    PLACEHOLDER estimates from a quick 2026 market check (EU average BEV
+    ~EUR44,500, assumed ICE ~EUR30,000, assumed FCEV ~EUR60,000 -- FCEV
+    passenger cars have no real EU consumer market to benchmark against),
+    a 14-year vehicle lifetime, 7% discount rate, and representative
+    annual per-vehicle energy consumption implied by each technology's own
+    efficiency at ~12,500 km/yr. Applied as ``marginal_cost`` (EUR per MWh
+    of the shared demand served), not ``capital_cost``, to avoid needing an
+    arbitrary MW-per-vehicle power-rating conversion -- this is simpler but
+    means the model can freely reallocate capacity year to year with no
+    capex lock-in penalty for switching technologies. NEEDS PROPER
+    TECHNOLOGY-DATA SOURCING before this is used for anything beyond a
+    feasibility/mechanism test.
+    """
+    transport = pd.read_csv(transport_demand_file, index_col=0, parse_dates=True)
+    temperature = xr.open_dataarray(temp_air_total_file).to_pandas()
+    p_set = transport[nodes].loc[n.snapshots]
+
+    n.add("Carrier", "land transport")
+    n.add(
+        "Bus",
+        nodes,
+        suffix=" land transport",
+        location=nodes,
+        carrier="land transport",
+        unit="land transport",
+    )
+    n.add(
+        "Load",
+        nodes,
+        suffix=" land transport",
+        bus=nodes + " land transport",
+        carrier="land transport",
+        p_set=p_set,
+    )
+
+    # --- placeholder vehicle-capex-derived marginal cost, EUR/MWh served ---
+    # see docstring for sourcing and caveats.
+    discount_rate = 0.07
+    lifetime_years = 14
+    annuity = discount_rate / (1 - (1 + discount_rate) ** (-lifetime_years))
+    km_per_year = 12_500  # representative EU passenger car annual distance
+
+    def capital_charge_per_mwh(vehicle_capex_eur, efficiency_100km_per_mwh):
+        # options["transport_*_efficiency"] is in 100km driven per MWh of
+        # fuel (a LARGER number = more efficient) -- confirmed against
+        # config.default.yaml values (EV=53.19, ICE=16.07, FC=30.0), which
+        # only make physical sense as ~18.8/62.2/33.3 kWh per 100km
+        # (realistic EV/ICE/FCEV consumption) under this convention, not
+        # its inverse.
+        annual_mwh = (km_per_year / 100) / efficiency_100km_per_mwh
+        return vehicle_capex_eur * annuity / annual_mwh
+
+    ev_marginal_cost = capital_charge_per_mwh(44_500, options["transport_electric_efficiency"])
+    ice_marginal_cost = capital_charge_per_mwh(30_000, options["transport_ice_efficiency"])
+    fc_marginal_cost = capital_charge_per_mwh(60_000, options["transport_fuel_cell_efficiency"])
+
+    # --- ICE (oil) route ---
+    add_carrier_buses(
+        n=n, carrier="oil", costs=costs, spatial=spatial, options=options,
+        cf_industry=None,
+    )
+    ice_efficiency = get_temp_efficency(
+        options["transport_ice_efficiency"], temperature,
+        options["transport_heating_deadband_lower"], options["transport_heating_deadband_upper"],
+        options["ICE_lower_degree_factor"], options["ICE_upper_degree_factor"],
+    )
+    n.add(
+        "Link",
+        nodes,
+        suffix=" land transport oil",
+        bus0=spatial.oil.nodes,
+        bus1=nodes + " land transport",
+        bus2="co2 atmosphere",
+        carrier="land transport oil",
+        p_nom_extendable=True,
+        efficiency=ice_efficiency.loc[n.snapshots, nodes],
+        efficiency2=costs.at["oil", "CO2 intensity"],
+        marginal_cost=ice_marginal_cost,
+    )
+
+    # --- BEV (electricity) route ---
+    ev_efficiency = get_temp_efficency(
+        options["transport_electric_efficiency"], temperature,
+        options["transport_heating_deadband_lower"], options["transport_heating_deadband_upper"],
+        options["EV_lower_degree_factor"], options["EV_upper_degree_factor"],
+    )
+    n.add(
+        "Link",
+        nodes,
+        suffix=" land transport EV",
+        bus0=nodes,
+        bus1=nodes + " land transport",
+        carrier="land transport EV",
+        p_nom_extendable=True,
+        efficiency=ev_efficiency.loc[n.snapshots, nodes],
+        marginal_cost=ev_marginal_cost,
+    )
+
+    # --- FCEV (hydrogen) route ---
+    fc_efficiency = get_temp_efficency(
+        options["transport_fuel_cell_efficiency"], temperature,
+        options["transport_heating_deadband_lower"], options["transport_heating_deadband_upper"],
+        options["ICE_lower_degree_factor"], options["ICE_upper_degree_factor"],
+    )
+    n.add(
+        "Link",
+        nodes,
+        suffix=" land transport fuel cell",
+        bus0=spatial.h2.nodes,
+        bus1=nodes + " land transport",
+        carrier="land transport fuel cell",
+        p_nom_extendable=True,
+        efficiency=fc_efficiency.loc[n.snapshots, nodes],
+        marginal_cost=fc_marginal_cost,
+    )
 
 
 def build_heat_demand(

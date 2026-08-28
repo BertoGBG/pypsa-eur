@@ -853,6 +853,17 @@ sector:
   bev_avail_max: 0.95
   bev_avail_mean: 0.8
   v2g: true
+  # true: endogenous -- ICE (oil), BEV (electricity), FCEV (hydrogen)
+  #   compete on a shared per-node "land transport" demand bus, the
+  #   optimiser picks the cost-minimal mix (fuel + a placeholder
+  #   annualised-vehicle-capex marginal cost -- see
+  #   _add_land_transport_endogenous docstring, NEEDS PROPER
+  #   TECHNOLOGY-DATA SOURCING) subject to the economy-wide
+  #   CO2Limit/fossil_fuel_limit. Deliberately simplified vs. the
+  #   exogenous path: no BEV charger/battery Store/DSM/V2G.
+  # false: exogenous (original behaviour) -- land_transport_*_share below
+  #   fixes each technology's share per year regardless of relative cost.
+  land_transport_endogenous: false
   land_transport_fuel_cell_share:
     2020: 0
     2025: 0

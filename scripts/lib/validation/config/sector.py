@@ -507,6 +507,10 @@ class SectorConfig(BaseModel):
         True,
         description="Allows feed-in to grid from EV battery. This is only enabled if BEV demand-side management is enabled, and the share of vehicles participating is V2G is given by `bev_dsm_availability`.",
     )
+    land_transport_endogenous: bool = Field(
+        False,
+        description="If true, land transport technology choice is endogenous: ICE (oil), BEV (electricity), and FCEV (hydrogen) compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix (fuel cost plus a placeholder annualised-vehicle-capex marginal cost). Deliberately simplified vs. the exogenous path: no BEV charger/battery Store/DSM/V2G. If false, falls back to the original fixed year-indexed land_transport_*_share behaviour.",
+    )
 
     land_transport_fuel_cell_share: dict[int, float] = Field(
         default_factory=lambda: {
