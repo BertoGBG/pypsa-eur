@@ -7311,9 +7311,11 @@ def _add_shipping_endogenous(
 
     If options["shipping_gas_liquefaction"] is true, gas is first liquefied
     to LNG (own "CH4 liquefaction" Link, real capital cost -- an LNG plant,
-    not a ship retrofit) before the "shipping gas" Link draws from that LNG
+    not a ship retrofit) before the "shipping LNG" Link draws from that LNG
     bus instead of directly from the gas network, mirroring the optional
-    hydrogen liquefaction step below. The liquefaction step is
+    hydrogen liquefaction step below. The "shipping LNG" carrier name
+    reflects that ships bunker LNG in reality regardless of whether the
+    liquefaction step itself is modelled explicitly. The liquefaction step is
     electricity-driven, not gas-combusting: CH4 passes through at
     efficiency=1 (no gas is burned to run the process, matching the
     technology-data "methane-input" of 1.0), and the parasitic refrigeration
@@ -7417,11 +7419,11 @@ def _add_shipping_endogenous(
 
         n.add(
             "Link",
-            nodes + " shipping gas",
+            nodes + " shipping LNG",
             bus0=gas_bus,
             bus1=nodes + " shipping",
             bus2="co2 atmosphere",
-            carrier="shipping gas",
+            carrier="shipping LNG",
             p_nom_extendable=True,
             efficiency=options["shipping_gas_efficiency"] / oil_efficiency,
             efficiency2=costs.at["gas", "CO2 intensity"],

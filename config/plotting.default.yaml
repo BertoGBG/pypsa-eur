@@ -466,6 +466,7 @@ plotting:
     agriculture machinery electric: '#444578'
     shipping oil: "#808080"
     shipping gas: '#c9591a'
+    shipping LNG: '#c9591a'
     land transport oil: '#afafaf'
     # nuclear
     Nuclear: '#ff8c00'
@@ -742,6 +743,7 @@ plotting:
     shipping oil emissions: "#555555"
     shipping methanol emissions: '#666666'
     shipping gas emissions: '#a34410'
+    shipping LNG emissions: '#a34410'
     land transport oil emissions: '#777777'
     agriculture machinery oil emissions: '#333333'
     # other
