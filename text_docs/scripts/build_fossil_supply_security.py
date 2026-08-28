@@ -119,12 +119,18 @@ def no_mtco2(year):
 #    supply FLAT at its 2020 actual level for the whole horizon. This is a
 #    deliberate simplification: it ignores mines/plants already retired
 #    since 2020, so it's an upper bound, not a forecast.
-#    Source: same Eurostat GIC extraction as the historical anchor (SIEC
-#    C0000X0350-0370, solid fossil fuels), summed across the same
-#    33-country scope. 2020 = 617.2 MtCO2-eq (intensity 0.34 tCO2/MWh,
-#    blended coal/lignite). Top contributors: DE (176.6), PL (161.8),
-#    CZ (48.6) MtCO2-eq in 2020.
-COAL_2020_MTCO2 = 617.2
+#    CORRECTED (2026-08-28): uses domestic PRODUCTION, not consumption --
+#    hard coal is ~64% imported in this scope (2020: 1,052,769 GWh
+#    consumed vs. 380,259 GWh produced), while lignite is ~100% domestic
+#    (762,560 vs 746,533 GWh -- too low-density to economically import).
+#    Production-based, split by fuel: hard coal 127.8 MtCO2-eq (0.3361
+#    tCO2/MWh) + lignite 303.8 MtCO2-eq (0.4069 tCO2/MWh) = 431.6 total.
+#    Top contributors: PL (163.8, effectively all this scope's domestic
+#    hard coal plus its own lignite), DE (110.7, lignite only -- German
+#    hard-coal mining ended 2018), CZ (47.0). See
+#    text_docs/scripts/compare_coal_treatment.py for the full per-country
+#    breakdown and a three-way comparison (no coal / this / phase-out).
+COAL_2020_MTCO2 = 431.6
 def coal_mtco2(year):
     return COAL_2020_MTCO2  # held flat -- see comment above
 
