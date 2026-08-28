@@ -468,6 +468,7 @@ plotting:
     shipping gas: '#c9591a'
     shipping LNG: '#c9591a'
     land transport oil: '#afafaf'
+    land transport: '#5a5a5a'
     # nuclear
     Nuclear: '#ff8c00'
     Nuclear marginal: '#ff8c00'
