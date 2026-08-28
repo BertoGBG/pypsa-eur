@@ -1,97 +1,57 @@
 """
-Build the fossil-supply-security plot documented in
-text_docs/text/fossil_supply_security_methodology.md: a single figure with
+Build the two fossil-supply-security plot sets documented in
+text_docs/text/fossil_supply_security_methodology.md:
 
-1. A sigmoid transition of the TOTAL fossil-use limit (MtCO2-eq/yr) from a
-   real historical anchor (genuine 2020 actual, Eurostat Complete Energy
-   Balances / nrg_bal_c, Gross Inland Consumption, this fork's own
-   33-country data scope) down to a 2050 floor set by Norway+UK production
-   alone. Uses the "early transition" (t0=2032, k=0.35) shape as the single
-   reference curve, since it's the only one of the three originally-plotted
-   variants that actually reaches the Norway+UK floor by 2050.
-2. Norway (SODIR/Norwegian Offshore Directorate) + UK (NSTA) production,
-   converted to MtCO2-eq/yr, as the "European-safe" supply ceiling.
-3. The current CO2Limit trajectory (~1.9C pathway), extended back to 2020.
-4. On the secondary axis: the ratio of (2) over (1) per year -- how much of
-   the allowed total fossil use could, in principle, be met from Norway+UK
-   alone.
+  - "no coal": ceiling = Norway + UK gas+oil production only.
+  - "with coal": ceiling = Norway + UK + EU-domestic coal+lignite
+    PRODUCTION (not consumption), held flat at 2020 level -- the
+    recommended treatment (see doc Section 4.3): since steel is
+    endogenous and the model's own CO2Limit will squeeze out coal
+    economically anyway, the security ceiling should reflect real
+    national production potential, not an assumed political phase-out.
 
-All conversion factors and anchors are documented inline and in the
-methodology .md; nothing here is a hidden assumption.
+Each variant gets:
+  1. A main plot: three total-fossil-limit curves (Norway+UK[+coal] share
+     reaching 100%/80%/60% by 2050, share bounded by construction via a
+     smoothstep polynomial -- see doc Section 3) + the ceiling + CO2Limit
+     (~1.9C pathway, extended back to 2020) on the left axis, the three
+     share curves (dotted, colour-matched) on the right axis.
+  2. A 2020-vs-2050 resource mix breakdown (stacked bars).
 
 Usage: python3 build_fossil_supply_security.py [out_dir]
 """
 import sys
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
 YEARS = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
+years_fine = np.linspace(2020, 2050, 121)
 
 # ---------------------------------------------------------------------------
-# 1. Historical anchor: GENUINE 2020 actual (not a proxy), Eurostat Complete
-#    Energy Balances (nrg_bal_c), Gross Inland Consumption (GIC) of natural
-#    gas (G3000) + oil & petroleum products excl. biofuels (O4000XBIO) +
-#    solid fossil fuels (C0000X0350-0370), summed across this fork's
-#    33-country scope (all 34 minus CH, which this Eurostat dataset does not
-#    cover). Source: data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz
-#    on the cluster (this fork's own live-pipeline data cache, published by
-#    Eurostat, archived there Feb 2026) -- a compact per-country extract is
-#    saved at text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv.
-#    Cross-check years also computed: 2018=3616.4, 2023=2628.7, 2024=2554.9
-#    MtCO2-eq -- note 2024 (latest actual) sits close to this config's own
-#    assumed fossil_limit_values[2025]=2600, a reassuring cross-validation.
-ANCHOR_YEAR = 2020
-ANCHOR_2020_MTCO2 = 2739.0  # genuine 2020 actual, MtCO2-eq -- see comment above.
+# Historical anchor: GENUINE 2020 actual, Eurostat Complete Energy Balances
+# (nrg_bal_c), Gross Inland Consumption (GIC) of natural gas (G3000) + oil &
+# petroleum products excl. biofuels (O4000XBIO) + solid fossil fuels
+# (C0000X0350-0370), summed across this fork's 33-country scope (all 34
+# minus CH, not covered by this Eurostat dataset). Source:
+# data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz on the
+# cluster; compact extract at
+# text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv.
+# Cross-check years: 2018=3616.4, 2023=2628.7, 2024=2554.9 MtCO2-eq -- 2024
+# sits close to this config's own fossil_limit_values[2025]=2600.
+ANCHOR_2020_MTCO2 = 2739.0
 
 # ---------------------------------------------------------------------------
-# 2. Norway: Norwegian Offshore Directorate (Sodir) "Resource Report 2024",
-#    three scenarios to 2050, million Sm3 o.e./yr. Central ("gradual
-#    decline") scenario points are directly reported; other years are
-#    linearly interpolated between reported points (flagged, not sourced).
-NO_SCM_OE = {2025: 243, 2030: 215, 2035: 160, 2050: 83}  # 2030 back-solved from ~3.5M boed
-NO_SCM_OE_HIGH_2050 = 158  # "High" scenario: ~65% of 2025 level
-
-SCM_OE_TO_MWH = 9.9  # 1 Sm3 oil equivalent ~ 9.9 MWh (IEA toe convention: 1 toe=11.63 MWh, ~0.85 toe/m3 oil)
-NO_BLENDED_INTENSITY = 0.22  # tCO2/MWh, Norway's gas-majority (~60-65% energy) oil/gas export mix,
-# interpolated between gas (0.198) and oil (0.2571) -- see methodology doc.
-
-# ---------------------------------------------------------------------------
-# 3. UK: NSTA-reported 2025 rate (1.09 million boed --> annualised) as e0,
-#    and NSTA's own remaining-recoverable-resource estimate to 2050 (218 Mt
-#    oil + 2060 TWh gas) as the cumulative "budget" B. Because a remaining
-#    recoverable reserve genuinely is a bounded, roughly-conserved physical
-#    quantity (unlike an assumed political fossil-supply target), the
-#    Victoria/Zeyen/Brown (Joule, 2022, supplemental S1) exponential-decay-
-#    to-a-budget functional form is legitimately applicable here -- see
-#    methodology doc Section 2 for why this is NOT used for the overall
-#    sigmoid.
-BOE_TO_MWH = 1.7
-TONNE_OIL_TO_MWH = 11.63
-
-uk_2025_boed = 1.09e6
-UK_E0_TWH = uk_2025_boed * 365 * BOE_TO_MWH / 1e6  # MWh -> TWh
-uk_oil_mt, uk_gas_twh = 218, 2060
-# uk_oil_mt is in MILLION tonnes; million-tonnes x MWh/tonne = million MWh = TWh directly.
-UK_BUDGET_TWH = uk_oil_mt * TONNE_OIL_TO_MWH + uk_gas_twh  # cumulative TWh, 2025-2050 (25 yr)
-
-# r=0 case of Victoria et al. eq. 2-3: m = 2*e0/B
-UK_M = 2 * UK_E0_TWH / UK_BUDGET_TWH
-
-def uk_decay_twh(t_since_2025):
-    return UK_E0_TWH * (1 + UK_M * t_since_2025) * np.exp(-UK_M * t_since_2025)
-
-UK_BLENDED_INTENSITY = (uk_oil_mt * TONNE_OIL_TO_MWH) / UK_BUDGET_TWH * 0.2571 + \
-                       (uk_gas_twh / UK_BUDGET_TWH) * 0.198  # energy-weighted oil/gas intensity
-
-def uk_mtco2(year):
-    return uk_decay_twh(year - 2025) * UK_BLENDED_INTENSITY
-
-# ---------------------------------------------------------------------------
-# Build Norway MtCO2/yr per year (interpolate the reported Sodir points)
+# Norway: Sodir "Resource Report 2024", three scenarios to 2050, million
+# Sm3 o.e./yr. Central ("gradual decline") points directly reported; other
+# years linearly interpolated (flagged, not sourced). 2030 back-solved
+# from a separately-reported ~3.5M boe/d rate.
+NO_SCM_OE = {2025: 243, 2030: 215, 2035: 160, 2050: 83}
+SCM_OE_TO_MWH = 9.9  # 1 Sm3 o.e. ~ 9.9 MWh (IEA: 1 toe=11.63 MWh, ~0.85 toe/m3 oil)
+NO_BLENDED_INTENSITY = 0.22  # tCO2/MWh, gas-majority oil/gas export mix blend
 no_years_reported = sorted(NO_SCM_OE)
+
 def no_mtco2(year):
     if year in NO_SCM_OE:
         scm = NO_SCM_OE[year]
@@ -106,196 +66,160 @@ def no_mtco2(year):
     return scm * SCM_OE_TO_MWH * NO_BLENDED_INTENSITY
 
 # ---------------------------------------------------------------------------
-# 4. EU-domestic coal: treated like Norway/UK gas+oil -- a physically/
-#    domestically available resource, NOT pre-phased-out by an assumed
-#    policy date. If coal ends up unused in the model, that should come
-#    from the CO2Limit constraint actually biting, not from an artificial
-#    exclusion baked into the security ceiling itself. Reserves (unlike
-#    UK's depleting North Sea fields) are not the binding constraint here --
-#    Germany's lignite basins and Poland's coal reserves alone cover
-#    decades at current extraction rates -- so, absent a production-decline
-#    curve grounded in actual mine-closure schedules (not attempted here,
-#    time-boxed), the simplest defensible ceiling is to hold domestic coal
-#    supply FLAT at its 2020 actual level for the whole horizon. This is a
-#    deliberate simplification: it ignores mines/plants already retired
-#    since 2020, so it's an upper bound, not a forecast.
-#    CORRECTED (2026-08-28): uses domestic PRODUCTION, not consumption --
-#    hard coal is ~64% imported in this scope (2020: 1,052,769 GWh
-#    consumed vs. 380,259 GWh produced), while lignite is ~100% domestic
-#    (762,560 vs 746,533 GWh -- too low-density to economically import).
-#    Production-based, split by fuel: hard coal 127.8 MtCO2-eq (0.3361
-#    tCO2/MWh) + lignite 303.8 MtCO2-eq (0.4069 tCO2/MWh) = 431.6 total.
-#    Top contributors: PL (163.8, effectively all this scope's domestic
-#    hard coal plus its own lignite), DE (110.7, lignite only -- German
-#    hard-coal mining ended 2018), CZ (47.0). See
-#    text_docs/scripts/compare_coal_treatment.py for the full per-country
-#    breakdown and a three-way comparison (no coal / this / phase-out).
+# UK: NSTA 2025 rate (1.09M boe/d) as e0, remaining-recoverable-resource
+# (218 Mt oil + 2060 TWh gas) as the cumulative "budget" B -- legitimately
+# fit with the Victoria/Zeyen/Brown (Joule 2022) decay-to-a-budget formula
+# since a remaining reserve genuinely is a bounded physical quantity
+# (unlike an assumed political target -- see doc Section 2).
+BOE_TO_MWH = 1.7
+TONNE_OIL_TO_MWH = 11.63
+UK_E0_TWH = 1.09e6 * 365 * BOE_TO_MWH / 1e6
+uk_oil_mt, uk_gas_twh = 218, 2060
+UK_BUDGET_TWH = uk_oil_mt * TONNE_OIL_TO_MWH + uk_gas_twh
+UK_M = 2 * UK_E0_TWH / UK_BUDGET_TWH  # r=0 closed form: m = 2*e0/B
+UK_BLENDED_INTENSITY = (uk_oil_mt * TONNE_OIL_TO_MWH) / UK_BUDGET_TWH * 0.2571 + \
+                       (uk_gas_twh / UK_BUDGET_TWH) * 0.198
+
+def uk_mtco2(year):
+    t = max(year, 2025) - 2025
+    return UK_E0_TWH * (1 + UK_M * t) * np.exp(-UK_M * t) * UK_BLENDED_INTENSITY
+
+def nouk_mtco2(year):
+    return no_mtco2(year) + uk_mtco2(year)
+
+# ---------------------------------------------------------------------------
+# EU-domestic coal+lignite: PRODUCTION (not consumption -- hard coal is
+# ~64% imported in this scope, lignite ~100% domestic; see doc Section
+# 4.3), held flat at 2020 level as the RECOMMENDED treatment: since steel
+# is endogenous in this model and competes coal(BOF)-route against
+# EAF+H2-DRI, and CO2Limit will squeeze out coal economically anyway, the
+# security ceiling should reflect real national production potential, not
+# an assumed political phase-out (that was tried as an exploratory Poland
+# 2035 override -- see compare_coal_treatment.py -- and dropped as the
+# recommended path per that discussion).
+# 2020 = 431.6 MtCO2-eq (hard coal 127.8 @ 0.3361 tCO2/MWh + lignite 303.8
+# @ 0.4069 tCO2/MWh). Top contributors: PL 163.8 (effectively all this
+# scope's domestic hard coal, plus its own lignite), DE 110.7 (lignite
+# only -- German hard-coal mining ended 2018), CZ 47.0.
 COAL_2020_MTCO2 = 431.6
+
 def coal_mtco2(year):
-    return COAL_2020_MTCO2  # held flat -- see comment above
+    return COAL_2020_MTCO2
 
 # ---------------------------------------------------------------------------
-# European-safe (Norway + UK + EU-domestic coal) ceiling, central case
-ceiling = {y: no_mtco2(y) + (uk_mtco2(y) if y >= 2025 else uk_mtco2(2025)) + coal_mtco2(y)
-           for y in YEARS}
-ceiling[2020] = no_mtco2(2020) + uk_mtco2(2025) + coal_mtco2(2020)  # no UK trend before 2025
-
-FLOOR_2050 = ceiling[2050]
-
-# ---------------------------------------------------------------------------
-# Total-fossil-limit curves, constructed so the Norway+UK+coal share is bounded
-# by construction (never exceeds its own 2050 target) rather than picked
-# freehand and checked after the fact (which is how the earlier draft ended
-# up with a >100% share at 2045).
-#
-# Method: define a SHARE curve share(t) = NO+UK(t) / TOTAL(t) directly,
-# using a smoothstep polynomial (3x^2 - 2x^3, x in [0,1]) that starts at the
-# real, empirically-grounded 2020 share (NO+UK(2020) / ANCHOR_2020, ~25%)
-# and reaches EXACTLY a chosen target share at 2050 -- smoothstep is a
-# genuine polynomial, monotonic, and hits both endpoints exactly (unlike a
-# logistic sigmoid, which only approaches its asymptote). Then invert:
-# TOTAL(t) = NO+UK(t) / share(t). Three variants share the same shape,
-# scaled to different 2050 targets (100% / 80% / 60% self-sufficiency),
-# per your request -- all three necessarily agree at 2020 (they all reduce
-# to TOTAL(2020) = ANCHOR_2020 exactly, since share(2020) is defined as
-# NO+UK(2020)/ANCHOR_2020 for every variant).
-def ceiling_continuous(year):
-    return (no_mtco2(year) + (uk_mtco2(year) if year >= 2025 else uk_mtco2(2025))
-            + coal_mtco2(year))
-
 def smoothstep(x):
     x = np.clip(x, 0.0, 1.0)
     return 3 * x**2 - 2 * x**3
 
-SHARE_2020 = ceiling_continuous(2020) / ANCHOR_2020_MTCO2
-
 SHARE_TARGETS = {
-    "100% NO+UK+coal by 2050": 1.00,
-    "80% NO+UK+coal by 2050": 0.80,
-    "60% NO+UK+coal by 2050": 0.60,
+    "100% by 2050": 1.00,
+    "80% by 2050": 0.80,
+    "60% by 2050": 0.60,
 }
 VARIANT_COLORS = {
-    "100% NO+UK+coal by 2050": "tab:blue",
-    "80% NO+UK+coal by 2050": "tab:orange",
-    "60% NO+UK+coal by 2050": "tab:red",
+    "100% by 2050": "tab:blue",
+    "80% by 2050": "tab:orange",
+    "60% by 2050": "tab:red",
 }
 
-def share_curve(year, target):
-    x = (year - 2020) / (2050 - 2020)
-    return SHARE_2020 + (target - SHARE_2020) * smoothstep(x)
-
-def total_curve(year, target):
-    return ceiling_continuous(year) / share_curve(year, target)
-
-years_fine = np.linspace(2020, 2050, 121)
-ceiling_years = sorted(ceiling)
-
 # Current CO2Limit trajectory (net, CCS-credited), from this config's
-# co2_budget fractions of 1990 levels -- corresponds to a ~1.9C global
-# temperature-increase pathway (per user's own model calibration).
-# 2020 added: CO2Limit(year) = base_1990 x co2_budget_fraction[year], with
-# base_1990 back-solved from the 2025-2050 values (base_1990 = 2983.3/0.648
-# = 4603.6 MtCO2, consistent to within rounding across all five points).
-# co2_budget fractions: 2020=0.72, 2025=0.648, 2030=0.45, 2035=0.25,
-# 2040=0.1, 2045=0.05, 2050=0.0.
+# co2_budget fractions of 1990 levels -- ~1.9C pathway. 2020 added:
+# CO2Limit(year) = base_1990 x fraction[year], base_1990 back-solved as
+# 2983.3/0.648 = 4603.6 MtCO2, consistent across all points to rounding.
 CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
                  2040: 460.4, 2045: 230.2, 2050: 0.0}
 
-# ---------------------------------------------------------------------------
-# Single combined plot: left axis = MtCO2-eq/yr (three total-limit curves,
-# NO+UK ceiling, CO2Limit); right axis = the three share curves, dotted,
-# each colour-matched to its total-limit curve.
-fig, ax1 = plt.subplots(figsize=(9.5, 6))
-ax2 = ax1.twinx()
 
-for label, target in SHARE_TARGETS.items():
-    color = VARIANT_COLORS[label]
-    ax1.plot(years_fine, [total_curve(y, target) for y in years_fine], color=color, lw=2,
-              label=f"Total fossil-use limit ({label})")
-    ax2.plot(years_fine, [100 * share_curve(y, target) for y in years_fine], color=color,
-              lw=1.5, ls=":", label=f"Norway+UK+coal share ({label})")
+def build_variant(name, ceiling_fn, mix_components, out_prefix):
+    """ceiling_fn(year) -> MtCO2-eq; mix_components: dict label -> fn(year)."""
+    ceiling = {y: ceiling_fn(y) for y in YEARS}
+    anchor = ANCHOR_2020_MTCO2
+    share_2020 = ceiling[2020] / anchor
 
-ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
-          label="Norway+UK+coal ceiling (central)")
-ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
-          lw=1.5, label="CO2Limit, current config (~1.9C)")
-ax1.set_xlabel("Year")
-ax1.set_ylabel("MtCO2-eq/yr")
+    def share_curve(year, target):
+        x = (year - 2020) / 30
+        return share_2020 + (target - share_2020) * smoothstep(x)
 
-ax2.set_ylabel("Norway+UK+coal share of total fossil-use limit (%)")
-ax2.set_ylim(0, 110)
+    def total_curve(year, target):
+        return ceiling_fn(year) / share_curve(year, target)
 
-lines1, labels1 = ax1.get_legend_handles_labels()
-lines2, labels2 = ax2.get_legend_handles_labels()
-ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=7.5)
-ax1.set_title("Fossil-use limit variants (Norway+UK+coal share reaches 100%/80%/60% by 2050)")
-fig.tight_layout()
-fig.savefig(f"{out_dir}/fossil_supply_security.png", dpi=150)
-plt.close(fig)
+    # --- main plot ---
+    fig, ax1 = plt.subplots(figsize=(9.5, 6))
+    ax2 = ax1.twinx()
+    for label, target in SHARE_TARGETS.items():
+        color = VARIANT_COLORS[label]
+        ax1.plot(years_fine, [total_curve(y, target) for y in years_fine], color=color, lw=2,
+                  label=f"Total fossil-use limit ({label})")
+        ax2.plot(years_fine, [100 * share_curve(y, target) for y in years_fine], color=color,
+                  lw=1.5, ls=":", label=f"{name} share ({label})")
+    ceiling_years = sorted(ceiling)
+    ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
+              label=f"{name} ceiling")
+    ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
+              lw=1.5, label="CO2Limit, current config (~1.9C)")
+    ax1.set_xlabel("Year")
+    ax1.set_ylabel("MtCO2-eq/yr")
+    ax2.set_ylabel(f"{name} share of total fossil-use limit (%)")
+    ax2.set_ylim(0, 110)
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=7.5)
+    ax1.set_title(f"Fossil-use limit variants -- {name}")
+    fig.tight_layout()
+    fig.savefig(f"{out_dir}/{out_prefix}_security.png", dpi=150)
+    plt.close(fig)
 
-# ---------------------------------------------------------------------------
-print("Norway+UK+coal ceiling (MtCO2-eq/yr):")
-for y in ceiling_years:
-    print(f"  {y}: NO={no_mtco2(y):.1f}  UK={uk_mtco2(y) if y>=2025 else float('nan'):.1f}  "
-          f"Coal={coal_mtco2(y):.1f}  total={ceiling[y]:.1f}")
-print(f"\nUK decay fit: e0={UK_E0_TWH:.1f} TWh/yr, budget={UK_BUDGET_TWH:.1f} TWh, m={UK_M:.4f}/yr")
-print(f"UK blended intensity: {UK_BLENDED_INTENSITY:.4f} tCO2/MWh")
-print(f"\nSHARE_2020 (Norway+UK+coal / ANCHOR_2020): {SHARE_2020*100:.1f}%")
-print(f"ANCHOR_2020: {ANCHOR_2020_MTCO2} MtCO2-eq/yr")
-print("\nThree total-limit variants vs Norway+UK+coal ceiling vs CO2Limit:")
-for label, target in SHARE_TARGETS.items():
-    print(f"\n-- {label} --")
+    # --- 2050 mix breakdown ---
+    mix_years = [2020, 2050]
+    colors = plt.get_cmap("tab10").colors
+    fig, ax = plt.subplots(figsize=(7, 5))
+    bottoms = np.zeros(len(mix_years))
+    x = np.arange(len(mix_years))
+    for i, (comp, fn) in enumerate(mix_components.items()):
+        vals = [fn(y) for y in mix_years]
+        ax.bar(x, vals, bottom=bottoms, label=comp, color=colors[i % 10], width=0.5)
+        for xi, (v, b) in enumerate(zip(vals, bottoms)):
+            if v > 15:
+                ax.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8, color="white")
+        bottoms += np.array(vals)
+    for xi in range(len(mix_years)):
+        ax.text(xi, bottoms[xi] + 15, f"total: {bottoms[xi]:.0f}", ha="center", fontsize=9)
+    ax.axhline(ANCHOR_2020_MTCO2, color="red", ls="--", lw=1)
+    ax.text(len(mix_years) - 0.3, ANCHOR_2020_MTCO2 + 15,
+             f"2020 actual total fossil use: {ANCHOR_2020_MTCO2:.0f}", color="red", fontsize=8, ha="right")
+    ax.set_xticks(x)
+    ax.set_xticklabels([str(y) for y in mix_years])
+    ax.set_ylabel("MtCO2-eq/yr")
+    ax.set_title(f"European-safe fossil resource mix: 2020 vs. 2050 -- {name}")
+    ax.legend(loc="upper right", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(f"{out_dir}/{out_prefix}_mix_2050.png", dpi=150)
+    plt.close(fig)
+
+    # --- print table ---
+    print(f"\n=== {name} ===")
+    print(f"share(2020) = {share_2020*100:.1f}%")
     for y in YEARS:
-        print(f"  {y}: total={total_curve(y, target):.1f}  NO+UK_ceiling={ceiling[y]:.1f}  "
-              f"CO2Limit={CO2LIMIT_1P9C.get(y)}  share={100*share_curve(y, target):.1f}%")
+        comps = "  ".join(f"{c}={fn(y):.1f}" for c, fn in mix_components.items())
+        print(f"  {y}: ceiling={ceiling[y]:.1f}  ({comps})  CO2Limit={CO2LIMIT_1P9C.get(y)}")
+    for label, target in SHARE_TARGETS.items():
+        print(f"  -- {label} --")
+        for y in YEARS:
+            print(f"    {y}: total={total_curve(y, target):.1f}  share={100*share_curve(y, target):.1f}%")
+    print(f"Saved {out_dir}/{out_prefix}_security.png")
+    print(f"Saved {out_dir}/{out_prefix}_mix_2050.png")
+
 
 # ---------------------------------------------------------------------------
-# 2050 mix breakdown: Norway / UK / EU-domestic coal, for context also
-# shown alongside the 2020 mix (same three components) and the 2020 ANCHOR
-# total (which additionally includes non-European-sourced gas/oil/coal not
-# broken out here -- see the gap between the "2020 anchor" bar and the sum
-# of the three components).
-mix_years = [2020, 2050]
-components = ["Norway (gas+oil)", "UK (gas+oil)", "EU-domestic coal"]
-mix_colors = ["#1f77b4", "#7f7f7f", "#2c2c2c"]
-
-fig, ax = plt.subplots(figsize=(7, 5))
-bottoms = np.zeros(len(mix_years))
-values_by_component = {
-    "Norway (gas+oil)": [no_mtco2(y) for y in mix_years],
-    "UK (gas+oil)": [uk_mtco2(2025) if y < 2025 else uk_mtco2(y) for y in mix_years],
-    "EU-domestic coal": [coal_mtco2(y) for y in mix_years],
-}
-x = np.arange(len(mix_years))
-for comp, color in zip(components, mix_colors):
-    vals = values_by_component[comp]
-    ax.bar(x, vals, bottom=bottoms, label=comp, color=color, width=0.5)
-    for xi, (v, b) in enumerate(zip(vals, bottoms)):
-        if v > 15:
-            ax.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8, color="white")
-    bottoms += np.array(vals)
-
-anchor_by_year = {2020: ANCHOR_2020_MTCO2, 2050: None}
-for xi, y in enumerate(mix_years):
-    ax.text(xi, bottoms[xi] + 15, f"total: {bottoms[xi]:.0f}", ha="center", fontsize=9)
-    if anchor_by_year.get(y):
-        ax.axhline(anchor_by_year[y], color="red", ls="--", lw=1)
-        ax.text(len(mix_years) - 0.3, anchor_by_year[y] + 15,
-                 f"2020 actual total fossil use: {anchor_by_year[y]:.0f}", color="red", fontsize=8, ha="right")
-
-ax.set_xticks(x)
-ax.set_xticklabels([str(y) for y in mix_years])
-ax.set_ylabel("MtCO2-eq/yr")
-ax.set_title("European-safe fossil resource mix: 2020 vs. 2050")
-ax.legend(loc="upper right", fontsize=9)
-fig.tight_layout()
-fig.savefig(f"{out_dir}/fossil_supply_mix_2050.png", dpi=150)
-plt.close(fig)
-
-print(f"\n2050 mix breakdown (MtCO2-eq): Norway={no_mtco2(2050):.1f}  UK={uk_mtco2(2050):.1f}  "
-      f"Coal={coal_mtco2(2050):.1f}  TOTAL={ceiling[2050]:.1f}")
-print(f"2020 mix breakdown (MtCO2-eq): Norway={no_mtco2(2020):.1f}  UK={uk_mtco2(2025):.1f}  "
-      f"Coal={coal_mtco2(2020):.1f}  TOTAL={ceiling[2020]:.1f}  (2020 actual total fossil use: {ANCHOR_2020_MTCO2})")
-
-print(f"\nSaved {out_dir}/fossil_supply_security.png")
-print(f"Saved {out_dir}/fossil_supply_mix_2050.png")
+build_variant(
+    "Norway+UK",
+    nouk_mtco2,
+    {"Norway (gas+oil)": no_mtco2, "UK (gas+oil)": uk_mtco2},
+    "fossil_supply_no_coal",
+)
+build_variant(
+    "Norway+UK+coal",
+    lambda y: nouk_mtco2(y) + coal_mtco2(y),
+    {"Norway (gas+oil)": no_mtco2, "UK (gas+oil)": uk_mtco2, "EU-domestic coal+lignite": coal_mtco2},
+    "fossil_supply_with_coal",
+)

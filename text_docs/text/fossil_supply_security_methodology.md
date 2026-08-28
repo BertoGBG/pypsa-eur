@@ -5,11 +5,16 @@ Branch: `heat_industry`. Relates to `fossil_limit` / `fossil_limit_values` in
 `scripts/prepare_sector_network.py`.
 
 Companion scripts: `text_docs/scripts/build_fossil_supply_security.py`
-(produces `fossil_supply_security.png` and `fossil_supply_mix_2050.png`)
-and `text_docs/scripts/compare_coal_treatment.py` (produces
-`coal_treatment_comparison.png` and `coal_treatment_2050_mix.png`, a
-three-way no-coal/flat-coal/phased-coal comparison) — both print their
-full numeric tables to stdout.
+builds the **two kept variants** — `fossil_supply_no_coal_security.png` /
+`_mix_2050.png` (Norway+UK gas+oil only) and
+`fossil_supply_with_coal_security.png` / `_mix_2050.png` (Norway+UK+EU-
+domestic coal+lignite, production-based, flat — the recommended
+treatment, see Section 4.3). `text_docs/scripts/compare_coal_treatment.py`
+produces `coal_treatment_comparison.png` / `_2050_mix.png`, a three-way
+no-coal/flat-coal/phased-coal-out comparison kept only as a labeled
+sensitivity case (Section 4.3.1) — the phase-out variant is **not** the
+recommended treatment. Both scripts print their full numeric tables to
+stdout.
 
 ## 1. The idea
 
@@ -120,7 +125,8 @@ they head toward different 2050 outcomes.
   form — this is the remaining "shape matters in the middle years"
   question, now scoped to just that, rather than also needing to separately
   verify the share stays bounded.
-  See `fossil_supply_security.png` (single combined figure, Section 4.4).
+  See `fossil_supply_with_coal_security.png` (Section 4.4) and, for the
+  no-coal comparison, `fossil_supply_no_coal_security.png`.
 
 ## 4. The Norway+UK+coal ceiling ("European-safe" fossil supply)
 
@@ -226,13 +232,43 @@ and Kosovo are non-EU and have no binding coal phase-out commitment found —
 treated as indefinitely available (no phase-out) in the comparison below,
 which is the realistic assumption, not an oversight.
 
-**Three-way comparison** (companion script
-`text_docs/scripts/compare_coal_treatment.py`, outputs
-`coal_treatment_comparison.png` and `coal_treatment_2050_mix.png`),
-produced to directly compare the effect of coal treatment on the
-Norway+UK+coal ceiling:
+#### 4.3.1. Why "flat, no phase-out" is the recommended treatment (not just a default)
 
-| Year | No coal | With coal (corrected, flat) | With coal phase-out (Poland 2035) |
+Checked directly against the model's own code (`scripts/prepare_sector_network.py`),
+not assumed:
+
+- **Coal is one shared, fungible pool.** A single `"EU coal"` bus/Generator
+  feeds *all three* downstream uses this fork models: coal power plants,
+  the generic `"coal for industry"` Load (JRC-IDEES industrial coal+coke
+  demand), and — since steel is now endogenous (upstream PR #1719) — the
+  **BOF steelmaking route**, which draws coking coal from `bus0="EU coal"`
+  (`costs.at["blast furnace-basic oxygen furnace", "coal-input"]`) and
+  competes economically against the EAF+H2-DRI route. The model does not
+  distinguish coal grade (coking vs. thermal) — it's all interchangeable
+  MWh from one pool at one CO2 intensity.
+- **Lignite is a fully separate pool, power-only.** A dedicated `"EU
+  lignite"` bus with no industrial or steel pathway found anywhere in the
+  code — matches reality (lignite is too low-grade for blast furnaces).
+
+Because the model can't distinguish "coal reserved for steel" from "coal
+for power" (it's one pool, allocated by the LP's own economics), imposing
+an external phase-out schedule on the *security ceiling* fights a
+distinction the model doesn't make, and pre-judges an outcome (how much
+coal survives, and for which use) that the model's own CO2Limit constraint
+plus the endogenous BOF-vs-EAF+H2-DRI competition is already set up to
+determine. **Conclusion: set the ceiling to real national production
+potential (flat, 431.6 MtCO2-eq) and let the model decide how much of it
+actually gets used, and for what — consistent with the general principle
+in Section 4 ("treat coal like the other fossil fuels")**.
+
+#### 4.3.2. Sensitivity case: phase-out schedule (NOT the recommended treatment)
+
+An earlier exploratory pass built a per-country phase-out schedule
+(companion script `text_docs/scripts/compare_coal_treatment.py`, outputs
+`coal_treatment_comparison.png` / `coal_treatment_2050_mix.png`), kept
+here only as a labeled sensitivity case:
+
+| Year | No coal | With coal (flat, recommended) | With coal phase-out (sensitivity) |
 |-----:|------:|------:|------:|
 | 2020 | 685.2 | 1116.8 | 1116.8 |
 | 2025 | 685.2 | 1116.8 | 1109.1 |
@@ -242,21 +278,21 @@ Norway+UK+coal ceiling:
 | 2045 | 239.7 |  671.3 |  307.7 |
 | 2050 | 181.6 |  613.2 |  249.6 |
 
-Phase-out years used (rounded onto the model's own 5-year grid): Greece
-2025, Hungary/Romania 2030, **Poland 2035 (overridden from its real 2049
-target, per instruction)**, Czechia 2035, Germany/Bulgaria 2040. Poland's
-override has an outsized effect — as ~38% of this scope's domestic
-coal+lignite, moving its phase-out 14 years earlier is most of the gap
-between the "flat" and "phase-out" curves from 2035 onward.
-
-(The phase-out timeline research done earlier — Beyond Fossil Fuels,
+This used **Poland overridden to 2035** (real target: 2049) alongside
+other countries' real dates (Greece 2025, Hungary/Romania 2030, Czechia
+2035, Germany/Bulgaria 2040). Poland alone is ~38% of this scope's
+domestic coal+lignite, so the override drove most of the gap. Beyond the
+override itself being unrealistic, this approach has two structural
+problems (see 4.3.1): it applies one cutoff to a mixed coal+lignite total
+that should really be split by end-use (lignite → power-only, hard coal →
+power *and* steel), and it bakes in a policy outcome the model's own
+CO2Limit + endogenous steel competition should be left to determine
+instead. The real per-country phase-out dates (Beyond Fossil Fuels,
 "National coal phase-out announcements in Europe," 2021,
-`text_docs/literature/BeyondFossilFuels_2021_coal_phaseout_announcements.pdf`
-— most of Western/Southern Europe targeting 2025-2033, Poland the outlier
-at 2049 — remains useful context for interpreting model *output*, i.e. for
-sanity-checking whether the solved model's own coal phase-down looks
-plausible against real policy commitments. It is deliberately NOT used to
-constrain the security ceiling itself, per the reasoning above.)
+`text_docs/literature/BeyondFossilFuels_2021_coal_phaseout_announcements.pdf`)
+remain useful for sanity-checking a solved model's own coal phase-down
+against real policy commitments — as a check on model *output*, not as an
+input constraint on the security ceiling.
 
 ### 4.4. Combined ceiling and comparison
 
@@ -294,27 +330,27 @@ Numbers below use the corrected production-based coal figure (431.6, not
   CCS on nearly all coal-fired generation/industry by 2050, or accepting
   that coal (however "secure") simply isn't used at that point regardless
   of availability.
-- See `coal_treatment_comparison.png` / `coal_treatment_2050_mix.png`
-  (companion script `compare_coal_treatment.py`) for a direct three-way
-  comparison of no-coal vs. flat-coal vs. phased-coal-out (Poland 2035)
-  treatments — phasing out coal on realistic national schedules (Poland
-  overridden to 2035 vs. its real 2049 target) cuts the 2050 domestic
-  ceiling from 613 down to 250 MtCO2-eq, since Poland alone is ~38% of
-  this scope's domestic coal+lignite.
+- The phase-out sensitivity case (Section 4.3.2) shows what an *unrealistic*
+  Poland-2035 override would do (2050 ceiling drops from 613 to 250
+  MtCO2-eq) — not adopted; kept only to illustrate how much Poland's own
+  date choice would matter if it were ever revisited with real dates.
 
-See `fossil_supply_security.png` for the combined figure and
-`fossil_supply_mix_2050.png` for the 2020-vs-2050 resource-mix breakdown
-(Norway / UK / EU-domestic coal, stacked).
+See `fossil_supply_with_coal_security.png` for the combined figure and
+`fossil_supply_with_coal_mix_2050.png` for the 2020-vs-2050 resource-mix
+breakdown (Norway / UK / EU-domestic coal+lignite, stacked). For the
+no-coal comparison, see `fossil_supply_no_coal_security.png` /
+`fossil_supply_no_coal_mix_2050.png`.
 
 ## 5. Open items / next steps
 
-- **Coal decline curve**: currently held flat at the 2020 level for the
-  whole horizon (a deliberate upper bound, see Section 4.3) rather than
-  reflecting actual mine/plant retirements already underway. A real
-  production-decline curve grounded in national retirement schedules
-  (Germany's Kohleausstiegsgesetz, Poland's PEP2040, etc.) would tighten
-  this, but was time-boxed out of this session.
-  Additionally: consider a "second EU-domestic tier" for Denmark, Romania
+- ~~Coal decline curve~~ — resolved (Section 4.3.1): held flat at 2020
+  production level deliberately, not a placeholder-pending-more-research.
+  A political phase-out schedule is explicitly NOT applied to the ceiling,
+  since the model's own CO2Limit + endogenous BOF-vs-EAF+H2-DRI steel
+  competition should determine actual coal use, and the model can't
+  distinguish coal end-use anyway (one fungible "EU coal" pool). The
+  phase-out sensitivity case (4.3.2) remains for comparison only.
+  Still open: consider a "second EU-domestic tier" for Denmark, Romania
   (Neptun Deep gas), and Poland's small conventional/shale gas output,
   which are still folded into the non-European residual.
 - **Smoothstep shape**: the three variants' *target* endpoints (100/80/60%
