@@ -120,10 +120,60 @@ def fossil_limit_values_from_config():
     return {int(year): mtco2 * 1e6 for year, mtco2 in values.items()}  # -> tCO2
 
 
+# Energy-security-based fossil supply ceiling, "80% Norway+UK by 2050,
+# no coal" variant -- text_docs/text/fossil_supply_security_methodology.md
+# Section 4.4, reproduced by text_docs/scripts/build_fossil_supply_security.py
+# (`build_variant("Norway+UK", nouk_mtco2, ..., "fossil_supply_no_coal")`,
+# SHARE_TARGETS["80% by 2050"]). Distinct from fossil_limit_values (the
+# climate-driven "medium scenario" cap already plotted): this is the
+# energy-security lens, kept here as a hardcoded snapshot of that script's
+# printed table -- if the security methodology's inputs change (Norway/UK
+# production data, share targets), re-run that script and update this dict.
+FOSSIL_SUPPLY_80PCT_NOCOAL_MTCO2 = {
+    2020: 2739.0, 2025: 2355.5, 2030: 1417.7, 2035: 725.4,
+    2040: 460.5, 2045: 315.6, 2050: 227.0,
+}
+
+
+def fossil_supply_80pct_nocoal_tco2():
+    return {y: mtco2 * 1e6 for y, mtco2 in FOSSIL_SUPPLY_80PCT_NOCOAL_MTCO2.items()}
+
+
 def co2limit_constant(n):
     if "CO2Limit" in n.global_constraints.index:
         return n.global_constraints.loc["CO2Limit", "constant"]
     return None
+
+
+def lulucf_deviation_series(run_config_override=None):
+    """
+    Per-year LULUCF deviation (MtCO2/yr) actually active for this run, i.e.
+    the amount subtracted from CO2Limit by add_co2limit() in
+    prepare_sector_network.py (co2_limit -= lulucf_deviation * 1e6 * nyears)
+    when lulucf_deviation=true. Reads config.default.yaml's
+    lulucf_deviation/lulucf_deviation_values, then layers the run's own
+    override config on top exactly like snakemake's --configfile ordering,
+    since e.g. config.run1_baseline_50_8h.yaml sets lulucf_deviation: false
+    while config.default.yaml's own default is true. Returns all-zero if
+    the deviation is inactive for this run (nothing subtracted).
+    """
+    base_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "config", "config.default.yaml"
+    )
+    with open(base_path) as f:
+        cfg = yaml.safe_load(f)
+    active = cfg.get("lulucf_deviation", False)
+    values = cfg.get("lulucf_deviation_values", {})
+    if run_config_override:
+        with open(run_config_override) as f:
+            override = yaml.safe_load(f) or {}
+        if "lulucf_deviation" in override:
+            active = override["lulucf_deviation"]
+        if "lulucf_deviation_values" in override:
+            values = override["lulucf_deviation_values"]
+    if not active:
+        return {int(y): 0.0 for y in values}
+    return {int(y): float(v) for y, v in values.items()}
 
 
 def co2limit_price(n):
@@ -153,6 +203,7 @@ def co2_balance_terms(n):
 
 def main():
     networks_dir, out_prefix = sys.argv[1], sys.argv[2]
+    run_config_override = sys.argv[3] if len(sys.argv) > 3 else None
     files = sorted(glob.glob(f"{networks_dir}/*.nc"), key=year_from_path)
 
     fossil_rows = {}
@@ -174,22 +225,34 @@ def main():
         balance_rows[year] = co2_balance_terms(n)
 
     fossil_limit_tco2 = fossil_limit_values_from_config()
+    fossil_supply_80_tco2 = fossil_supply_80pct_nocoal_tco2()
+    lulucf_mtco2 = lulucf_deviation_series(run_config_override)
 
     fossil_df = pd.DataFrame(fossil_rows).T.sort_index()
     fossil_df["total"] = fossil_df[["oil", "gas", "coal"]].sum(axis=1)
     fossil_df["CO2Limit_tCO2"] = pd.Series(co2limit)
     fossil_df["FossilLimit_tCO2"] = pd.Series(fossil_limit_tco2).reindex(fossil_df.index)
+    fossil_df["FossilSupplyLimit80_tCO2"] = pd.Series(fossil_supply_80_tco2).reindex(fossil_df.index)
+    fossil_df["LULUCF_delta_tCO2"] = pd.Series(
+        {y: v * 1e6 for y, v in lulucf_mtco2.items()}
+    ).reindex(fossil_df.index)
     fossil_df.to_csv(f"{out_prefix}_fossil_co2_by_carrier.csv")
     print(fossil_df)
 
     fuel_df = pd.DataFrame(fuel_rows).T.sort_index()
     fuel_df["CO2Limit_tCO2"] = pd.Series(co2limit)
+    fuel_df["LULUCF_delta_tCO2"] = pd.Series(
+        {y: v * 1e6 for y, v in lulucf_mtco2.items()}
+    ).reindex(fuel_df.index)
     # implied energy equivalent of the (possibly-disabled) fossil limit: the
     # limit is defined in MtCO2-eq across a mix of fuels, so there's no
     # single physical MWh figure -- convert using THIS run's own blended
     # tCO2/MWh intensity for that year (its actual oil/gas/coal mix).
     blended_intensity = fossil_df["total"] / fuel_df[["oil", "gas", "coal"]].sum(axis=1)
     fuel_df["FossilLimit_MWh"] = pd.Series(fossil_limit_tco2).reindex(fuel_df.index) / blended_intensity
+    fuel_df["FossilSupplyLimit80_MWh"] = (
+        pd.Series(fossil_supply_80_tco2).reindex(fuel_df.index) / blended_intensity
+    )
     fuel_df.to_csv(f"{out_prefix}_total_fuel_mwh.csv")
     print(fuel_df)
 
