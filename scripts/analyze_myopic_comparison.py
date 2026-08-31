@@ -126,6 +126,19 @@ def co2limit_constant(n):
     return None
 
 
+def co2limit_price(n):
+    """
+    CO2 shadow price (EUR/tCO2), i.e. the CO2Limit GlobalConstraint's own
+    KKT dual value -- same convention as scripts/plot_CDR_merit_order.py
+    on the a_CDRs branch: `mu` is stored with a cost-reduction sign
+    (negative when the constraint binds), so the price is `-mu`.
+    """
+    if "CO2Limit" not in n.global_constraints.index:
+        return None
+    mu = n.global_constraints.at["CO2Limit", "mu"]
+    return -mu if pd.notna(mu) else None
+
+
 def co2_balance_terms(n):
     try:
         eb = n.statistics.energy_balance(bus_carrier="co2", groupby=["carrier"])
@@ -146,6 +159,7 @@ def main():
     fuel_rows = {}
     balance_rows = {}
     co2limit = {}
+    co2price = {}
 
     for f in files:
         year = year_from_path(f)
@@ -156,6 +170,7 @@ def main():
         fossil_rows[year] = fossil_co2_by_carrier(raw_mwh)
         fuel_rows[year] = fuel_mwh_by_group(raw_mwh)
         co2limit[year] = co2limit_constant(n)
+        co2price[year] = co2limit_price(n)
         balance_rows[year] = co2_balance_terms(n)
 
     fossil_limit_tco2 = fossil_limit_values_from_config()
@@ -181,6 +196,13 @@ def main():
     balance_df = pd.DataFrame(balance_rows).T.sort_index()
     balance_df.to_csv(f"{out_prefix}_co2_balance_terms.csv")
     print(balance_df)
+
+    # CO2 shadow price kept in its own small CSV (EUR/tCO2, not tCO2 --
+    # keeping it out of co2_balance_terms.csv so the stacked-area plot
+    # never accidentally includes a non-tCO2 column in the stack).
+    price_df = pd.Series(co2price, name="CO2Price_EUR_per_tCO2").sort_index()
+    price_df.to_csv(f"{out_prefix}_co2_price.csv")
+    print(price_df)
 
 
 if __name__ == "__main__":

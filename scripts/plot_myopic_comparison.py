@@ -77,7 +77,21 @@ ax.stackplot(pos.index, [pos[c] for c in pos.columns], colors=[colors[c] for c i
 ax.stackplot(neg.index, [neg[c] for c in neg.columns], colors=[colors[c] for c in neg.columns], alpha=0.85)
 ax.axhline(0, color="black", lw=0.8)
 handles = [plt.Rectangle((0, 0), 1, 1, color=colors[c]) for c in df3.columns]
-ax.legend(handles, df3.columns, loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=7)
+
+# CO2 shadow price (CO2Limit dual, EUR/tCO2) on a right-axis marker line --
+# same extraction convention as scripts/plot_CDR_merit_order.py (a_CDRs).
+try:
+    price = pd.read_csv(f"{prefix}_co2_price.csv", index_col=0).iloc[:, 0]
+    ax_price = ax.twinx()
+    ax_price.plot(price.index, price.values, "D-", color="black", lw=1.2,
+                   markersize=6, label="CO2 price (EUR/tCO2)")
+    ax_price.set_ylabel("CO2 shadow price (EUR/tCO2)")
+    price_handles, price_labels = ax_price.get_legend_handles_labels()
+except FileNotFoundError:
+    price_handles, price_labels = [], []
+
+ax.legend(handles + price_handles, list(df3.columns) + price_labels,
+           loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=7)
 ax.set_xlabel("Year")
 ax.set_ylabel("CO2 balance term (MtCO2/yr)")
 ax.set_title(f"CO2-atmosphere-bus balance by term — {label}")
