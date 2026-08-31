@@ -128,6 +128,49 @@ they head toward different 2050 outcomes.
   See `fossil_supply_with_coal_security.png` (Section 4.4) and, for the
   no-coal comparison, `fossil_supply_no_coal_security.png`.
 
+### 3.1. Caveat: is the model's CO2Limit path validated against real EU emissions? (added 2026-08-31)
+
+Added after a direct question about why real 2020/2025 fossil consumption
+sits notably below this doc's CO2Limit(~1.9C) line -- **this is not evidence
+Europe is "doing great" against a genuinely binding target**. Checked
+against real, sourced data, not just internal derivation:
+
+- **One checkpoint is genuinely anchored to an official target**:
+  `config.default.yaml`'s `co2_budget[2030] = 0.45` (fraction of 1990)
+  implies exactly a 55% cut by 2030 -- this matches the EU's legally
+  binding European Climate Law (Regulation (EU) 2021/1119) / "Fit for 55"
+  target (at least 55% net GHG reduction vs. 1990 by 2030) almost exactly.
+  This one point is real, not arbitrary.
+- **The interim years (2020, 2025) are looser than what the EU had ALREADY
+  achieved in reality**: `co2_budget[2020]=0.72` implies only a 28.0% cut
+  by 2020, and `co2_budget[2025]=0.648` implies 35.2% by 2025. But the
+  EEA's own published figures (*Trends and projections in Europe 2024/2025*,
+  <https://www.eea.europa.eu/en/analysis/indicators/total-greenhouse-gas-emission-trends>,
+  press release
+  <https://www.eea.europa.eu/en/newsroom/news/trends-and-projections-greenhouse-gas-emissions-largely-on-track-to-2030-targets>)
+  report the EU27's real net GHG emissions were already roughly 31-34%
+  below 1990 by 2020 (a COVID-depressed year), reaching ~36-37% below 1990
+  by 2023 and ~40% (preliminary, varies by source vintage) by 2024. Real-
+  world progress had already overtaken this config's 2020 and 2025
+  checkpoints before those years even arrived.
+- **Two scope mismatches mean the above is directional, not precise**:
+  (1) this model's ~33-34-country scope (EU + UK + Norway + Balkans) differs
+  from the EU27-only scope of the official target and the EEA figures;
+  (2) this config's `base_1990` (4603.6 MtCO2, back-solved from
+  `co2_budget`) is a CO2-only, energy-system figure from this model's own
+  accounting, not the EU's full all-gas (CO2+CH4+N2O+F-gas), LULUCF-netted
+  ~4.9-5.0 GtCO2eq 1990 baseline -- the two "1990" denominators are close in
+  magnitude but not identical in composition.
+- **Conclusion**: the earlier finding that actual 2020 fossil consumption
+  (2739.0 MtCO2-eq, Eurostat GIC) sits below this doc's CO2Limit(2020)=
+  3314.9 reflects this model's own interim-year budget shape being
+  deliberately backloaded (shallow before 2030, steep after) rather than
+  tracking the real observed emissions trajectory -- not independent
+  confirmation that Europe is ahead of a real target. The 2030 checkpoint
+  is real and binding; 2020/2025 are not independently validated against
+  any official target and are, by the EEA's own numbers, already looser
+  than reality.
+
 ## 4. The Norway+UK+coal ceiling ("European-safe" fossil supply)
 
 **Scope**: Norway + UK (gas+oil) + EU-domestic coal (Section 4.3). Beyond
