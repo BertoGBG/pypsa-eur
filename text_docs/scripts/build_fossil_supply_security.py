@@ -26,8 +26,14 @@ import matplotlib.pyplot as plt
 
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 
-YEARS = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
-years_fine = np.linspace(2020, 2050, 121)
+# 2020 is still used internally as the share-curve's anchor point (real
+# Eurostat actual, see ANCHOR_2020_MTCO2 below) -- Section 3.1's caveat
+# means it's not a great *displayed* reference year (this model's own
+# CO2Limit(2020) checkpoint isn't independently validated the way 2030 is),
+# so plots/tables now start at 2025, the first year these myopic runs
+# actually solve.
+YEARS = [2025, 2030, 2035, 2040, 2045, 2050]
+years_fine = np.linspace(2025, 2050, 101)
 
 # ---------------------------------------------------------------------------
 # Historical anchor: GENUINE 2020 actual, Eurostat Complete Energy Balances
@@ -134,7 +140,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix):
     """ceiling_fn(year) -> MtCO2-eq; mix_components: dict label -> fn(year)."""
     ceiling = {y: ceiling_fn(y) for y in YEARS}
     anchor = ANCHOR_2020_MTCO2
-    share_2020 = ceiling[2020] / anchor
+    share_2020 = ceiling_fn(2020) / anchor  # still the curve's anchor point, just not displayed
 
     def share_curve(year, target):
         x = (year - 2020) / 30
@@ -155,7 +161,8 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix):
     ceiling_years = sorted(ceiling)
     ax1.plot(ceiling_years, [ceiling[y] for y in ceiling_years], "o--", color="black", lw=1.5,
               label=f"{name} ceiling")
-    ax1.plot(list(CO2LIMIT_1P9C), list(CO2LIMIT_1P9C.values()), "D-", color="tab:purple",
+    co2limit_shown = {y: v for y, v in CO2LIMIT_1P9C.items() if y in YEARS}
+    ax1.plot(list(co2limit_shown), list(co2limit_shown.values()), "D-", color="tab:purple",
               lw=1.5, label="CO2Limit, current config (~1.9C)")
     ax1.set_xlabel("Year")
     ax1.set_ylabel("MtCO2-eq/yr")
@@ -170,7 +177,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix):
     plt.close(fig)
 
     # --- 2050 mix breakdown ---
-    mix_years = [2020, 2050]
+    mix_years = [2025, 2050]
     colors = plt.get_cmap("tab10").colors
     fig, ax = plt.subplots(figsize=(7, 5))
     bottoms = np.zeros(len(mix_years))
@@ -185,12 +192,12 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix):
     for xi in range(len(mix_years)):
         ax.text(xi, bottoms[xi] + 15, f"total: {bottoms[xi]:.0f}", ha="center", fontsize=9)
     ax.axhline(ANCHOR_2020_MTCO2, color="red", ls="--", lw=1)
-    ax.text(len(mix_years) - 0.3, ANCHOR_2020_MTCO2 + 15,
+    ax.text(len(mix_years) - 0.3, ANCHOR_2020_MTCO2 - 70,
              f"2020 actual total fossil use: {ANCHOR_2020_MTCO2:.0f}", color="red", fontsize=8, ha="right")
     ax.set_xticks(x)
     ax.set_xticklabels([str(y) for y in mix_years])
     ax.set_ylabel("MtCO2-eq/yr")
-    ax.set_title(f"European-safe fossil resource mix: 2020 vs. 2050 -- {name}")
+    ax.set_title(f"European-safe fossil resource mix: 2025 vs. 2050 -- {name}")
     ax.legend(loc="upper right", fontsize=9)
     fig.tight_layout()
     fig.savefig(f"{out_dir}/{out_prefix}_mix_2050.png", dpi=150)
