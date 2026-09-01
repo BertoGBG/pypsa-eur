@@ -131,14 +131,20 @@ performance).
   | Upper (EUR200/tCO2e) | -376 | -374 | -376 |
 
   All values MtCO2e, 2040. S3 is the scenario the IEEP brief identifies as
-  aligned with the Commission's actual recommended target, so S3's lower
-  and upper bounds (-215 and -376) are used below as the 2040 anchors for
-  the two optimistic scenarios (BAU continues to use the independent
-  WEM-trend extrapolation, not an S3 number).
+  aligned with the Commission's actual recommended target. **Superseded
+  2026-09-01**: this table was originally used to anchor the two
+  optimistic scenarios' 2040 values (S3 lower/upper bounds, -215/-376).
+  Section 4 below now uses a simpler, non-literature-derived construction
+  for the weak/strong post-2030 shape instead (flat-hold at the 2030
+  forecast for weak; return to exactly zero by 2035, held flat, for
+  strong) — this table is kept as background/context on the spread the EC's
+  own Impact Assessment reports, not as the literal source of the numbers
+  below anymore.
 - No literature was found projecting the EU-27 LULUCF sink specifically for
-  2045 or 2050. Both the BAU and optimistic scenarios below hold their 2040
-  value flat beyond 2040, purely for lack of any sourced alternative — this
-  is a placeholder, not a forecast.
+  2045 or 2050. The BAU scenario holds its 2040 value flat beyond 2040 for
+  lack of any sourced alternative — this is a placeholder, not a forecast.
+  The optimistic scenarios' post-2030 shape is now a plain modelling
+  assumption rather than an extrapolation (see Section 4).
 
 ## 4. Three scenarios
 
@@ -172,36 +178,40 @@ independently sourced.
 | 2020 |                         0 |                                       0 |                                          0 |
 | 2025 |                        64 |                                      64 |                                         39 |
 | 2030 |                       127 |                                     127 |                                         77 |
-| 2035 |                       191 |                                     110 |                                          6 |
-| 2040 |                       254 |                                      94 |                                        -66 |
-| 2045 |                       318 |                                      94 |                                        -66 |
-| 2050 |                       381 |                                      94 |                                        -66 |
+| 2035 |                       191 |                                     127 |                                          0 |
+| 2040 |                       254 |                                     127 |                                          0 |
+| 2045 |                       318 |                                     127 |                                          0 |
+| 2050 |                       381 |                                     127 |                                          0 |
 
 **How each column is built:**
 
 - **BAU (central)** = straight-line continuation of the 2020->2030 WEM
   decline slope (12.7 MtCO2/yr^2). This is the scenario currently active in
-  `config.default.yaml` (unchanged numbers). It is the most literal reading
-  of "current trends continue, no new policy materializes" — consistent
-  with the peer-reviewed literature (Section 2), which reports an
-  accelerating, disturbance-driven decline with "no sign of reversal."
-  Because that literature suggests the decline could accelerate further,
-  even this BAU line may be optimistic relative to reality, not pessimistic.
-- **Optimistic — weak new policy** = 2030 WEM anchor (-183 MtCO2e/yr, same
-  as BAU's 2030 point by construction) interpolated/extrapolated to the
-  EC's own S3 lower-bound 2040 Impact-Assessment value (-215 MtCO2e/yr,
-  Table 3, EUR0/tCO2e land carbon price), then held flat 2040-2050 for lack of
-  further sourced data. Represents "existing EU policy continues, no new
-  *dedicated* LULUCF intervention, but the EC's own assumed baseline
-  policy trajectory holds" — already an improvement on pure trend
-  continuation, since the EC's baseline embeds some continued effort.
-- **Optimistic — strong new policy** = 2030 WAM anchor (-233 MtCO2e/yr,
-  "with additional measures") interpolated/extrapolated to the EC's
-  strongest 2040 scenario (-376 MtCO2e/yr), held flat thereafter.
-  Represents effective new post-2030 EU land-sink/bioeconomy policy landing
-  as intended — this scenario actually **overshoots** the 2030 target by
-  2040 (negative deviation, i.e. CO2Limit would be loosened, not
-  tightened).
+  `config.default.yaml` (unchanged numbers), and the one actually used by
+  both `run1_baseline` (deviation disabled) and `run2_full` (deviation
+  enabled) — neither run uses either of the two scenarios below. It is the
+  most literal reading of "current trends continue, no new policy
+  materializes" — consistent with the peer-reviewed literature (Section 2),
+  which reports an accelerating, disturbance-driven decline with "no sign
+  of reversal." Because that literature suggests the decline could
+  accelerate further, even this BAU line may be optimistic relative to
+  reality, not pessimistic.
+- **Optimistic — weak new policy** (simplified 2026-09-01): 2025/2030
+  anchors unchanged (64/127, same WEM-sourced 2030 point as BAU). From 2030
+  onward, the deviation is held flat at the 2030 forecast (127) rather than
+  continuing to decline — i.e. "existing policy holds the 2030 shortfall
+  steady, no further erosion and no further improvement." This replaces an
+  earlier, more literature-derived construction (EC S1 2040 Impact
+  Assessment anchor); simplified for now to a plain flat-hold assumption.
+- **Optimistic — strong new policy** (simplified 2026-09-01): 2025/2030
+  anchors unchanged (39/77, same WAM-sourced 2030 point). The deviation is
+  assumed to close to exactly **zero by 2035** (sink performance catches
+  up to the flat -310 MtCO2e/yr target, neither under- nor over-performing)
+  and holds at zero through 2050 — deliberately **not** allowed to go
+  negative (which would mean the sink overshoots the target and loosens
+  CO2Limit). This replaces an earlier construction that extrapolated to
+  the EC's strongest 2040 scenario and went negative from 2040; simplified
+  for now to a plain "recovers to on-target by 2035, then flat" assumption.
 
 ## 5. Open items / next steps
 
