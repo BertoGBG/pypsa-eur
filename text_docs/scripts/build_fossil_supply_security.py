@@ -20,11 +20,22 @@ Each variant gets:
 
 Usage: python3 build_fossil_supply_security.py [out_dir]
 """
+import os
 import sys
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+
+# Same official tech_colors as the results/ folder's plots (plot_myopic_
+# comparison.py), so fuel colours are consistent across every plot in this
+# fork, not just within this one script.
+_config_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "..", "config", "plotting.default.yaml"
+)
+with open(_config_path) as f:
+    TECH_COLORS = yaml.safe_load(f)["plotting"]["tech_colors"]
 
 # 2020 is still used internally as the share-curve's anchor point (real
 # Eurostat actual, see ANCHOR_2020_MTCO2 below) -- Section 3.1's caveat
@@ -131,6 +142,48 @@ def uk_energy_mwh(year):
     return UK_E0_TWH * (1 + UK_M * t) * np.exp(-UK_M * t) * 1e6  # -> MWh
 
 # ---------------------------------------------------------------------------
+# Gas/oil split for Norway and UK (added 2026-09-01, see doc Section 4.6),
+# for the per-fuel-coloured mix chart. Both back out an ENERGY-share
+# fraction from the blended intensity already chosen above, rather than
+# introducing new unsourced per-fuel data -- the fraction is held constant
+# across years in both cases (a simplification, flagged in the doc).
+#
+# Norway: NO_BLENDED_INTENSITY = 0.22 = x*0.198 + (1-x)*0.2571 (gas/oil
+# CO2 intensities) => x (gas energy share) = 0.6278.
+NO_GAS_ENERGY_SHARE = (0.2571 - NO_BLENDED_INTENSITY) / (0.2571 - 0.198)
+
+def no_gas_mtco2(year):
+    return no_energy_mwh(year) * NO_GAS_ENERGY_SHARE * 0.198 / 1e6
+
+def no_oil_mtco2(year):
+    return no_energy_mwh(year) * (1 - NO_GAS_ENERGY_SHARE) * 0.2571 / 1e6
+
+def no_gas_energy_mwh(year):
+    return no_energy_mwh(year) * NO_GAS_ENERGY_SHARE
+
+def no_oil_energy_mwh(year):
+    return no_energy_mwh(year) * (1 - NO_GAS_ENERGY_SHARE)
+
+# UK: same energy-share fraction as the cumulative 218 Mt oil / 2060 TWh
+# gas remaining-reserve budget used to build UK_BLENDED_INTENSITY --
+# assumes oil and gas deplete at the same relative rate under the single
+# decay curve (a simplification: the reserve mix could in reality shift
+# over 2025-2050, but no separate oil-only/gas-only decay data was found).
+UK_OIL_ENERGY_SHARE = (uk_oil_mt * TONNE_OIL_TO_MWH) / UK_BUDGET_TWH
+
+def uk_oil_mtco2(year):
+    return uk_energy_mwh(year) * UK_OIL_ENERGY_SHARE * 0.2571 / 1e6
+
+def uk_gas_mtco2(year):
+    return uk_energy_mwh(year) * (1 - UK_OIL_ENERGY_SHARE) * 0.198 / 1e6
+
+def uk_oil_energy_mwh(year):
+    return uk_energy_mwh(year) * UK_OIL_ENERGY_SHARE
+
+def uk_gas_energy_mwh(year):
+    return uk_energy_mwh(year) * (1 - UK_OIL_ENERGY_SHARE)
+
+# ---------------------------------------------------------------------------
 # EU-domestic coal+lignite: PRODUCTION (not consumption -- hard coal is
 # ~64% imported in this scope, lignite ~100% domestic; see doc Section
 # 4.3), held flat at 2020 level as the RECOMMENDED treatment: since steel
@@ -160,6 +213,36 @@ def coal_energy_mwh(year):
         + LIGNITE_2020_MTCO2 * 1e6 / LIGNITE_INTENSITY
     )
 
+def hard_coal_mtco2(year):
+    return HARD_COAL_2020_MTCO2
+
+def lignite_mtco2(year):
+    return LIGNITE_2020_MTCO2
+
+def hard_coal_energy_mwh(year):
+    return HARD_COAL_2020_MTCO2 * 1e6 / HARD_COAL_INTENSITY
+
+def lignite_energy_mwh(year):
+    return LIGNITE_2020_MTCO2 * 1e6 / LIGNITE_INTENSITY
+
+# ---------------------------------------------------------------------------
+# Per-fuel colour (matching the results/ folder's plots, config/plotting.
+# default.yaml tech_colors) + per-region hatch pattern (added 2026-09-01,
+# see doc Section 4.6), for the mix chart: colour identifies the FUEL,
+# hatch identifies the COUNTRY/REGION it comes from. Region hatches are
+# deliberately different symbols from the biomass sustainability hatches
+# ("//" / "\\") used on the same chart, so the two hatch "dimensions"
+# (origin vs. sustainability) don't visually collide.
+REGION_HATCH = {"Norway": ".", "UK": "x", "EU-domestic": "o"}
+FUEL_COMPONENTS = {
+    "Norway gas": (no_gas_mtco2, no_gas_energy_mwh, TECH_COLORS["gas"], REGION_HATCH["Norway"]),
+    "Norway oil": (no_oil_mtco2, no_oil_energy_mwh, TECH_COLORS["oil"], REGION_HATCH["Norway"]),
+    "UK gas": (uk_gas_mtco2, uk_gas_energy_mwh, TECH_COLORS["gas"], REGION_HATCH["UK"]),
+    "UK oil": (uk_oil_mtco2, uk_oil_energy_mwh, TECH_COLORS["oil"], REGION_HATCH["UK"]),
+    "EU-domestic hard coal": (hard_coal_mtco2, hard_coal_energy_mwh, TECH_COLORS["coal"], REGION_HATCH["EU-domestic"]),
+    "EU-domestic lignite": (lignite_mtco2, lignite_energy_mwh, TECH_COLORS["lignite"], REGION_HATCH["EU-domestic"]),
+}
+
 # ---------------------------------------------------------------------------
 # Biomass potential, sustainable vs unsustainable (added 2026-09-01, see doc
 # Section 4.5). Source: resources/base_myopic_50_8h/biomass_potentials_s_50_
@@ -172,6 +255,10 @@ def coal_energy_mwh(year):
 # dispatch (see the results/ folder's plots for actual myopic-run usage).
 BIOMASS_POTENTIAL_TWH = {
     2025: {"sustainable": 13.62, "unsustainable": 1595.69},
+    2030: {"sustainable": 465.64, "unsustainable": 1053.15},
+    2035: {"sustainable": 912.20, "unsustainable": 526.58},
+    2040: {"sustainable": 1366.73, "unsustainable": 0.0},
+    2045: {"sustainable": 1368.85, "unsustainable": 0.0},
     2050: {"sustainable": 1371.10, "unsustainable": 0.0},
 }
 
@@ -217,8 +304,10 @@ BIOMASS_COLORS = {"sustainable biomass": "#baa741", "unsustainable biomass": "#9
 BIOMASS_HATCHES = {"sustainable biomass": "//", "unsustainable biomass": "\\\\"}
 
 
-def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_components=None):
-    """ceiling_fn(year) -> MtCO2-eq; mix_components: dict label -> fn(year)."""
+def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_components=None, mix_component_keys=None):
+    """ceiling_fn(year) -> MtCO2-eq; mix_components: dict label -> fn(year)
+    (used for the ceiling/print-table, grouped by country); mix_component_keys:
+    list of FUEL_COMPONENTS keys (used for the mix chart, split by fuel)."""
     ceiling = {y: ceiling_fn(y) for y in YEARS}
     anchor = ANCHOR_2020_MTCO2
     share_2020 = ceiling_fn(2020) / anchor  # still the curve's anchor point, just not displayed
@@ -263,65 +352,71 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
     # visually distinct from the fossil/coal components since it represents
     # a different kind of quantity (a non-fossil alternative/substitute,
     # not part of the "secure fossil supply" ceiling itself).
-    mix_years = [2025, 2050]
-    colors = plt.get_cmap("tab10").colors
+    mix_years = YEARS  # all six horizons, not just the 2025/2050 endpoints
     x = np.arange(len(mix_years))
-    fig, (ax_co2, ax_energy) = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig, (ax_co2, ax_energy) = plt.subplots(1, 2, figsize=(19, 5.5))
 
     # -- left panel: MtCO2-eq --
     bottoms = np.zeros(len(mix_years))
-    for i, (comp, fn) in enumerate(mix_components.items()):
+    for comp in mix_component_keys:
+        fn, _, color, hatch = FUEL_COMPONENTS[comp]
         vals = [fn(y) for y in mix_years]
-        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=colors[i % 10], width=0.5)
+        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=color, width=0.6, hatch=hatch, edgecolor="white")
         for xi, (v, b) in enumerate(zip(vals, bottoms)):
             if v > 15:
-                ax_co2.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8, color="white")
+                ax_co2.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=7, color="white")
         bottoms += np.array(vals)
     for comp, kind in [("sustainable biomass", "sustainable"), ("unsustainable biomass", "unsustainable")]:
         vals = [biomass_mtco2(y, kind) for y in mix_years]
-        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
+        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=BIOMASS_COLORS[comp], width=0.6, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
         for xi, (v, b) in enumerate(zip(vals, bottoms)):
             if v > 15:
-                ax_co2.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8)
+                ax_co2.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=7)
         bottoms += np.array(vals)
     for xi in range(len(mix_years)):
-        ax_co2.text(xi, bottoms[xi] + 15, f"total: {bottoms[xi]:.0f}", ha="center", fontsize=9)
+        ax_co2.text(xi, bottoms[xi] + 15, f"{bottoms[xi]:.0f}", ha="center", fontsize=8)
     ax_co2.axhline(ANCHOR_2020_MTCO2, color="red", ls="--", lw=1)
-    ax_co2.text(len(mix_years) - 0.3, ANCHOR_2020_MTCO2 - 70,
-             f"2020 actual total fossil use: {ANCHOR_2020_MTCO2:.0f}", color="red", fontsize=8, ha="right")
+    ax_co2.text(0.3, ANCHOR_2020_MTCO2 - 70,
+             f"2020 actual total fossil use: {ANCHOR_2020_MTCO2:.0f}", color="red", fontsize=8, ha="left")
     ax_co2.set_xticks(x)
     ax_co2.set_xticklabels([str(y) for y in mix_years])
     ax_co2.set_ylabel("MtCO2-eq/yr")
     ax_co2.set_title("Emissions basis (MtCO2-eq/yr)")
-    ax_co2.legend(loc="upper right", fontsize=8)
+    ax_co2.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=7.5, borderaxespad=0)
 
     # -- right panel: TWh (native energy, fossil components + biomass) --
-    if energy_components is not None:
+    if mix_component_keys is not None:
         bottoms_e = np.zeros(len(mix_years))
-        for i, (comp, fn) in enumerate(energy_components.items()):
-            vals = [fn(y) / 1e6 for y in mix_years]  # MWh -> TWh
-            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=colors[i % 10], width=0.5)
+        for comp in mix_component_keys:
+            _, energy_fn, color, hatch = FUEL_COMPONENTS[comp]
+            vals = [energy_fn(y) / 1e6 for y in mix_years]  # MWh -> TWh
+            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=color, width=0.6, hatch=hatch, edgecolor="white")
             for xi, (v, b) in enumerate(zip(vals, bottoms_e)):
                 if v > 15:
-                    ax_energy.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8, color="white")
+                    ax_energy.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=7, color="white")
             bottoms_e += np.array(vals)
         for comp, kind in [("sustainable biomass", "sustainable"), ("unsustainable biomass", "unsustainable")]:
             vals = [BIOMASS_POTENTIAL_TWH[y][kind] for y in mix_years]
-            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
+            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=BIOMASS_COLORS[comp], width=0.6, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
             for xi, (v, b) in enumerate(zip(vals, bottoms_e)):
                 if v > 15:
-                    ax_energy.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8)
+                    ax_energy.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=7)
             bottoms_e += np.array(vals)
         for xi in range(len(mix_years)):
-            ax_energy.text(xi, bottoms_e[xi] + 15, f"total: {bottoms_e[xi]:.0f}", ha="center", fontsize=9)
+            ax_energy.text(xi, bottoms_e[xi] + 15, f"{bottoms_e[xi]:.0f}", ha="center", fontsize=8)
         ax_energy.set_xticks(x)
         ax_energy.set_xticklabels([str(y) for y in mix_years])
         ax_energy.set_ylabel("TWh/yr")
         ax_energy.set_title("Energy basis (TWh/yr)")
-        ax_energy.legend(loc="upper right", fontsize=8)
+        ax_energy.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), fontsize=7.5, borderaxespad=0)
 
-    fig.suptitle(f"European-safe fossil + biomass resource mix: 2025 vs. 2050 -- {name}")
-    fig.tight_layout()
+    unsustainable_kgco2_per_gj = UNSUSTAINABLE_BIOMASS_TCO2_PER_MWH * 1000 / 3.6
+    fig.suptitle(f"European-safe fossil + biomass resource mix, 2025-2050 -- {name}")
+    fig.text(0.5, 0.005,
+              f"Note: assuming {unsustainable_kgco2_per_gj:.0f} kgCO2e/GJ upstream (iLUC) "
+              f"emissions for unsustainable biofuels; 0 for sustainable biomass (see doc Section 5.2).",
+              ha="center", fontsize=8, style="italic")
+    fig.tight_layout(rect=(0, 0.03, 0.9, 1))
     fig.savefig(f"{out_dir}/{out_prefix}_mix_2050.png", dpi=150)
     plt.close(fig)
 
@@ -346,6 +441,7 @@ build_variant(
     {"Norway (gas+oil)": no_mtco2, "UK (gas+oil)": uk_mtco2},
     "fossil_supply_no_coal",
     energy_components={"Norway (gas+oil)": no_energy_mwh, "UK (gas+oil)": uk_energy_mwh},
+    mix_component_keys=["Norway gas", "Norway oil", "UK gas", "UK oil"],
 )
 build_variant(
     "Norway+UK+coal",
@@ -353,4 +449,5 @@ build_variant(
     {"Norway (gas+oil)": no_mtco2, "UK (gas+oil)": uk_mtco2, "EU-domestic coal+lignite": coal_mtco2},
     "fossil_supply_with_coal",
     energy_components={"Norway (gas+oil)": no_energy_mwh, "UK (gas+oil)": uk_energy_mwh, "EU-domestic coal+lignite": coal_energy_mwh},
+    mix_component_keys=["Norway gas", "Norway oil", "UK gas", "UK oil", "EU-domestic hard coal", "EU-domestic lignite"],
 )

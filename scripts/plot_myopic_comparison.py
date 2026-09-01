@@ -46,11 +46,12 @@ ax1.stackplot(
     colors=[FOSSIL_COLORS["oil"], FOSSIL_COLORS["gas"], FOSSIL_COLORS["coal"]],
     alpha=0.85,
 )
-ax1.plot(df.index, df["CO2Limit_tCO2"], color="black", lw=2, ls="--", label="CO2Limit (enforced)")
+ax1.plot(df.index, df["CO2Limit_tCO2"], color="tab:purple", lw=2, ls="-", marker="D",
+          label="CO2Limit (enforced)")
 if "LULUCF_delta_tCO2" in df.columns and df["LULUCF_delta_tCO2"].abs().max() > 0:
     ax1.plot(df.index, df["LULUCF_delta_tCO2"], color="#2e7d32", lw=1.5, ls="-.", marker="^",
               label="LULUCF deviation (budget tightening, MtCO2/yr)")
-ax1.plot(df.index, df["FossilSupplyLimit80_tCO2"], color="tab:purple", lw=2, ls=":", marker="s",
+ax1.plot(df.index, df["FossilSupplyLimit80_tCO2"], color="black", lw=1.5, ls="--", marker="o",
           label="Fossil supply limit (80% EU security, no coal; NOT enforced)")
 ax1.set_xlabel("Year")
 ax1.set_ylabel("Fossil CO2 emissions (MtCO2/yr)")
@@ -66,7 +67,7 @@ ax2.stackplot(
     alpha=0.85,
 )
 ax2.plot(
-    df2.index, df2["FossilSupplyLimit80_MWh"], color="tab:purple", lw=2, ls=":", marker="s",
+    df2.index, df2["FossilSupplyLimit80_MWh"], color="black", lw=1.5, ls="--", marker="o",
     label="Fossil supply limit (80% EU security, no coal; NOT enforced)",
 )
 ax2.set_xlabel("Year")
