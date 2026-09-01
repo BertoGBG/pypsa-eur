@@ -9,12 +9,21 @@ builds the **two kept variants** — `fossil_supply_no_coal_security.png` /
 `_mix_2050.png` (Norway+UK gas+oil only) and
 `fossil_supply_with_coal_security.png` / `_mix_2050.png` (Norway+UK+EU-
 domestic coal+lignite, production-based, flat — the recommended
-treatment, see Section 4.3). `text_docs/scripts/compare_coal_treatment.py`
+treatment, see Section 4.3). Each `_mix_2050.png` is a two-panel figure:
+emissions basis (MtCO2-eq/yr, left) and energy basis (TWh/yr, right), both
+now including sustainable/unsustainable biomass potential as additional
+hatched segments (Section 5). `text_docs/scripts/compare_coal_treatment.py`
 produces `coal_treatment_comparison.png` / `_2050_mix.png`, a three-way
 no-coal/flat-coal/phased-coal-out comparison kept only as a labeled
 sensitivity case (Section 4.3.1) — the phase-out variant is **not** the
 recommended treatment. Both scripts print their full numeric tables to
 stdout.
+
+**Scope note**: everything in this document is about *potential* (what
+could be supplied/available), not solved dispatch — the `results/`
+folder's plots (`analyze_myopic_comparison.py` / `plot_myopic_comparison.py`)
+cover actual myopic-run usage instead; the two are deliberately different
+questions and use different data sources.
 
 ## 1. The idea
 
@@ -413,13 +422,152 @@ Switzerland included in the anchor**:
   date choice would matter if it were ever revisited with real dates.
 
 See `fossil_supply_with_coal_security.png` for the combined figure and
-`fossil_supply_with_coal_mix_2050.png` for the 2020-vs-2050 resource-mix
+`fossil_supply_with_coal_mix_2050.png` for the 2025-vs-2050 resource-mix
 breakdown (Norway / UK / EU-domestic coal+lignite, stacked). For the
 no-coal comparison, see `fossil_supply_no_coal_security.png` /
 `fossil_supply_no_coal_mix_2050.png`.
 
-## 5. Open items / next steps
+## 5. Biomass: sustainable vs. unsustainable potential (added 2026-09-01)
 
+The mix-breakdown charts (Section 4.4's figures) now add sustainable and
+unsustainable biomass potential as two further stacked segments, alongside
+Norway/UK(/coal). This is a genuinely different kind of quantity from the
+rest of the chart — biomass is not part of the "how much fossil supply can
+Europe secure domestically" question Sections 1-4 are about — so it is
+shown with a hatched fill, visually distinct from the solid-fill fossil
+segments, rather than implying it counts toward the same security ceiling.
+It is included because it is a real substitute/alternative that eases
+reliance on the uncertain fossil residual, which is directly relevant
+context for the same chart.
+
+### 5.1. How the model currently treats biomass CO2 (checked directly in code)
+
+Checked against `scripts/prepare_sector_network.py`, not assumed:
+
+- **Sustainable solid biomass and biogas** (the plain `"solid biomass"` /
+  `"biogas"` Generators, `add_generators`-region, ~line 4895-4913): feed
+  directly into their own dedicated bus with **no `bus2`/CO2-atmosphere
+  connection at all** — genuinely zero CO2 charged anywhere for direct
+  combustion of these carriers, consistent with treating them as carbon-
+  neutral (combustion CO2 assumed reabsorbed by regrowth).
+- **Unsustainable solid biomass and unsustainable biogas** (~line
+  4977-4988): same treatment — plain Generators, no CO2-atmosphere link.
+  Zero CO2 charged, identical to the sustainable case. This confirms the
+  premise motivating this section: whatever upstream/indirect land-use
+  emissions these feedstocks carry in reality, this model currently
+  allocates none of them here (implicitly assuming they are accounted for
+  elsewhere, e.g. in the agricultural sector's own inventory — which this
+  model does not otherwise represent in detail, see the note on
+  agriculture non-CO2 emissions in
+  `text_docs/text/lulucf_deviation_methodology.md` Section 1).
+- **Unsustainable bioliquids is the one exception**, but not in the way it
+  first appears: its conversion Link into the shared oil pool
+  (`bus0=`unsustainable bioliquids`, bus1=oil, bus2="co2 atmosphere"`) carries
+  `efficiency2 = -costs.at["oil", "CO2 intensity"]`. Working through
+  PyPSA's multi-link sign convention (positive efficiency on an output bus
+  = injects into it; negative = withdraws from it), this is a **credit**
+  that cancels out the fixed fossil-equivalent CO2 charge every downstream
+  oil-consuming link applies regardless of the oil pool's actual blend
+  (the same "blend-origin blindness" pattern noted elsewhere in this
+  fork's work — pooled fuel buses can't track where their contents
+  actually came from). Net effect: unsustainable bioliquids' carbon is
+  *also* effectively treated as zero/neutral overall, just via a different
+  mechanical route (a supply-side credit instead of simply no link at
+  all). Not directly relevant to the solid biomass/biogas potential
+  plotted here, but worth knowing before extending this treatment to
+  liquid biofuels.
+- **A real precedent for exactly this kind of correction already exists in
+  the code**: `options["solid_biomass_import"]["upstream_emissions_factor"]`
+  (~line 4914-4949) applies `efficiency2 = upstream_emissions_factor *
+  costs.at["solid biomass", "CO2 intensity"]` on a *separate* "solid
+  biomass import" pathway (traded/imported biomass), a positive charge
+  (genuine emission) proportional to a configurable fraction of solid
+  biomass's own CO2 intensity. The proxy introduced below for
+  unsustainable (domestic) biomass follows the same pattern, just applied
+  to a different biomass category that currently has no equivalent
+  config option.
+
+### 5.2. The upstream-emissions proxy
+
+- **Unsustainable biomass: 30 kgCO2e/GJ = 0.108 tCO2/MWh**, applied
+  uniformly (not per-feedstock) as a general placeholder for the indirect
+  land-use-change (iLUC) and cultivation/processing emissions this
+  category's real-world feedstocks would carry. Sourcing check: the EU's
+  own default iLUC emission factors (Directive (EU) 2018/2001, "RED II",
+  Annex VIII Part A, as amended by Delegated Regulation (EU) 2019/807,
+  <https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=uriserv%3AOJ.L_.2019.133.01.0001.01.ENG>)
+  span roughly 12-13 gCO2eq/MJ for cereal/other-starch/sugar-crop
+  feedstocks up to ~55 gCO2eq/MJ for oil crops (oil crops' iLUC factor is
+  reported as roughly 4x the cereal/sugar-crop tier). 30 gCO2eq/MJ sits
+  between these two tiers — a reasonable general "mixed feedstock"
+  placeholder for a first pass, not a feedstock-specific estimate. **Caveat**:
+  the exact numeric table in Annex VIII Part A was not independently
+  re-verified against the primary legal text in this session (site
+  rendering issues); the 12/13/55 figures above are recalled from prior
+  general knowledge of this regulation, corroborated only for the
+  relative structure (oil crops ~4x cereals/sugar), not re-confirmed
+  digit-for-digit. Re-verify directly from the Delegated Regulation's own
+  Annex table before using this document's number in anything
+  publication-grade.
+- **Sustainable biomass (forest residues, in this simplification): 0
+  tCO2/MWh** — no upstream charge, per the model's own existing treatment
+  and the assumption that genuine forest-residue sourcing carries no
+  material iLUC risk.
+- Implemented as `UNSUSTAINABLE_BIOMASS_TCO2_PER_MWH` /
+  `SUSTAINABLE_BIOMASS_TCO2_PER_MWH` in
+  `text_docs/scripts/build_fossil_supply_security.py`.
+
+### 5.3. Biomass potential volumes (2025 vs. 2050)
+
+Source: `resources/base_myopic_50_8h/biomass_potentials_s_50_{year}.csv`
+on the cluster — this fork's own biomass-potential-building pipeline
+output (per-node potentials across all 50 clustered nodes, summed here to
+a network-wide total). This is a **potential/cap**, matching the rest of
+this document's framing — not solved dispatch (see the scope note at the
+top of this document). "Sustainable" = `solid biomass` + `biogas` columns;
+"unsustainable" = `unsustainable solid biomass` + `unsustainable biogas` +
+`unsustainable bioliquids` columns (`municipal solid waste` and `not
+included` excluded — not a combustible biomass potential relevant here).
+
+| Year | Sustainable (TWh) | Unsustainable (TWh) |
+|-----:|------:|------:|
+| 2025 | 13.6 | 1595.7 |
+| 2050 | 1371.1 | 0.0 |
+
+**A striking transition, directly visible in the model's own input data**:
+unsustainable biomass potential is large in 2025 (a legacy resource pool
+not yet meeting stricter future sustainability criteria) and falls to
+exactly zero by 2050, while sustainable (certified) potential grows from a
+small base to become the dominant biomass resource — matching the "biomass
+transitions from unsustainable to sustainable with a cap" framing this
+section started from. Converting each to MtCO2-eq with the factors above:
+
+| Year | Sustainable (MtCO2-eq) | Unsustainable (MtCO2-eq) |
+|-----:|------:|------:|
+| 2025 | 0.0 | 172.3 |
+| 2050 | 0.0 | 0.0 |
+
+**Key finding**: the upstream-emissions penalty from biomass is a
+**2025-only, transitional issue** in this model's own input data — it
+disappears entirely by 2050 as unsustainable biomass potential is fully
+retired, not because the emissions factor changes, but because the
+underlying volume goes to zero. The energy-basis panel of each
+`_mix_2050.png` figure shows the full magnitude of this transition (up to
+~1600 TWh/yr of unsustainable biomass potential in 2025, replaced by
+~1370 TWh/yr of sustainable potential by 2050) even though the
+emissions-basis panel shows almost nothing by 2050.
+
+## 6. Open items / next steps
+
+- **Re-verify the RED II Annex VIII iLUC factor table** (Section 5.2)
+  against the Delegated Regulation (EU) 2019/807 primary text directly —
+  the 12/13/55 gCO2eq/MJ figures used to sanity-check the 30 gCO2eq/MJ
+  proxy were recalled, not re-confirmed digit-for-digit, in this session.
+- **The 30 kgCO2e/GJ unsustainable-biomass factor is a flat, feedstock-
+  agnostic placeholder** — refining it (e.g. separately for unsustainable
+  solid biomass vs. unsustainable biogas vs. unsustainable bioliquids,
+  which likely have quite different real feedstock mixes) is a natural
+  next step if this needs to be more than a first-pass proxy.
 - ~~Coal decline curve~~ — resolved (Section 4.3.1): held flat at 2020
   production level deliberately, not a placeholder-pending-more-research.
   A political phase-out schedule is explicitly NOT applied to the ceiling,
