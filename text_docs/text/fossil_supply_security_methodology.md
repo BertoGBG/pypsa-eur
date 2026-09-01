@@ -67,8 +67,9 @@ directly, using a **smoothstep polynomial** `3x^2 - 2x^3` (`x` normalized
 to [0,1] over 2020-2050) — a genuine polynomial, monotonic, and one that
 hits both of its endpoints *exactly* (unlike a logistic sigmoid, which only
 asymptotically approaches its limit). `share(2020)` is fixed at the real,
-empirically-grounded value `(NO+UK+coal)(2020) / ceiling` (~40.8%, once
-coal is included on a production basis — see Section 4.3) for every
+empirically-grounded value `(NO+UK+coal)(2020) / ceiling` (~40.3%, once
+coal is included on a production basis — see Section 4.3 — and the anchor
+covers all 34 model countries, see below) for every
 variant; `share(2050)` is
 set to a chosen target (100%, 80%, or 60% self-sufficiency). Then invert:
 `limit(t) = (NO+UK+coal)(t) / share(t)`. Because all three variants share
@@ -76,21 +77,41 @@ the same `share(2020)`, they necessarily all start at exactly the same
 2020 point (`limit(2020) = ceiling` for every variant), diverging only as
 they head toward different 2050 outcomes.
 
-- **Ceiling** (2020, genuine historical actual — not a proxy): **2739.0
-  MtCO2-eq/yr**. Computed from **Eurostat's Complete Energy Balances**
-  (`nrg_bal_c`), **Gross Inland Consumption (GIC)** — i.e. real physical
-  fuel-supply volumes, not derived emissions — of natural gas (SIEC
-  `G3000`) + oil & petroleum products excl. biofuels (`O4000XBIO`) + solid
-  fossil fuels (`C0000X0350-0370`), summed across 33 of this fork's 34
-  countries (all except Switzerland, which this Eurostat dataset does not
-  cover). Source file: `data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz`
-  on the cluster — this fork's own live-pipeline data cache (Eurostat's own
-  published data, archived there Feb 2026, so genuinely current). A compact
-  per-country/per-fuel extract is saved at
-  `text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv` for
-  reproducibility (the 273MB raw bulk file itself was not committed — it is
-  pypsa-eur's own re-fetchable data cache, not at risk of being lost the way
-  a manually-written note would be).
+- **Ceiling** (2020, genuine historical actual, all 34 model countries —
+  not a proxy): **2768.2 MtCO2-eq/yr**. Two components, added together:
+
+  1. **33 of the 34 model countries (all except Switzerland): 2739.0
+     MtCO2-eq.** Computed from **Eurostat's Complete Energy Balances**
+     (`nrg_bal_c`), **Gross Inland Consumption (GIC)** — i.e. real physical
+     fuel-supply volumes, not derived emissions — of natural gas (SIEC
+     `G3000`) + oil & petroleum products excl. biofuels (`O4000XBIO`) +
+     solid fossil fuels (`C0000X0350-0370`). Source file:
+     `data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz` on the
+     cluster — this fork's own live-pipeline data cache (Eurostat's own
+     published data, archived there Feb 2026, so genuinely current). A
+     compact per-country/per-fuel extract is saved at
+     `text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv`
+     for reproducibility (the 273MB raw bulk file itself was not committed
+     — it is pypsa-eur's own re-fetchable data cache, not at risk of being
+     lost the way a manually-written note would be). Eurostat's `nrg_bal_c`
+     does not cover Switzerland at all, hence the gap this section closes.
+  2. **Switzerland (added 2026-09-01): 29.2 MtCO2.** Source: **Swiss
+     Federal Office for the Environment (BAFU/FOEN)**, official CO2
+     statistics, "CO2-Statistik: Emissionen aus Brenn- und Treibstoffen"
+     (CO2 emissions from thermal and motor fuels),
+     <https://www.bafu.admin.ch/en/co2-statistics>, data table
+     `CO2-Statistik-2026-07_DE.xlsx` (published 2026-07-13), sheet
+     "Brenn- und Treibstoffe", columns "Treibstoffe total" (motor fuels:
+     petrol + diesel) + "Brennstoffe total" (thermal/heating fuels: heating
+     oil + natural gas + a small "Andere"/other residual, ~0.5-0.7
+     MtCO2/yr, that is NOT material domestic coal — Switzerland has no coal
+     mining and negligible coal combustion; confirmed via the same file's
+     "HEL, Gas, Andere" breakdown sheet). This is the same combustion scope
+     (oil + gas, all sectors including road transport) as the Eurostat
+     figure above, so the two genuinely add. File saved at
+     `text_docs/literature/BAFU_CO2-Statistik_2026-07_DE.xlsx`; compact
+     extract at
+     `text_docs/literature/switzerland_BAFU_fossil_co2_2018-2024.csv`.
 
   This supersedes an earlier draft of this document that used a **2018,
   emissions-based** proxy (EEA/UNFCCC `build_co2_totals.py` pipeline, which
@@ -100,12 +121,16 @@ they head toward different 2050 outcomes.
   full sector/fuel coverage via Eurostat's economy-wide GIC measure (which
   by construction includes every combustion sector — power, industry,
   transport including road gasoline/diesel, buildings, agriculture — with no
-  per-sector column list to accidentally miss one from).
+  per-sector column list to accidentally miss one from) plus Switzerland's
+  own official equivalent.
 
-  Cross-check years from the same source: 2018 = 3616.4, 2023 = 2628.7,
-  **2024 (latest actual) = 2554.9** MtCO2-eq. The 2024 actual sits close to
-  this config's own assumed `fossil_limit_values[2025] = 2600` — a
-  reassuring independent cross-validation of that existing assumption.
+  Cross-check years (34-country totals, Eurostat + BAFU): **2018 = 3648.2,
+  2023 = 2655.9, 2024 (latest actual) = 2581.5** MtCO2-eq. The 2024 actual
+  sits close to this config's own assumed `fossil_limit_values[2025] =
+  2600` — a reassuring independent cross-validation of that existing
+  assumption (closer than the earlier 33-country-only figure of 2554.9,
+  since adding Switzerland's real ~26.6 MtCO2/yr for 2024 moves the total
+  up towards 2600, not away from it).
 - **Floor** (2050): the Norway+UK+coal production ceiling, **613.2 MtCO2-eq/yr**
   central case (Section 4, using the corrected production-based coal figure
   — see Section 4.3) — this is exactly the "100% by 2050" variant's
@@ -116,9 +141,9 @@ they head toward different 2050 outcomes.
 
   | Variant | Share(2020) | Share(2050) | Total limit(2050) |
   |---|---:|---:|---:|
-  | 100% NO+UK+coal by 2050 | 40.8% | 100.0% | 613.2 |
-  | 80% NO+UK+coal by 2050 | 40.8% | 80.0% | 766.5 |
-  | 60% NO+UK+coal by 2050 | 40.8% | 60.0% | 1022.0 |
+  | 100% NO+UK+coal by 2050 | 40.3% | 100.0% | 613.2 |
+  | 80% NO+UK+coal by 2050 | 40.3% | 80.0% | 766.5 |
+  | 60% NO+UK+coal by 2050 | 40.3% | 60.0% | 1022.0 |
 
   The shape/steepness itself (how fast the share climbs between 2020 and
   2050) is still a free choice baked into the smoothstep polynomial's fixed
@@ -162,7 +187,8 @@ against real, sourced data, not just internal derivation:
   ~4.9-5.0 GtCO2eq 1990 baseline -- the two "1990" denominators are close in
   magnitude but not identical in composition.
 - **Conclusion**: the earlier finding that actual 2020 fossil consumption
-  (2739.0 MtCO2-eq, Eurostat GIC) sits below this doc's CO2Limit(2020)=
+  (2768.2 MtCO2-eq, all 34 model countries — Eurostat GIC + Switzerland/
+  BAFU, see Section 3) sits below this doc's CO2Limit(2020)=
   3314.9 reflects this model's own interim-year budget shape being
   deliberately backloaded (shallow before 2030, steep after) rather than
   tracking the real observed emissions trajectory -- not independent
@@ -339,29 +365,37 @@ input constraint on the security ceiling.
 
 ### 4.4. Combined ceiling and comparison
 
-All three variants share the same 2020 point (`limit(2020) = 2739.0`,
-`share = 40.8%`) by construction, and reach their target share EXACTLY at
+All three variants share the same 2020 point (`limit(2020) = 2768.2`,
+`share = 40.3%`) by construction, and reach their target share EXACTLY at
 2050 — no more checking after the fact whether the share exceeded 100%.
 Numbers below use the corrected production-based coal figure (431.6, not
-617.2 — see Section 4.3).
+617.2 — see Section 4.3) and the 34-country anchor (2768.2, Eurostat +
+Switzerland/BAFU — see Section 3). Displayed plots start at 2025 (Section
+3.1's caveat on 2020 as a displayed year), but the 2020 anchor point is
+kept in this table for reference.
 
 | Year | NO+UK+coal ceiling | **100% by 2050** total (share) | **80% by 2050** total (share) | **60% by 2050** total (share) | CO2Limit (~1.9C) |
 |-----:|------:|------:|------:|------:|------:|
-| 2020 | 1116.8 | 2739.0 (40.8%) | 2739.0 (40.8%) | 2739.0 (40.8%) | 3314.9 |
-| 2025 | 1116.8 | 2472.9 (45.2%) | 2556.8 (43.7%) | 2646.6 (42.2%) | 2983.3 |
-| 2030 |  988.4 | 1760.8 (56.1%) | 1940.1 (50.9%) | 2159.9 (45.8%) | 2071.8 |
-| 2035 |  812.5 | 1154.3 (70.4%) | 1345.4 (60.4%) | 1612.5 (50.4%) | 1151.0 |
-| 2040 |  734.4 |  867.6 (84.6%) | 1051.7 (69.8%) | 1334.9 (55.0%) |  460.4 |
-| 2045 |  671.3 |  702.1 (95.6%) |  870.7 (77.1%) | 1146.0 (58.6%) |  230.2 |
+| 2020 | 1116.8 | 2768.2 (40.3%) | 2768.2 (40.3%) | 2768.2 (40.3%) | 3314.9 |
+| 2025 | 1116.8 | 2494.9 (44.8%) | 2580.3 (43.3%) | 2671.8 (41.8%) | 2983.3 |
+| 2030 |  988.4 | 1770.9 (55.8%) | 1952.3 (50.6%) | 2175.0 (45.4%) | 2071.8 |
+| 2035 |  812.5 | 1157.8 (70.2%) | 1350.3 (60.2%) | 1619.4 (50.2%) | 1151.0 |
+| 2040 |  734.4 |  868.8 (84.5%) | 1053.4 (69.7%) | 1337.6 (54.9%) |  460.4 |
+| 2045 |  671.3 |  702.3 (95.6%) |  871.1 (77.1%) | 1146.6 (58.5%) |  230.2 |
 | 2050 |  613.2 |  613.2 (100.0%) |  766.5 (80.0%) | 1022.0 (60.0%) |    0.0 |
 
-**Key findings, now with coal properly counted (production-based)**:
-- **Domestic-safe share at 2020 rises from 25.0% to 40.8%** once coal
-  production (not consumption) is added — less dramatic than the earlier
-  draft's 47.6%, because most of what looked like "domestic coal" in the
-  consumption-based figure was actually imported hard coal. Still a large
-  correction to the gas+oil-only framing: over 40% of 2020 fossil use could
-  in principle come from Norway+UK+domestic coal+lignite alone.
+**Key findings, now with coal properly counted (production-based) and
+Switzerland included in the anchor**:
+- **Domestic-safe share at 2020 rises from 24.8% (gas+oil only) to 40.3%**
+  once coal production (not consumption) is added — less dramatic than the
+  earlier draft's 47.6%, because most of what looked like "domestic coal"
+  in the consumption-based figure was actually imported hard coal. Still a
+  large correction to the gas+oil-only framing: over 40% of 2020 fossil use
+  could in principle come from Norway+UK+domestic coal+lignite alone.
+  Adding Switzerland (Section 3) shifted this from an earlier 33-country
+  40.8%/25.0% split to the current 40.3%/24.8% — a small dilution, since
+  Switzerland adds only to the denominator (it has no domestic gas/oil/coal
+  production of its own to add to the Norway+UK+coal numerator).
 - **From 2035 onward, the NO+UK+coal ceiling (813, 734, 671, 613) exceeds
   CO2Limit (1151→0).** Confirms your framing: coal availability is not the
   late-horizon constraint, the climate target is — though the crossover is

@@ -36,17 +36,34 @@ YEARS = [2025, 2030, 2035, 2040, 2045, 2050]
 years_fine = np.linspace(2025, 2050, 101)
 
 # ---------------------------------------------------------------------------
-# Historical anchor: GENUINE 2020 actual, Eurostat Complete Energy Balances
-# (nrg_bal_c), Gross Inland Consumption (GIC) of natural gas (G3000) + oil &
-# petroleum products excl. biofuels (O4000XBIO) + solid fossil fuels
-# (C0000X0350-0370), summed across this fork's 33-country scope (all 34
-# minus CH, not covered by this Eurostat dataset). Source:
+# Historical anchor: GENUINE 2020 actual, all 34 model countries.
+# Eurostat Complete Energy Balances (nrg_bal_c), Gross Inland Consumption
+# (GIC) of natural gas (G3000) + oil & petroleum products excl. biofuels
+# (O4000XBIO) + solid fossil fuels (C0000X0350-0370), summed across 33 of
+# this fork's 34 countries (all except Switzerland, which Eurostat's
+# nrg_bal_c does not cover). Source:
 # data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz on the
 # cluster; compact extract at
 # text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv.
-# Cross-check years: 2018=3616.4, 2023=2628.7, 2024=2554.9 MtCO2-eq -- 2024
-# sits close to this config's own fossil_limit_values[2025]=2600.
-ANCHOR_2020_MTCO2 = 2739.0
+# 33-country cross-check years: 2018=3616.4, 2023=2628.7, 2024=2554.9.
+#
+# Switzerland (added 2026-09-01, see doc Section 3 for full sourcing):
+# Swiss Federal Office for the Environment (BAFU/FOEN), "CO2-Statistik:
+# Emissionen aus Brenn- und Treibstoffen" (thermal + motor fuel CO2),
+# <https://www.bafu.admin.ch/en/co2-statistics>, data table
+# CO2-Statistik-2026-07_DE.xlsx (published 2026-07-13), sheet "Brenn- und
+# Treibstoffe", columns "Treibstoffe total" (motor fuels) + "Brennstoffe
+# total" (thermal/heating fuels) -- Switzerland has no material domestic
+# coal use, so this genuinely covers the same oil+gas(+trace other) scope
+# as the Eurostat GIC figure above. File saved at
+# text_docs/literature/BAFU_CO2-Statistik_2026-07_DE.xlsx; compact extract
+# at text_docs/literature/switzerland_BAFU_fossil_co2_2018-2024.csv.
+# 2020: 29.2, 2023: 27.2, 2024: 26.6 MtCO2.
+#
+# Combined 34-country totals: 2018=3648.2, 2020=2768.2, 2023=2655.9,
+# 2024=2581.5 MtCO2-eq -- 2024 sits close to this config's own
+# fossil_limit_values[2025]=2600.
+ANCHOR_2020_MTCO2 = 2768.2
 
 # ---------------------------------------------------------------------------
 # Norway: Sodir "Resource Report 2024", three scenarios to 2050, million

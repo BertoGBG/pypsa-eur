@@ -76,6 +76,7 @@ d1gam3xoknrgr2.cloudfront.net/
 *.pyc
 
 *.xlsx
+!text_docs/literature/*.xlsx
 
 *.xls
 
