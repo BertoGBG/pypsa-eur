@@ -214,6 +214,7 @@ CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
 
 
 BIOMASS_COLORS = {"sustainable biomass": "#baa741", "unsustainable biomass": "#998622"}
+BIOMASS_HATCHES = {"sustainable biomass": "//", "unsustainable biomass": "\\\\"}
 
 
 def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_components=None):
@@ -278,7 +279,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
         bottoms += np.array(vals)
     for comp, kind in [("sustainable biomass", "sustainable"), ("unsustainable biomass", "unsustainable")]:
         vals = [biomass_mtco2(y, kind) for y in mix_years]
-        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch="//", edgecolor="white")
+        ax_co2.bar(x, vals, bottom=bottoms, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
         for xi, (v, b) in enumerate(zip(vals, bottoms)):
             if v > 15:
                 ax_co2.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8)
@@ -306,7 +307,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
             bottoms_e += np.array(vals)
         for comp, kind in [("sustainable biomass", "sustainable"), ("unsustainable biomass", "unsustainable")]:
             vals = [BIOMASS_POTENTIAL_TWH[y][kind] for y in mix_years]
-            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch="//", edgecolor="white")
+            ax_energy.bar(x, vals, bottom=bottoms_e, label=comp, color=BIOMASS_COLORS[comp], width=0.5, hatch=BIOMASS_HATCHES[comp], edgecolor="white")
             for xi, (v, b) in enumerate(zip(vals, bottoms_e)):
                 if v > 15:
                     ax_energy.text(xi, b + v / 2, f"{v:.0f}", ha="center", va="center", fontsize=8)
