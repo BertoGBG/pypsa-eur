@@ -557,6 +557,66 @@ underlying volume goes to zero. The energy-basis panel of each
 ~1370 TWh/yr of sustainable potential by 2050) even though the
 emissions-basis panel shows almost nothing by 2050.
 
+### 5.4. Per-fuel, per-region split for the mix chart (added 2026-09-01)
+
+The mix charts now show all six horizons (2025-2050), not just the
+2025/2050 endpoints, and split each region into its underlying fuels
+(Norway gas/oil, UK gas/oil, EU-domestic hard coal/lignite) instead of one
+combined bar per region. Colour identifies the **fuel** (this fork's own
+`config/plotting.default.yaml` `tech_colors` — the same palette the
+`results/` folder's plots use, so the two sets of figures are visually
+consistent), hatch identifies the **country/region** (Norway = dots, UK =
+cross-hatch, EU-domestic = solid/no hatch, since there is nothing else
+EU-domestic to distinguish it from on this chart — deliberately different
+symbols (for Norway/UK) from
+the biomass sustainability hatches, `//`/`\\`, used on the same chart, so
+the two hatch "dimensions" don't visually collide).
+
+**Norway's gas/oil split** is backed out of the blended intensity already
+chosen in Section 4.1 (`NO_BLENDED_INTENSITY = 0.22` tCO2/MWh) rather than
+introducing new unsourced per-fuel production data: solving
+`0.22 = x·0.198 + (1-x)·0.2571` for the gas energy-share `x` gives
+**62.8% gas / 37.2% oil by energy**, held constant across all years (the
+blend itself was never assumed to shift over time).
+
+**UK's gas/oil split** reuses the same 218 Mt oil / 2060 TWh gas
+cumulative remaining-reserve split already used to build
+`UK_BLENDED_INTENSITY` (Section 4.2): **55.2% oil / 44.8% gas by energy**.
+This assumes oil and gas deplete at the same relative rate under the
+single decay curve fitted to the *combined* boe/d rate — a simplification,
+since in reality the reserve mix could shift over 2025-2050 (e.g. if gas
+fields deplete faster than oil fields or vice versa); no separate
+oil-only/gas-only decay data was found to check this against.
+
+**EU-domestic coal** was already split into hard coal (127.8 MtCO2-eq)
+and lignite (303.8 MtCO2-eq) with their own model intensities in Section
+4.3 — the mix chart now simply displays that existing split rather than
+combining it into one segment.
+
+**Biomass potential volumes, all six years** (extending Section 5.3's
+2025/2050-only table): same source
+(`resources/base_myopic_50_8h/biomass_potentials_s_50_{year}.csv`), now
+read for every horizon.
+
+| Year | Sustainable (TWh) | Unsustainable (TWh) |
+|-----:|------:|------:|
+| 2025 | 13.6 | 1595.7 |
+| 2030 | 465.6 | 1053.2 |
+| 2035 | 912.2 | 526.6 |
+| 2040 | 1366.7 | 0.0 |
+| 2045 | 1368.9 | 0.0 |
+| 2050 | 1371.1 | 0.0 |
+
+This fills in the transition shape only sketched by the two endpoints
+before: unsustainable potential declines roughly linearly 2025-2040
+(reaching exactly zero at 2040, not gradually approaching it), while
+sustainable potential grows to fill the gap and plateaus from 2040
+onward.
+
+Each `_mix_2050.png` figure also now carries an on-figure note stating the
+30 kgCO2e/GJ unsustainable-biomass assumption directly (Section 5.2),
+rather than requiring the reader to consult this document separately.
+
 ## 6. Open items / next steps
 
 - **Re-verify the RED II Annex VIII iLUC factor table** (Section 5.2)

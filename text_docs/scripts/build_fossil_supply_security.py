@@ -122,7 +122,7 @@ def nouk_mtco2(year):
     return no_mtco2(year) + uk_mtco2(year)
 
 # Native-energy (MWh) versions of the same two components, for the
-# energy-basis mix panel (Section 4.5) -- same lookup/decay shape, just
+# energy-basis mix panel (Section 5) -- same lookup/decay shape, just
 # without the CO2-intensity multiplication.
 def no_energy_mwh(year):
     if year in NO_SCM_OE:
@@ -142,7 +142,7 @@ def uk_energy_mwh(year):
     return UK_E0_TWH * (1 + UK_M * t) * np.exp(-UK_M * t) * 1e6  # -> MWh
 
 # ---------------------------------------------------------------------------
-# Gas/oil split for Norway and UK (added 2026-09-01, see doc Section 4.6),
+# Gas/oil split for Norway and UK (added 2026-09-01, see doc Section 5.4),
 # for the per-fuel-coloured mix chart. Both back out an ENERGY-share
 # fraction from the blended intensity already chosen above, rather than
 # introducing new unsourced per-fuel data -- the fraction is held constant
@@ -228,12 +228,12 @@ def lignite_energy_mwh(year):
 # ---------------------------------------------------------------------------
 # Per-fuel colour (matching the results/ folder's plots, config/plotting.
 # default.yaml tech_colors) + per-region hatch pattern (added 2026-09-01,
-# see doc Section 4.6), for the mix chart: colour identifies the FUEL,
+# see doc Section 5.4), for the mix chart: colour identifies the FUEL,
 # hatch identifies the COUNTRY/REGION it comes from. Region hatches are
 # deliberately different symbols from the biomass sustainability hatches
 # ("//" / "\\") used on the same chart, so the two hatch "dimensions"
 # (origin vs. sustainability) don't visually collide.
-REGION_HATCH = {"Norway": ".", "UK": "x", "EU-domestic": "o"}
+REGION_HATCH = {"Norway": ".", "UK": "x", "EU-domestic": ""}  # EU-domestic: no need to distinguish, solid fill
 FUEL_COMPONENTS = {
     "Norway gas": (no_gas_mtco2, no_gas_energy_mwh, TECH_COLORS["gas"], REGION_HATCH["Norway"]),
     "Norway oil": (no_oil_mtco2, no_oil_energy_mwh, TECH_COLORS["oil"], REGION_HATCH["Norway"]),
@@ -245,7 +245,7 @@ FUEL_COMPONENTS = {
 
 # ---------------------------------------------------------------------------
 # Biomass potential, sustainable vs unsustainable (added 2026-09-01, see doc
-# Section 4.5). Source: resources/base_myopic_50_8h/biomass_potentials_s_50_
+# Section 5). Source: resources/base_myopic_50_8h/biomass_potentials_s_50_
 # {year}.csv on the cluster (this fork's own biomass-potential-building
 # pipeline, summed across all 50 clustered nodes). "Sustainable" = solid
 # biomass + biogas columns; "unsustainable" = unsustainable solid biomass +
@@ -263,7 +263,7 @@ BIOMASS_POTENTIAL_TWH = {
 }
 
 # Upstream/indirect-land-use-change emissions proxy for unsustainable
-# biomass (see doc Section 4.5 for full sourcing): EU RED II Annex VIII /
+# biomass (see doc Section 5 for full sourcing): EU RED II Annex VIII /
 # Delegated Regulation (EU) 2019/807 default iLUC factors span roughly
 # 12-55 gCO2eq/MJ depending on feedstock; 30 is a general mid-range proxy
 # for now, not a per-feedstock estimate. Sustainable biomass (forest
@@ -347,7 +347,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
     plt.close(fig)
 
     # --- 2050 mix breakdown: two panels, MtCO2-eq (left) and TWh (right) ---
-    # Biomass (sustainable + unsustainable potential, see doc Section 4.5)
+    # Biomass (sustainable + unsustainable potential, see doc Section 5)
     # is added as additional, hatched stacked segments on BOTH panels --
     # visually distinct from the fossil/coal components since it represents
     # a different kind of quantity (a non-fossil alternative/substitute,
