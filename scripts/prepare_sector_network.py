@@ -2002,6 +2002,78 @@ def _min_fossil_co2_from_exogenous(n, HARDCODED):
     return result
 
 
+# Physical CO₂ intensities [tCO₂/MWh_th] — from IEA / technology-data. Last-
+# resort fallback (see _resolve_fossil_co2_intensities) when neither costs.csv
+# nor n.carriers.co2_emissions has a value. Shared by add_fossil_fuel_limit
+# (one aggregate MtCO2-eq cap across gas+oil+coal+lignite, sized to a climate
+# trajectory) and add_fossil_fuel_limit_per_carrier (independent per-carrier
+# caps, sized to an energy-security ceiling — a structurally different,
+# additional constraint, not a replacement; see that function's docstring).
+_FOSSIL_CO2_INTENSITY_HARDCODED = {
+    "gas":         0.198,
+    "oil":         0.261,
+    "oil primary": 0.261,
+    "coal":        0.338,
+    "lignite":     0.402,
+}
+_FOSSIL_CARRIER_COSTS_KEY = {
+    "gas":         "gas",
+    "oil":         "oil",
+    "oil primary": "oil",
+    "coal":        "coal",
+    "lignite":     "lignite",
+}
+
+
+def _resolve_fossil_co2_intensities(n, costs, label=""):
+    """
+    Resolve CO₂ intensity [tCO₂/MWh_th] for each fossil supply carrier
+    present in the network. Resolution order:
+      1. costs table  "CO2 intensity" column  (works for gas, coal, lignite)
+      2. n.carriers.co2_emissions             (rarely set for fossil carriers here)
+      3. hardcoded physical constants         (fallback for oil / oil primary)
+    "oil primary" is the carrier used when oil_refining_emissions > 0;
+    plain "oil" covers the fallback case without the refining link.
+
+    Returns {carrier: intensity}, only for carriers present in n.carriers
+    and for which an intensity could be determined.
+    """
+    import pandas as _pd
+
+    result = {}
+    for carrier, costs_key in _FOSSIL_CARRIER_COSTS_KEY.items():
+        if carrier not in n.carriers.index:
+            continue
+        # 1. costs table
+        val = None
+        if costs_key in costs.index and "CO2 intensity" in costs.columns:
+            v = costs.at[costs_key, "CO2 intensity"]
+            if not _pd.isna(v) and v > 0:
+                val = v
+        # 2. carrier attribute
+        if val is None:
+            v = n.carriers.at[carrier, "co2_emissions"]
+            if not _pd.isna(v) and v > 0:
+                val = v
+        # 3. hardcoded fallback
+        if val is None:
+            val = _FOSSIL_CO2_INTENSITY_HARDCODED.get(carrier)
+            if val is not None:
+                logger.warning(
+                    f"{label}Using hardcoded CO₂ intensity {val} tCO₂/MWh for "
+                    f"carrier '{carrier}' (not found in costs table or carrier "
+                    f"attributes)."
+                )
+        if val is not None:
+            result[carrier] = val
+        else:
+            logger.warning(
+                f"{label}carrier '{carrier}': could not determine CO₂ "
+                f"intensity — excluded."
+            )
+    return result
+
+
 def add_fossil_fuel_limit(n, costs, config, investment_year):
     """
     Add a global constraint limiting total fossil fuel consumption expressed in
@@ -2017,6 +2089,12 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     generator's production by n.carriers[carrier_attribute] / efficiency.  For
     fossil supply generators efficiency = 1.0, so the constraint simply sums
     fuel_output × CO₂_intensity ≤ F(t).
+
+    This is a single AGGREGATE budget shared across all fossil carriers, sized
+    to a climate trajectory (fossil_limit_values). For independent per-carrier
+    caps sized to an energy-security ceiling instead, see
+    add_fossil_fuel_limit_per_carrier — the two are structurally separate
+    constraints and can be enabled independently or together.
 
     Parameters
     ----------
@@ -2048,66 +2126,17 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     )
 
     # Set fossil_co2_eq [tCO₂/MWh_th] on each fossil carrier.
-    # Resolution order:
-    #   1. costs table  "CO2 intensity" column  (works for gas, coal, lignite)
-    #   2. n.carriers.co2_emissions             (rarely set for fossil carriers here)
-    #   3. hardcoded physical constants         (fallback for oil / oil primary)
-    # "oil primary" is the carrier used when oil_refining_emissions > 0;
-    # plain "oil" covers the fallback case without the refining link.
-    import pandas as _pd
-
-    # Physical CO₂ intensities [tCO₂/MWh_th] — from IEA / technology-data
-    HARDCODED = {
-        "gas":         0.198,
-        "oil":         0.261,
-        "oil primary": 0.261,
-        "coal":        0.338,
-        "lignite":     0.402,
-    }
-    costs_key_map = {
-        "gas":         "gas",
-        "oil":         "oil",
-        "oil primary": "oil",
-        "coal":        "coal",
-        "lignite":     "lignite",
-    }
-    for carrier, costs_key in costs_key_map.items():
-        if carrier not in n.carriers.index:
-            continue
-        # 1. costs table
-        val = None
-        if costs_key in costs.index and "CO2 intensity" in costs.columns:
-            v = costs.at[costs_key, "CO2 intensity"]
-            if not _pd.isna(v) and v > 0:
-                val = v
-        # 2. carrier attribute
-        if val is None:
-            v = n.carriers.at[carrier, "co2_emissions"]
-            if not _pd.isna(v) and v > 0:
-                val = v
-        # 3. hardcoded fallback
-        if val is None:
-            val = HARDCODED.get(carrier)
-            if val is not None:
-                logger.warning(
-                    f"Using hardcoded CO₂ intensity {val} tCO₂/MWh for carrier "
-                    f"'{carrier}' (not found in costs table or carrier attributes)."
-                )
-        if val is not None:
-            n.carriers.at[carrier, "fossil_co2_eq"] = val
-            logger.info(
-                f"fossil_fuel_limit | carrier '{carrier}': "
-                f"fossil_co2_eq = {val:.4f} tCO₂/MWh"
-            )
-        else:
-            logger.warning(
-                f"fossil_fuel_limit | carrier '{carrier}': "
-                f"could not determine CO₂ intensity — excluded from fossil limit."
-            )
+    intensities = _resolve_fossil_co2_intensities(n, costs, label="fossil_fuel_limit | ")
+    for carrier, val in intensities.items():
+        n.carriers.at[carrier, "fossil_co2_eq"] = val
+        logger.info(
+            f"fossil_fuel_limit | carrier '{carrier}': "
+            f"fossil_co2_eq = {val:.4f} tCO₂/MWh"
+        )
 
     # Verification: log the full fossil_co2_eq column and warn if any
     # expected carrier is still NaN (e.g. because pre-network was stale).
-    fossil_carriers_present = [c for c in costs_key_map if c in n.carriers.index]
+    fossil_carriers_present = [c for c in _FOSSIL_CARRIER_COSTS_KEY if c in n.carriers.index]
     if "fossil_co2_eq" in n.carriers.columns:
         summary = n.carriers.loc[fossil_carriers_present, "fossil_co2_eq"]
     else:
@@ -2127,7 +2156,7 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
 
     # Feasibility check: warn if the cap is below the minimum fossil demand
     # that is locked in by non-substitutable exogenous loads (naphtha/HVC etc.)
-    min_fossil = _min_fossil_co2_from_exogenous(n, HARDCODED)
+    min_fossil = _min_fossil_co2_from_exogenous(n, _FOSSIL_CO2_INTENSITY_HARDCODED)
     total_min = sum(min_fossil.values())
     if min_fossil:
         logger.info("fossil_fuel_limit | minimum exogenous fossil CO₂ demand [MtCO₂-eq/yr]:")
@@ -2164,6 +2193,130 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
         sense="<=",
         constant=F_t * 1e6,  # MtCO₂ → tCO₂
     )
+
+
+def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
+    """
+    Add independent per-carrier global constraints on fossil-fuel supply,
+    expressed in MtCO₂-equivalent at the wellhead/mine — an energy-security /
+    import-independence lens, structurally separate from add_fossil_fuel_limit's
+    aggregate climate-driven cap.
+
+    Where add_fossil_fuel_limit sums gas+oil+coal+lignite into ONE shared
+    MtCO2-eq budget sized to a climate trajectory (fossil_limit_values), this
+    function caps EACH carrier independently against its own "how much could
+    Europe realistically source from its own, geopolitically reliable
+    production" ceiling — e.g. Norway+UK gas/oil depletion curves and
+    EU-domestic coal/lignite production (see
+    text_docs/text/fossil_supply_security_methodology.md, Section 4). The two
+    constraint families are enabled/configured independently (`fossil_limit`
+    vs `fossil_limit_per_carrier`) and can be active separately or together;
+    if both bind for the same carrier in the same year they are simply two
+    separate linear constraints in the same LP — whichever is tighter
+    determines the outcome, there is no other interaction.
+
+    Implementation: for each logical carrier group ("gas", "oil", "coal",
+    "lignite"), a dedicated n.carriers attribute column
+    (`security_co2_eq_<group>`) is populated ONLY for the network carriers
+    belonging to that group (e.g. both "oil" and "oil primary" feed the "oil"
+    cap), then one PyPSA `primary_energy` GlobalConstraint per group is added
+    — so the (up to) four caps are fully independent constraints, not one
+    combined one, unlike add_fossil_fuel_limit's single shared attribute.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    costs : pd.DataFrame
+    config : dict
+        Reads `fossil_limit_per_carrier` (bool) and
+        `fossil_limit_per_carrier_values` ({carrier: {year: MtCO2}}), analogous
+        in structure to `fossil_limit`/`fossil_limit_values`.
+    investment_year : int
+        Planning horizon year (e.g. 2030, 2035, …).
+    """
+    if not config.get("fossil_limit_per_carrier", False):
+        return
+
+    limits = config.get("fossil_limit_per_carrier_values", {})
+    if not limits:
+        logger.warning(
+            "fossil_limit_per_carrier enabled but fossil_limit_per_carrier_values "
+            "is empty. Skipping constraint."
+        )
+        return
+
+    intensities = _resolve_fossil_co2_intensities(
+        n, costs, label="fossil_fuel_limit_per_carrier | "
+    )
+
+    # Which network n.carriers rows feed into each cap. "oil" and "oil
+    # primary" share one cap since they're the same physical resource at
+    # different pipeline stages (see _resolve_fossil_co2_intensities).
+    CARRIER_GROUPS = {
+        "gas": ["gas"],
+        "oil": ["oil", "oil primary"],
+        "coal": ["coal"],
+        "lignite": ["lignite"],
+    }
+
+    for group, members in CARRIER_GROUPS.items():
+        if group not in limits:
+            continue
+        F_t = get(limits[group], investment_year)
+        if F_t is None:
+            logger.warning(
+                f"fossil_fuel_limit_per_carrier | '{group}': no value found "
+                f"in fossil_limit_per_carrier_values for year={investment_year}. "
+                f"Skipping this carrier's cap."
+            )
+            continue
+
+        present = [c for c in members if c in n.carriers.index]
+        if not present:
+            logger.info(
+                f"fossil_fuel_limit_per_carrier | '{group}': no matching "
+                f"carrier present in network. Skipping."
+            )
+            continue
+
+        attr = f"security_co2_eq_{group}"
+        n.carriers[attr] = 0.0
+        any_set = False
+        for carrier in present:
+            val = intensities.get(carrier)
+            if val is None:
+                logger.warning(
+                    f"fossil_fuel_limit_per_carrier | '{group}': carrier "
+                    f"'{carrier}' has no resolved CO₂ intensity — excluded "
+                    f"from this cap."
+                )
+                continue
+            n.carriers.at[carrier, attr] = val
+            any_set = True
+            logger.info(
+                f"fossil_fuel_limit_per_carrier | '{group}' <- carrier "
+                f"'{carrier}': {attr} = {val:.4f} tCO₂/MWh"
+            )
+        if not any_set:
+            logger.warning(
+                f"fossil_fuel_limit_per_carrier | '{group}': no carrier had a "
+                f"resolved CO₂ intensity — skipping this cap entirely."
+            )
+            continue
+
+        logger.info(
+            f"Adding per-carrier fossil supply limit: '{group}' <= {F_t:.2f} "
+            f"MtCO₂-eq for {investment_year} (energy-security cap, independent "
+            f"of fossil_fuel_limit; CCS provides no credit)."
+        )
+        n.add(
+            "GlobalConstraint",
+            f"fossil_fuel_limit_security_{group}",
+            type="primary_energy",
+            carrier_attribute=attr,
+            sense="<=",
+            constant=F_t * 1e6,  # MtCO₂ → tCO₂
+        )
 
 
 def add_co2limit(
@@ -8925,5 +9078,6 @@ if __name__ == "__main__":
     # Must run after sanitize_carriers so that 'oil primary' (added by
     # add_missing_carriers) is already in n.carriers before fossil_co2_eq is assigned to it.
     add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
+    add_fossil_fuel_limit_per_carrier(n, costs, snakemake.config, investment_year)
 
     n.export_to_netcdf(snakemake.output[0])

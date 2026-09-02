@@ -122,6 +122,64 @@ fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, 
   2045: 103
   2050: 78
 
+# Independent PER-CARRIER fossil fuel supply caps [MtCO₂-eq, at the
+# wellhead/mine] -- an energy-security/import-independence lens, structurally
+# separate from fossil_limit above (which is one shared climate-driven budget
+# across gas+oil+coal+lignite combined). Each carrier below gets its OWN
+# GlobalConstraint, sized to how much Europe could realistically source from
+# its own geopolitically reliable production (Norway+UK gas/oil depletion,
+# EU-domestic coal/lignite production) -- see
+# text_docs/text/fossil_supply_security_methodology.md Section 4 for full
+# sourcing. Can be enabled together with fossil_limit (both apply; whichever
+# is tighter for a given carrier/year binds) or independently.
+# add_fossil_fuel_limit_per_carrier() in prepare_sector_network.py.
+fossil_limit_per_carrier: false  # set to true to activate the limits below
+fossil_limit_per_carrier_values:
+  # Norway + UK combined, gas only [MtCO₂-eq/yr]. Norway: Sodir Resource
+  # Report 2024 depletion scenario; UK: NSTA remaining-reserve budget fit
+  # via Victoria et al.'s r=0 decay closed form. Blended CO2 intensities
+  # (0.198 gas / 0.2571 oil) backed out an energy-share split per region,
+  # held constant across years (simplification -- see methodology doc
+  # Section 4.6 note in build_fossil_supply_security.py).
+  gas:
+    2025: 359.1
+    2030: 298.6
+    2035: 209.4
+    2040: 169.2
+    2045: 134.9
+    2050: 102.5
+  # Norway + UK combined, oil only [MtCO₂-eq/yr]. Same sourcing/split as gas.
+  oil:
+    2025: 326.2
+    2030: 258.1
+    2035: 171.5
+    2040: 133.6
+    2045: 104.8
+    2050: 79.2
+  # EU-domestic hard coal, PRODUCTION-based (not consumption -- hard coal is
+  # ~64% imported in this scope) [MtCO₂-eq/yr]. Held flat at 2020 actual
+  # production (127.8) for the whole horizon -- deliberate: no political
+  # phase-out schedule baked into the ceiling itself, so the model's own
+  # CO2Limit + endogenous BOF-vs-EAF+H2-DRI steel competition determines how
+  # much is actually used (see methodology doc Section 4.3.1).
+  coal:
+    2025: 127.8
+    2030: 127.8
+    2035: 127.8
+    2040: 127.8
+    2045: 127.8
+    2050: 127.8
+  # EU-domestic lignite, production-based (~100% domestic, no import market)
+  # [MtCO₂-eq/yr]. Held flat at 2020 actual production (303.8) for the same
+  # reason as coal above -- separate model pool (power-only, no steel route).
+  lignite:
+    2025: 303.8
+    2030: 303.8
+    2035: 303.8
+    2040: 303.8
+    2045: 303.8
+    2050: 303.8
+
 # LULUCF (land-use) carbon sink deviation correction.
 # co2_budget's `limit` (fraction of 1990 sectoral CO2 emissions) never
 # includes LULUCF in its own sector list (see determine_emission_sectors)
