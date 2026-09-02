@@ -25,6 +25,18 @@ folder's plots (`analyze_myopic_comparison.py` / `plot_myopic_comparison.py`)
 cover actual myopic-run usage instead; the two are deliberately different
 questions and use different data sources.
 
+**Implementation status (2026-09-02)**: Section 4's per-carrier gas/oil/hard
+coal/lignite ceiling values are now wired into the model as an actual
+constraint, not just this document's comparison plots — see
+`add_fossil_fuel_limit_per_carrier()` in `scripts/prepare_sector_network.py`,
+config `fossil_limit_per_carrier` / `fossil_limit_per_carrier_values`.
+Structurally separate from `fossil_limit` (the aggregate climate-driven
+budget this document compares against) — both can be active together, each
+carrier's cap independent. Verified via a standalone unit test with the real
+costs table and config values (constants match this doc's Section 4.4 table
+exactly); a full solved-network run confirming the caps actually bind as
+expected was not yet completed — see git log for the commit adding this.
+
 ## 1. The idea
 
 The existing `fossil_limit_values` ("medium scenario, T*=2040": 2600 -> 78
