@@ -532,6 +532,9 @@ conventional:
   fuel_price_rolling_window: 6
   nuclear:
     p_max_pu: data/nuclear_p_max_pu.csv
+    # Assumed lifetime [years] used ONLY to estimate a missing DateOut for
+    # existing plants with no recorded closure date (add_existing_baseyear.py)
+    lifetime_unknown_dateout: 60
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#lines
 lines:
@@ -622,7 +625,6 @@ pypsa_eur:
   - "solar-hsat"
   - solar
   - ror
-  - nuclear
   StorageUnit:
   - PHS
   - hydro

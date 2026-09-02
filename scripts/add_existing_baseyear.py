@@ -161,6 +161,7 @@ def add_power_capacities_installed_before_baseyear(
     lifetime_values: dict[str, float],
     renewable_carriers: list[str],
     solar_rooftop_ratio: float = 0.5,
+    unknown_dateout_lifetime_overrides: dict[str, float] | None = None,
 ) -> None:
     """
     Add power generation capacities installed before base year.
@@ -187,6 +188,18 @@ def add_power_capacities_installed_before_baseyear(
         List of renewable carriers in the network
     solar_rooftop_ratio: float
         Ratio of solar capacity to assign to rooftop vs utility-scale (between 0 and 1)
+    unknown_dateout_lifetime_overrides : dict, optional
+        Per-carrier (lowercased Fueltype, e.g. "nuclear") assumed lifetime
+        [years] used ONLY to estimate a missing DateOut (DateIn + lifetime),
+        in place of costs.lifetime for that carrier. Real, reported DateOut
+        values are never affected. Use this to decouple "how long do we
+        assume an existing plant with no recorded closure date keeps
+        running" (a fleet-average/regulatory-extension assumption) from
+        costs.lifetime (a new-build cost-amortization assumption -- for
+        nuclear specifically this is 40yr, sourced from Lazard LCOE+ v16.0
+        pg.49, calibrated to a new US plant, not existing EU reactors with
+        real-world life extensions). See config `conventional.nuclear.
+        lifetime_unknown_dateout`.
     """
     logger.debug(f"Adding power capacities installed before {baseyear}")
 
@@ -232,9 +245,19 @@ def add_power_capacities_installed_before_baseyear(
     )
     df_agg.dropna(subset="DateIn", inplace=True)
 
-    # Estimate missing DateOut
+    # Estimate missing DateOut. Fallback lifetime is costs.lifetime (a
+    # new-build cost-amortization assumption) unless overridden per-carrier
+    # via unknown_dateout_lifetime_overrides -- e.g. nuclear's 40yr Lazard
+    # figure is calibrated to a new US plant, not existing EU reactors with
+    # real-world life extensions, so using it here silently phases out
+    # real, still-operating plants with no recorded DateOut.
+    assumed_lifetime = costs.lifetime.fillna(30)
+    if unknown_dateout_lifetime_overrides:
+        for fueltype, years in unknown_dateout_lifetime_overrides.items():
+            if fueltype in assumed_lifetime.index:
+                assumed_lifetime[fueltype] = years
     df_agg["DateOut"] = df_agg.DateOut.combine_first(
-        df_agg.DateIn + df_agg.Fueltype.map(costs.lifetime).fillna(30)
+        df_agg.DateIn + df_agg.Fueltype.map(assumed_lifetime)
     )
 
     # include renewables in df_agg
@@ -1120,6 +1143,16 @@ if __name__ == "__main__":
 
     grouping_years_power = snakemake.params.existing_capacities["grouping_years_power"]
     grouping_years_heat = snakemake.params.existing_capacities["grouping_years_heat"]
+
+    # Per-carrier override of the assumed lifetime used ONLY to estimate a
+    # missing DateOut (see docstring). Config: conventional.<carrier>.
+    # lifetime_unknown_dateout, e.g. conventional.nuclear.lifetime_unknown_dateout.
+    unknown_dateout_lifetime_overrides = {
+        carrier: params["lifetime_unknown_dateout"]
+        for carrier, params in snakemake.config.get("conventional", {}).items()
+        if isinstance(params, dict) and "lifetime_unknown_dateout" in params
+    }
+
     add_power_capacities_installed_before_baseyear(
         n=n,
         costs=costs,
@@ -1131,6 +1164,7 @@ if __name__ == "__main__":
         lifetime_values=snakemake.params.costs["fill_values"],
         renewable_carriers=renewable_carriers,
         solar_rooftop_ratio=snakemake.params.existing_capacities["solar_rooftop_ratio"],
+        unknown_dateout_lifetime_overrides=unknown_dateout_lifetime_overrides,
     )
 
     if options["heating"]:

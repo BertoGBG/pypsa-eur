@@ -1,0 +1,42 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.nuclear_fix_test_168h.yaml
+#
+# Fast test of the nuclear double-count fix (uranium fuel-supply gap +
+# nuclear removed from pypsa_eur.Generator keep-list -- see
+# text_docs/ discussion / session investigation, 2026-09-02).
+# Same base settings as config.run1_baseline_50_8h.yaml, but 168h
+# resolution and only 3 planning horizons for a quick turnaround check.
+
+run:
+  name: "nuclear_fix_test_168h"
+  shared_resources:
+    policy: false
+
+scenario:
+  clusters:
+  - 50
+  sector_opts:
+  - 168h
+  planning_horizons:
+  - 2025
+  - 2035
+  - 2050
+
+fossil_limit: false
+lulucf_deviation: false
+
+sector:
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false
