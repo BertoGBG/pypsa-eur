@@ -4,10 +4,24 @@
 #   --configfile config/config.default.yaml config/config.nuclear_fix_test_168h.yaml
 #
 # Fast test of the nuclear double-count fix (uranium fuel-supply gap +
-# nuclear removed from pypsa_eur.Generator keep-list -- see
-# text_docs/ discussion / session investigation, 2026-09-02).
-# Same base settings as config.run1_baseline_50_8h.yaml, but 168h
-# resolution and only 3 planning horizons for a quick turnaround check.
+# nuclear removed from pypsa_eur.Generator keep-list -- see commit
+# f5d3543b) and the missing-DateOut lifetime decoupling. Mirrors
+# config.run1_baseline_50_8h.yaml's settings exactly (50 nodes, myopic,
+# nothing of this fork's own additions activated -- no CDR, no LULUCF
+# deviation, no endogenous industry/heat/shipping, no fossil_limit) but at
+# 168h (weekly) resolution instead of run1's native 8h, and a 3-horizon
+# subset (2030/2040/2050) of run1's full 6-horizon list, for a fast
+# nuclear-specific turnaround check rather than a full comparison run.
+#
+# shared_resources kept isolated (policy: false, own resources/ dir) rather
+# than pointing at base_myopic_50_8h: that directory's provenance metadata
+# is from 2026-08-26, and many rules' code has changed since then (steel/
+# cement endogenization, industry fixes, etc.) -- reusing it risks Snakemake
+# silently rebuilding-and-overwriting run1's baseline files in place rather
+# than just reading them, which would corrupt that reference run. Not worth
+# the risk to save a handful of jobs against an already ~50k-deep cluster
+# queue (see git log / conversation -- the bottleneck is queue depth, not
+# this run's own job count).
 
 run:
   name: "nuclear_fix_test_168h"
@@ -20,8 +34,8 @@ scenario:
   sector_opts:
   - 168h
   planning_horizons:
-  - 2025
-  - 2035
+  - 2030
+  - 2040
   - 2050
 
 fossil_limit: false
