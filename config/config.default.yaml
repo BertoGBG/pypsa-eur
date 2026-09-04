@@ -126,58 +126,96 @@ fossil_limit_values:  # MtCO₂-eq cap on total fossil supply [medium scenario, 
 # wellhead/mine] -- an energy-security/import-independence lens, structurally
 # separate from fossil_limit above (which is one shared climate-driven budget
 # across gas+oil+coal+lignite combined). Each carrier below gets its OWN
-# GlobalConstraint, sized to how much Europe could realistically source from
-# its own geopolitically reliable production (Norway+UK gas/oil depletion,
-# EU-domestic coal/lignite production) -- see
+# GlobalConstraint. Can be enabled together with fossil_limit (both apply;
+# whichever is tighter for a given carrier/year binds) or independently.
+# Note: despite the "energy" name, this GlobalConstraint mechanism covers
+# gas/oil/coal/lignite only -- solid biomass uses a structurally different
+# mechanism (sector.solid_biomass_import.max_amount below), because unlike
+# fossils (one fungible domestic+import pool per carrier), biomass already
+# has a separate, unconstrained domestic-potential Generator; only the
+# IMPORT top-up needs capping. See
 # text_docs/text/fossil_supply_security_methodology.md Section 4 for full
-# sourcing. Can be enabled together with fossil_limit (both apply; whichever
-# is tighter for a given carrier/year binds) or independently.
-# add_fossil_fuel_limit_per_carrier() in prepare_sector_network.py.
-fossil_limit_per_carrier: false  # set to true to activate the limits below
-fossil_limit_per_carrier_values:
-  # Norway + UK combined, gas only [MtCO₂-eq/yr]. Norway: Sodir Resource
-  # Report 2024 depletion scenario; UK: NSTA remaining-reserve budget fit
-  # via Victoria et al.'s r=0 decay closed form. Blended CO2 intensities
-  # (0.198 gas / 0.2571 oil) backed out an energy-share split per region,
-  # held constant across years (simplification -- see methodology doc
-  # Section 4.6 note in build_fossil_supply_security.py).
+# sourcing and Section 6 for the self-sufficiency-fraction methodology
+# below. add_energy_limit_per_carrier() in prepare_sector_network.py.
+#
+# METHODOLOGY (2026-09-04, supersedes the original flat-EU-safe-potential
+# version): rather than capping each carrier directly at its EU-safe
+# potential (Norway+UK depletion / EU-domestic production), each cap is
+# EU_safe_potential[year] / self_sufficiency_fraction[year], where
+# self_sufficiency_fraction is a smoothstep curve (same shape as the
+# analysis-only SHARE_TARGETS curves in build_fossil_supply_security.py:
+# frac(year) = share_2020 + (target-share_2020)*smoothstep((year-2020)/30))
+# from the REAL current (2020) self-sufficiency ratio for that carrier
+# (EU-safe potential / real Eurostat GIC consumption, both 2020) up to a
+# TARGET self-sufficiency fraction reached exactly at 2050. This makes the
+# cap exactly reproduce real observed 2020 consumption at year=2020 (by
+# construction) and smoothly tighten to the domestic-safe-only ceiling by
+# 2050 -- avoiding an unrealistic immediate supply-cliff in the first
+# model year, unlike the original version which jumped straight to the
+# tight domestic ceiling starting 2025.
+#
+# TARGET self-sufficiency by 2050 = 100% (full energy independence) for
+# all carriers below -- a deliberate base-case scenario choice, not
+# empirically derived; lower it (e.g. 0.6) for a "still relies on some
+# imports" scenario. Kept as ONE shared value across all carriers+biomass
+# per your direction, not tuned per-carrier.
+#
+# Real 2020 self-sufficiency fractions used as each curve's starting point
+# (source: Eurostat Complete Energy Balances GIC by fuel, same 33-country
+# +CH scope as ANCHOR_2020_MTCO2 in the methodology doc;
+# text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv):
+#   gas:     46.6% (EU-safe 1813.4 TWh / real GIC 3887.5 TWh)
+#   oil:     24.1% (EU-safe 1268.7 TWh / real GIC 5259.1 TWh)
+#   coal:    36.1% (hard coal production 380,259 GWh / consumption
+#            1,052,769 GWh -- already sourced in doc Section 4.3)
+#   lignite: 97.9% (production 746,533 GWh / consumption 762,560 GWh --
+#            already sourced in doc Section 4.3; near-100% because lignite
+#            is too low-density to economically trade)
+energy_limit_per_carrier: false  # set to true to activate the limits below
+energy_limit_per_carrier_values:
+  # Norway+UK gas potential / self-sufficiency-fraction curve (46.6% in
+  # 2020 -> 100% by 2050). At each year this is the TOTAL gas supply cap
+  # (domestic+import combined, since gas has no separate domestic-only
+  # pool in this model -- see note above), not just the EU-safe potential.
   gas:
-    2025: 359.1
-    2030: 298.6
-    2035: 209.4
-    2040: 169.2
-    2045: 134.9
+    2025: 709.6
+    2030: 493.8
+    2035: 285.5
+    2040: 196.4
+    2045: 140.4
     2050: 102.5
-  # Norway + UK combined, oil only [MtCO₂-eq/yr]. Same sourcing/split as gas.
+  # Norway+UK oil potential / self-sufficiency-fraction curve (24.1% in
+  # 2020 -> 100% by 2050). Same TOTAL-cap logic as gas above.
   oil:
-    2025: 326.2
-    2030: 258.1
-    2035: 171.5
-    2040: 133.6
-    2045: 104.8
+    2025: 1096.6
+    2030: 589.4
+    2035: 276.4
+    2040: 166.3
+    2045: 111.0
     2050: 79.2
-  # EU-domestic hard coal, PRODUCTION-based (not consumption -- hard coal is
-  # ~64% imported in this scope) [MtCO₂-eq/yr]. Held flat at 2020 actual
-  # production (127.8) for the whole horizon -- deliberate: no political
-  # phase-out schedule baked into the ceiling itself, so the model's own
-  # CO2Limit + endogenous BOF-vs-EAF+H2-DRI steel competition determines how
-  # much is actually used (see methodology doc Section 4.3.1).
+  # EU-domestic hard coal production / self-sufficiency-fraction curve
+  # (36.1% in 2020 -> 100% by 2050). At 2050 this converges exactly to the
+  # flat domestic-production figure (127.8) used in the original version;
+  # earlier years now allow more headroom, reflecting today's real (~64%
+  # import-dependent) hard coal consumption tapering down smoothly rather
+  # than an immediate 2025 cliff to the domestic-only figure.
   coal:
-    2025: 127.8
-    2030: 127.8
-    2035: 127.8
-    2040: 127.8
-    2045: 127.8
+    2025: 312.8
+    2030: 242.6
+    2035: 187.8
+    2040: 153.2
+    2045: 134.1
     2050: 127.8
-  # EU-domestic lignite, production-based (~100% domestic, no import market)
-  # [MtCO₂-eq/yr]. Held flat at 2020 actual production (303.8) for the same
-  # reason as coal above -- separate model pool (power-only, no steel route).
+  # EU-domestic lignite production / self-sufficiency-fraction curve (97.9%
+  # in 2020 -> 100% by 2050) -- barely moves from the flat 303.8 figure,
+  # since lignite is already almost entirely domestic (no real import
+  # market for it), consistent with the original flat treatment.
   lignite:
-    2025: 303.8
-    2030: 303.8
-    2035: 303.8
-    2040: 303.8
-    2045: 303.8
+    2025: 309.8
+    2030: 308.6
+    2035: 307.0
+    2040: 305.5
+    2045: 304.3
     2050: 303.8
 
 # LULUCF (land-use) carbon sink deviation correction.
@@ -1225,7 +1263,46 @@ sector:
   solid_biomass_import:
     enable: false
     price: 54
-    max_amount: 1390
+    # max_amount [TWh/yr]: IMPORT-only cap, additional to (not replacing)
+    # the domestic sustainable+unsustainable solid biomass Generator, which
+    # is already unconstrained by its own real land-based potential. Same
+    # self-sufficiency-fraction methodology as energy_limit_per_carrier
+    # above (see that block's comment for the full formula/sourcing) --
+    # import_cap[year] = domestic_potential[year] * (1/frac[year] - 1),
+    # domestic_potential[year] = sustainable+unsustainable solid biomass
+    # potential (biomass_potentials_s_50_{year}.csv, this fork's own
+    # country scope), frac[year] curving from the REAL current
+    # self-sufficiency ratio up to 100% by 2050 (same target as the fossil
+    # carriers, per your direction).
+    #
+    # Real current (2025) self-sufficiency ratio: 98.7% = domestic
+    # potential (1609.3 TWh = 13.6 sustainable + 1595.7 unsustainable) /
+    # (1609.3 + 21.5 TWh real extra-EU imports). The 21.5 TWh denominator:
+    # USDA FAS "Wood Pellets Annual" (EU, 2025 edition) reports EU extra-EU
+    # wood pellet imports at 4.48 million tonnes in 2024 (down from 2023,
+    # mainly from US/Canada/Russia-Ukraine-Belarus/Brazil/Vietnam/Malaysia/
+    # Thailand) -> 21.5 TWh at 4.8 MWh/tonne (this repo's own pellet energy
+    # content, scripts/build_biomass_transport_costs.py). Wood-CHIP extra-EU
+    # import volume specifically was not found/quantified (described as a
+    # smaller, growing niche) -- pellets dominate the traded volume, so
+    # 21.5 TWh is treated as a reasonable lower-bound estimate of total
+    # current solid biomass imports, not a fully complete chips+pellets
+    # figure.
+    #
+    # Because biomass is ALREADY ~99% self-sufficient today (vs. gas 47%/
+    # oil 24%/coal 36%), the import margin needed to reach the SAME 100%-
+    # by-2050 target as the fossil carriers is small and shrinks to
+    # exactly zero by 2050 (not a step down to a small-but-nonzero floor
+    # like the original flat 1390 TWh assumption, which was never
+    # base-year-sourced -- it traces to a "5 EJ" upstream PyPSA-Eur default,
+    # commit c71fa78b, Millinger 2024, uncited).
+    max_amount:
+      2025: 19.9
+      2030: 15.0
+      2035: 9.5
+      2040: 4.7
+      2045: 1.3
+      2050: 0.0
     upstream_emissions_factor: 0.1
   imports:
     enable: false

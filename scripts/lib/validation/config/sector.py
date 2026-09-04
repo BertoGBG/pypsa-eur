@@ -346,7 +346,10 @@ class _SolidBiomassImportConfig(BaseModel):
     price: float = Field(
         54, description="Price for importing solid biomass (currency/MWh)."
     )
-    max_amount: float = Field(
+    # float | dict[int, float]: a plain number applies to every planning
+    # horizon (upstream default); a {year: TWh} dict myopic-indexes it --
+    # this fork's addition, see config comment for sourcing.
+    max_amount: float | dict[int, float] = Field(
         1390, description="Maximum solid biomass import potential (TWh)."
     )
     upstream_emissions_factor: float = Field(

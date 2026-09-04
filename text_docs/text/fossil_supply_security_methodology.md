@@ -25,17 +25,26 @@ folder's plots (`analyze_myopic_comparison.py` / `plot_myopic_comparison.py`)
 cover actual myopic-run usage instead; the two are deliberately different
 questions and use different data sources.
 
-**Implementation status (2026-09-02)**: Section 4's per-carrier gas/oil/hard
-coal/lignite ceiling values are now wired into the model as an actual
-constraint, not just this document's comparison plots — see
-`add_fossil_fuel_limit_per_carrier()` in `scripts/prepare_sector_network.py`,
-config `fossil_limit_per_carrier` / `fossil_limit_per_carrier_values`.
-Structurally separate from `fossil_limit` (the aggregate climate-driven
-budget this document compares against) — both can be active together, each
-carrier's cap independent. Verified via a standalone unit test with the real
-costs table and config values (constants match this doc's Section 4.4 table
-exactly); a full solved-network run confirming the caps actually bind as
-expected was not yet completed — see git log for the commit adding this.
+**Implementation status (2026-09-04, see Section 6 for full detail)**:
+Section 4's per-carrier gas/oil/hard coal/lignite ceiling data is wired into
+the model as an actual constraint — `add_energy_limit_per_carrier()` in
+`scripts/prepare_sector_network.py`, config `energy_limit_per_carrier` /
+`energy_limit_per_carrier_values` (renamed 2026-09-04 from
+`fossil_limit_per_carrier`) — structurally separate from `fossil_limit` (the
+aggregate climate-driven budget this document compares against); both can be
+active together, each carrier's cap independent. **As of 2026-09-04, solid
+biomass is ALSO wired in** (superseding the "comparison-chart-only" note
+that used to be here) via `sector.solid_biomass_import.max_amount`, now a
+per-year import cap rather than a flat number — see Section 6. Both fossil
+and biomass caps now use the same self-sufficiency-fraction curve
+methodology (Section 6), which supersedes Section 4's original flat
+"cap = domestic-safe potential directly" treatment — Section 4's
+Norway/UK/coal/lignite sourcing is still the correct underlying potential
+data, just no longer used AS the cap without the self-sufficiency-fraction
+adjustment. Verified via standalone unit tests and full pydantic config
+validation; a full solved-network run confirming the caps bind as expected
+was the natural next verification step — see git log for whether/how that
+was completed.
 
 ## 1. The idea
 
@@ -629,7 +638,134 @@ Each `_mix_2050.png` figure also now carries an on-figure note stating the
 30 kgCO2e/GJ unsustainable-biomass assumption directly (Section 5.2),
 rather than requiring the reader to consult this document separately.
 
-## 6. Open items / next steps
+## 6. Self-sufficiency-fraction methodology (added 2026-09-04)
+
+**Supersedes the flat-EU-safe-potential version of `energy_limit_per_carrier`
+used above** (Section 4's numbers are still the correct *domestic-safe
+potential* data — Norway+UK depletion, EU-domestic coal/lignite production —
+but are no longer used AS the cap directly). The change: rather than capping
+each fossil carrier immediately at its domestic-safe potential starting in
+2025 (an unrealistic supply cliff — e.g. oil would have to drop ~76%
+overnight relative to 2024's real consumption), each carrier's cap now
+smoothly transitions from **today's real self-sufficiency ratio** to a
+**target self-sufficiency fraction by 2050**, reusing the exact same
+smoothstep curve shape as Section 3's illustrative SHARE_TARGETS comparison
+— except this time the resulting numbers are the actual values written into
+`config.default.yaml`, not just an analysis/comparison chart.
+
+**Formula, per carrier:**
+```
+frac(year) = share_2020 + (target - share_2020) * smoothstep((year-2020)/30)
+total_cap(year) = EU_safe_potential(year) / frac(year)
+```
+`smoothstep(x) = 3x² - 2x³`, same as Section 3. By construction,
+`total_cap(2020)` exactly equals real observed 2020 consumption (since
+`frac(2020) = share_2020 = EU_safe_potential(2020)/real_consumption(2020)`
+by definition), and `total_cap(2050) = EU_safe_potential(2050)` exactly when
+`target = 1.0` (100% self-sufficiency).
+
+**Target self-sufficiency by 2050 = 100% for all carriers** (gas, oil, coal,
+lignite, and biomass) — one shared config-level scenario choice (not tuned
+per-carrier), representing a "full energy independence" base case. Not
+empirically derived; a lower value (e.g. 0.6) would model a "still relies on
+some imports" scenario instead, and would need re-deriving the numbers below
+(they are precomputed/static in config, not a live runtime formula).
+
+**Real 2020 self-sufficiency fractions** (`share_2020` above), each
+`EU-safe domestic potential / real total consumption`:
+
+| Carrier | EU-safe potential (2020/2025, TWh) | Real 2020 consumption (TWh) | Self-sufficiency |
+|---|---:|---:|---:|
+| gas | 1813.4 | 3887.5 | 46.6% |
+| oil | 1268.7 | 5259.1 | 24.1% |
+| hard coal | 380.3 (production) | 1052.8 | 36.1% |
+| lignite | 746.5 (production) | 762.6 | 97.9% |
+| solid biomass | 1609.3 (domestic potential, 2025) | 1630.8 (domestic + real import est.) | 98.7% |
+
+Gas/oil consumption: Eurostat Complete Energy Balances, Gross Inland
+Consumption, natural gas (G3000) + oil & petroleum products excl. biofuels
+(O4000XBIO), same 33-country scope as `ANCHOR_2020_MTCO2` (Section 3);
+`text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv`.
+Hard coal / lignite production-vs-consumption: already sourced in Section
+4.3. Biomass: domestic potential is this model's own
+`biomass_potentials_s_50_{year}.csv` output (sustainable + unsustainable
+summed, per your direction — NOT just the sustainable share); real import
+estimate is new sourcing (below).
+
+**Biomass is structurally different from the fossil carriers**: in this
+model, domestic solid biomass already has its own separate, UNCONSTRAINED
+Generator (sized to real land-based potential, both sustainable and
+unsustainable). `sector.solid_biomass_import` is a second, optional,
+additional Store layered on top purely for cross-border trade. So instead of
+capping a single combined pool (as for gas/oil/coal/lignite), only the
+IMPORT top-up needs a cap:
+```
+import_cap(year) = domestic_potential(year) * (1/frac(year) - 1)
+```
+which is exactly the "EU-safe + a margin for import" framing: at `frac=1.0`
+(2050 under the 100% target), `import_cap = 0` — imports phase out entirely,
+consistent with full independence; at any `frac<1`, it allows real
+additional import headroom on top of domestic supply.
+
+**Real current biomass import data** (new, 2026-09-04): USDA FAS "Wood
+Pellets Annual" (EU, 2025 edition) reports EU extra-EU wood pellet imports
+at **4.48 million tonnes in 2024** (down from ~4.9 Mt in 2023 — power-plant
+outages in Northwestern Europe and 2022 stock drawdown cited as the reason),
+mainly from the US (1.90 Mt), Canada, Russia/Ukraine/Belarus, and growing
+volumes from Brazil/Vietnam/Malaysia/Thailand. Converted at 4.8 MWh/tonne
+(this repo's own wood-pellet energy content,
+`scripts/build_biomass_transport_costs.py`) → **21.5 TWh/yr**. Wood-CHIP
+extra-EU import volume specifically was searched for but not found/
+quantified as a clean EU-wide aggregate (described in trade press as a
+smaller, growing niche — Denmark a notable importer, Brazil a growing
+supplier) — pellets dominate the traded volume by far, so 21.5 TWh is
+treated as a reasonable lower-bound estimate of total current solid biomass
+imports, not a complete chips+pellets figure. Because real current import
+dependency for biomass (1.3%) is dramatically lower than any fossil
+carrier's (24-53% import-dependent), the resulting import-cap curve is small
+throughout and shrinks to exactly zero by 2050 — very different from
+originally treating imports as a large, roughly-constant potential (the
+prior flat `max_amount: 1390` TWh figure, which traces to an uncited "5 EJ"
+upstream PyPSA-Eur default, commit `c71fa78b`, Millinger 2024 — not
+base-year-sourced at all).
+
+**Resolved values now in `config.default.yaml`** (`energy_limit_per_carrier_values`
+in MtCO2-eq/yr for gas/oil/coal/lignite; `sector.solid_biomass_import.max_amount`
+in TWh/yr):
+
+| Year | gas (MtCO2) | oil (MtCO2) | coal (MtCO2) | lignite (MtCO2) | biomass import (TWh) |
+|-----:|------:|------:|------:|------:|------:|
+| 2025 | 709.6 | 1096.6 | 312.8 | 309.8 | 19.9 |
+| 2030 | 493.8 |  589.4 | 242.6 | 308.6 | 15.0 |
+| 2035 | 285.5 |  276.4 | 187.8 | 307.0 |  9.5 |
+| 2040 | 196.4 |  166.3 | 153.2 | 305.5 |  4.7 |
+| 2045 | 140.4 |  111.0 | 134.1 | 304.3 |  1.3 |
+| 2050 | 102.5 |   79.2 | 127.8 | 303.8 |  0.0 |
+
+Companion script: `text_docs/scripts/build_energy_limit_per_carrier.py`
+(reuses the EU-safe potential curves from `build_fossil_supply_security.py`,
+no duplicated sourcing), producing `energy_limit_per_carrier_fossil.png`
+(gas/oil/coal/lignite: EU-safe potential vs. total cap vs. self-sufficiency
+fraction, real 2020 point for validation) and
+`energy_limit_per_carrier_biomass.png` (domestic potential and import cap
+plotted separately, since the import cap is ~80x smaller and invisible on
+a shared linear scale). Both print their full resolved tables to stdout for
+cross-checking against `config.default.yaml`.
+
+**Implementation**: `add_energy_limit_per_carrier()` in
+`prepare_sector_network.py` (unchanged code, just new config numbers) for
+gas/oil/coal/lignite; `add_biomass()`'s `solid_biomass_import` block
+(modified to accept a `{year: TWh}` dict via the same `get()` myopic-
+indexing helper used elsewhere in this fork, backward-compatible with the
+original flat-float upstream default) for biomass. Verified: standalone
+unit tests confirming both the fossil GlobalConstraints and the biomass
+`get()` resolution pick up the new per-year numbers correctly; full pydantic
+config schema validation passes; `snakemake -n` dry-run resolves cleanly. A
+full solved-network run with both `energy_limit_per_carrier: true` and
+`sector.solid_biomass_import.enable: true` was the natural next verification
+step (see git log for whether/how that was completed).
+
+## 7. Open items / next steps
 
 - **Re-verify the RED II Annex VIII iLUC factor table** (Section 5.2)
   against the Delegated Regulation (EU) 2019/807 primary text directly —

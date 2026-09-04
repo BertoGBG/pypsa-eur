@@ -2006,7 +2006,7 @@ def _min_fossil_co2_from_exogenous(n, HARDCODED):
 # resort fallback (see _resolve_fossil_co2_intensities) when neither costs.csv
 # nor n.carriers.co2_emissions has a value. Shared by add_fossil_fuel_limit
 # (one aggregate MtCO2-eq cap across gas+oil+coal+lignite, sized to a climate
-# trajectory) and add_fossil_fuel_limit_per_carrier (independent per-carrier
+# trajectory) and add_energy_limit_per_carrier (independent per-carrier
 # caps, sized to an energy-security ceiling — a structurally different,
 # additional constraint, not a replacement; see that function's docstring).
 _FOSSIL_CO2_INTENSITY_HARDCODED = {
@@ -2093,7 +2093,7 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     This is a single AGGREGATE budget shared across all fossil carriers, sized
     to a climate trajectory (fossil_limit_values). For independent per-carrier
     caps sized to an energy-security ceiling instead, see
-    add_fossil_fuel_limit_per_carrier — the two are structurally separate
+    add_energy_limit_per_carrier — the two are structurally separate
     constraints and can be enabled independently or together.
 
     Parameters
@@ -2195,7 +2195,7 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     )
 
 
-def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
+def add_energy_limit_per_carrier(n, costs, config, investment_year):
     """
     Add independent per-carrier global constraints on fossil-fuel supply,
     expressed in MtCO₂-equivalent at the wellhead/mine — an energy-security /
@@ -2210,7 +2210,7 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
     EU-domestic coal/lignite production (see
     text_docs/text/fossil_supply_security_methodology.md, Section 4). The two
     constraint families are enabled/configured independently (`fossil_limit`
-    vs `fossil_limit_per_carrier`) and can be active separately or together;
+    vs `energy_limit_per_carrier`) and can be active separately or together;
     if both bind for the same carrier in the same year they are simply two
     separate linear constraints in the same LP — whichever is tighter
     determines the outcome, there is no other interaction.
@@ -2228,25 +2228,25 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
     n : pypsa.Network
     costs : pd.DataFrame
     config : dict
-        Reads `fossil_limit_per_carrier` (bool) and
-        `fossil_limit_per_carrier_values` ({carrier: {year: MtCO2}}), analogous
+        Reads `energy_limit_per_carrier` (bool) and
+        `energy_limit_per_carrier_values` ({carrier: {year: MtCO2}}), analogous
         in structure to `fossil_limit`/`fossil_limit_values`.
     investment_year : int
         Planning horizon year (e.g. 2030, 2035, …).
     """
-    if not config.get("fossil_limit_per_carrier", False):
+    if not config.get("energy_limit_per_carrier", False):
         return
 
-    limits = config.get("fossil_limit_per_carrier_values", {})
+    limits = config.get("energy_limit_per_carrier_values", {})
     if not limits:
         logger.warning(
-            "fossil_limit_per_carrier enabled but fossil_limit_per_carrier_values "
+            "energy_limit_per_carrier enabled but energy_limit_per_carrier_values "
             "is empty. Skipping constraint."
         )
         return
 
     intensities = _resolve_fossil_co2_intensities(
-        n, costs, label="fossil_fuel_limit_per_carrier | "
+        n, costs, label="energy_limit_per_carrier | "
     )
 
     # Which network n.carriers rows feed into each cap. "oil" and "oil
@@ -2265,8 +2265,8 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
         F_t = get(limits[group], investment_year)
         if F_t is None:
             logger.warning(
-                f"fossil_fuel_limit_per_carrier | '{group}': no value found "
-                f"in fossil_limit_per_carrier_values for year={investment_year}. "
+                f"energy_limit_per_carrier | '{group}': no value found "
+                f"in energy_limit_per_carrier_values for year={investment_year}. "
                 f"Skipping this carrier's cap."
             )
             continue
@@ -2274,7 +2274,7 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
         present = [c for c in members if c in n.carriers.index]
         if not present:
             logger.info(
-                f"fossil_fuel_limit_per_carrier | '{group}': no matching "
+                f"energy_limit_per_carrier | '{group}': no matching "
                 f"carrier present in network. Skipping."
             )
             continue
@@ -2286,7 +2286,7 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
             val = intensities.get(carrier)
             if val is None:
                 logger.warning(
-                    f"fossil_fuel_limit_per_carrier | '{group}': carrier "
+                    f"energy_limit_per_carrier | '{group}': carrier "
                     f"'{carrier}' has no resolved CO₂ intensity — excluded "
                     f"from this cap."
                 )
@@ -2294,24 +2294,24 @@ def add_fossil_fuel_limit_per_carrier(n, costs, config, investment_year):
             n.carriers.at[carrier, attr] = val
             any_set = True
             logger.info(
-                f"fossil_fuel_limit_per_carrier | '{group}' <- carrier "
+                f"energy_limit_per_carrier | '{group}' <- carrier "
                 f"'{carrier}': {attr} = {val:.4f} tCO₂/MWh"
             )
         if not any_set:
             logger.warning(
-                f"fossil_fuel_limit_per_carrier | '{group}': no carrier had a "
+                f"energy_limit_per_carrier | '{group}': no carrier had a "
                 f"resolved CO₂ intensity — skipping this cap entirely."
             )
             continue
 
         logger.info(
-            f"Adding per-carrier fossil supply limit: '{group}' <= {F_t:.2f} "
-            f"MtCO₂-eq for {investment_year} (energy-security cap, independent "
-            f"of fossil_fuel_limit; CCS provides no credit)."
+            f"Adding per-carrier energy-security limit: '{group}' <= {F_t:.2f} "
+            f"MtCO₂-eq for {investment_year} (independent of fossil_fuel_limit; "
+            f"CCS provides no credit)."
         )
         n.add(
             "GlobalConstraint",
-            f"fossil_fuel_limit_security_{group}",
+            f"energy_limit_security_{group}",
             type="primary_energy",
             carrier_attribute=attr,
             sense="<=",
@@ -4895,6 +4895,7 @@ def add_biomass(
     biomass_potentials_file,
     biomass_transport_costs_file=None,
     nyears=1,
+    investment_year=None,
 ):
     """
     Add biomass-related components to the PyPSA network.
@@ -5067,10 +5068,15 @@ def add_biomass(
 
     if options["solid_biomass_import"].get("enable", False):
         biomass_import_price = options["solid_biomass_import"]["price"]
-        # convert TWh in MWh
-        biomass_import_max_amount = (
-            options["solid_biomass_import"]["max_amount"] * 1e6 * nyears
+        # max_amount [TWh/yr]: either a flat number (upstream default) or a
+        # {year: TWh} dict for myopic year-indexing (this fork's addition --
+        # see config comment for the self-sufficiency-fraction sourcing).
+        # Resolved via get() the same way as e.g. fossil_limit_values.
+        biomass_import_max_amount_twh = get(
+            options["solid_biomass_import"]["max_amount"], investment_year
         )
+        # convert TWh in MWh
+        biomass_import_max_amount = biomass_import_max_amount_twh * 1e6 * nyears
         biomass_import_upstream_emissions = options["solid_biomass_import"][
             "upstream_emissions_factor"
         ]
@@ -5078,7 +5084,7 @@ def add_biomass(
         logger.info(
             "Adding biomass import with cost %.2f EUR/MWh, a limit of %.2f TWh, and embedded emissions of %.2f%%",
             biomass_import_price,
-            options["solid_biomass_import"]["max_amount"],
+            biomass_import_max_amount_twh,
             biomass_import_upstream_emissions * 100,
         )
 
@@ -8882,6 +8888,7 @@ if __name__ == "__main__":
             biomass_potentials_file=snakemake.input.biomass_potentials,
             biomass_transport_costs_file=snakemake.input.biomass_transport_costs,
             nyears=nyears,
+            investment_year=investment_year,
         )
 
     if options["ammonia"]:
@@ -9078,6 +9085,6 @@ if __name__ == "__main__":
     # Must run after sanitize_carriers so that 'oil primary' (added by
     # add_missing_carriers) is already in n.carriers before fossil_co2_eq is assigned to it.
     add_fossil_fuel_limit(n, costs, snakemake.config, investment_year)
-    add_fossil_fuel_limit_per_carrier(n, costs, snakemake.config, investment_year)
+    add_energy_limit_per_carrier(n, costs, snakemake.config, investment_year)
 
     n.export_to_netcdf(snakemake.output[0])
