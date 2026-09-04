@@ -252,6 +252,22 @@ def add_power_capacities_installed_before_baseyear(
     # real-world life extensions, so using it here silently phases out
     # real, still-operating plants with no recorded DateOut.
     assumed_lifetime = costs.lifetime.fillna(30)
+    # "urban central solid biomass CHP" (the renamed Fueltype used as the
+    # network-facing generator/carrier name, see rename_fuel below) is not
+    # itself a costs.csv technology -- the real cost lookup key is "central
+    # solid biomass CHP" (see the `key = "central solid biomass CHP"` alias
+    # used later in this function, e.g. for capital/marginal cost). Without
+    # this same alias here, any biomass-CHP asset with no real DateOut maps
+    # to a NaN assumed lifetime; if an entire (grouping_year, Fueltype,
+    # resource_class) pivot group has no asset with a real DateOut, its
+    # lifetime aggregates to NaN for every row and pivot_table's default
+    # dropna=True silently drops the whole group -- while the same group
+    # survives in the sibling Capacity pivot (df), causing a KeyError when
+    # the two are cross-indexed further down.
+    if "urban central solid biomass CHP" not in assumed_lifetime.index:
+        assumed_lifetime["urban central solid biomass CHP"] = assumed_lifetime.get(
+            "central solid biomass CHP", 25.0
+        )
     if unknown_dateout_lifetime_overrides:
         for fueltype, years in unknown_dateout_lifetime_overrides.items():
             if fueltype in assumed_lifetime.index:
