@@ -1,0 +1,66 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.weekend_batch_50_1095seg.yaml
+#
+# 2026-09 weekend 9-scenario comparison batch. Settings COMMON to all 9
+# scenarios (see config/scenarios.weekend_batch.yaml, copied to
+# config/scenarios.yaml -- gitignored by convention, run.scenarios.file's
+# default path -- before submitting): 50 nodes, tsam temporal segmentation
+# at 1095 segments (same total snapshot count as plain "8h" resampling,
+# 8760/8=1095, but tsam's representative-segment algorithm should better
+# preserve peak/extreme periods than naive hourly-block averaging), myopic,
+# 2025-2050 in 5-year steps. Nuclear fixes are code-level (commit
+# f5d3543b), not a config toggle -- automatically included, nothing to set
+# here. Endogenous industry heat (industry_t.endogen) and endogenous
+# steel/cement production (endogenous_sectors) both kept ON across every
+# scenario in this batch.
+#
+# shared_resources: policy=false (isolated per scenario), NOT "base" --
+# tried "base" first (would share the resolution/cluster-scoped early-
+# pipeline outputs across all 9 scenarios) but hit a real bug: the `costs`
+# input in rule add_electricity (rules/build_electricity.smk ~line 848)
+# builds its path via `resources(f"costs_{...}_processed.csv")` -- an
+# eagerly-evaluated f-string, not a template Snakemake can thread the
+# `{run}` wildcard through -- so under scenario mode + "base" sharing
+# together, Snakemake can't resolve which scenario's costs file to use and
+# fails with MissingInputException (confirmed via local dry-run,
+# 2026-09-04). Not pursued further given time pressure; a real fix would
+# need add_electricity's costs input rewritten to thread {run} properly.
+# Fallback here: isolated resources per scenario -- costs.csv and other
+# early-pipeline outputs get rebuilt 9x (modest, cheap jobs; NOT the
+# expensive solve steps, which are inherently scenario-specific anyway and
+# were never going to be shared).
+
+run:
+  # "all" is REQUIRED here, not just any truthy value -- scripts/_helpers.py
+  # get_scenarios() only auto-derives run["name"] from the scenario file's
+  # keys when run["name"] is literally the string "all"; otherwise it keeps
+  # whatever run.name already is (config.default.yaml's own committed
+  # value, "myopic_LULUCF_biometh_test", an unrelated leftover from earlier
+  # work -- confirmed by dry-run failure 2026-09-04 before this was added).
+  name: "all"
+  scenarios:
+    enable: true
+    file: config/scenarios.yaml
+  shared_resources:
+    policy: false
+
+scenario:
+  clusters:
+  - 50
+  sector_opts:
+  - 1095seg
+  planning_horizons:
+  - 2025
+  - 2030
+  - 2035
+  - 2040
+  - 2045
+  - 2050
+
+sector:
+  industry_t:
+    endogen: true  # already config.default.yaml's own default; explicit here for clarity
+  endogenous_sectors:
+    enable: true  # NOT the default (false) -- explicit override, applies to all 9 scenarios

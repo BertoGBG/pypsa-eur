@@ -1,0 +1,249 @@
+# -*- coding: utf-8 -*-
+# Tracked source-of-record for the 2026-09 weekend 9-scenario comparison
+# batch. config/scenarios.yaml (what Snakemake actually reads, per
+# run.scenarios.file) is GITIGNORED by convention in this repo -- copy this
+# file there before running:
+#   cp config/scenarios.weekend_batch.yaml config/scenarios.yaml
+#
+# Used together with config/config.weekend_batch_50_1095seg.yaml, which
+# turns scenario mode on and sets everything COMMON to all 9 scenarios
+# (50 clusters, 1095seg tsam resolution, 2025-2050 in 5-year steps,
+# endogenous industry heat + endogenous steel/cement production kept ON).
+# Submit with:
+#   snakemake --profile profiles/default_DTU --configfile config/config.default.yaml config/config.weekend_batch_50_1095seg.yaml --rerun-incomplete all
+#
+# Each entry below is layered ONLY on top of config.default.yaml +
+# config.weekend_batch_50_1095seg.yaml -- only the settings that
+# DIFFERENTIATE each scenario are listed; everything else (biomethanation,
+# aCDRs) uses config.default.yaml's own already-ON defaults unless a
+# scenario explicitly turns them off (run1 only).
+#
+# CO2_fossil_limits (runs 2/3/6/7): aggregate self-sufficiency-fraction
+# fossil_limit_values, Norway+UK+coal ceiling / self-sufficiency curve
+# (same formula as energy_limit_per_carrier but ONE combined total, not
+# per-carrier) -- values reused directly from
+# text_docs/text/fossil_supply_security_methodology.md Section 4.4's
+# "100% by 2050" / "60% by 2050" columns (verified against source
+# 2026-09-04, not re-derived from memory).
+#
+# energy_per_carrier_limits (runs 4/5/8/9): the per-carrier
+# energy_limit_per_carrier + solid_biomass_import mechanism (Section 6).
+# 100%-target values are already config.default.yaml's own defaults (no
+# override needed here); 60%-target values computed fresh 2026-09-04 using
+# the same formula/script, target=0.6 instead of 1.0.
+#
+# LULUCF: "BAU" = config.default.yaml's own active lulucf_deviation_values
+# (no override needed). "Optimistic-weak" = the documented alternative
+# table from text_docs/text/lulucf_deviation_methodology.md (2020=0,
+# 2025=64, 2030=127, flat at 127 from 2035-2050).
+
+weekend_run1:
+  # Baseline reference: everything off. NOT the same as the old
+  # config.run1_baseline_50_8h.yaml, which also disabled industry_t.endogen
+  # /endogenous_sectors -- this batch keeps those ON (set in the common
+  # config file) for every scenario including this one.
+  fossil_limit: false
+  energy_limit_per_carrier: false
+  lulucf_deviation: false
+  sector:
+    biochar:
+      enable: false
+    rock_weathering: false
+    afforestation: false
+    perennials: false
+    biomethanation_biogas: false
+    biomethanation_CO2: false
+
+weekend_run2:
+  # LULUCF BAU (config default, no override) + CO2_fossil_limits ON, 100%
+  # self-sufficiency by 2050 (aggregate). Biomethanation + aCDRs ON
+  # (config default, no override needed).
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2494.9
+    2030: 1770.9
+    2035: 1157.8
+    2040: 868.8
+    2045: 702.3
+    2050: 613.2
+  energy_limit_per_carrier: false
+
+weekend_run3:
+  # Same as run2 but 60% self-sufficiency by 2050 (aggregate).
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2671.8
+    2030: 2175.0
+    2035: 1619.4
+    2040: 1337.6
+    2045: 1146.6
+    2050: 1022.0
+  energy_limit_per_carrier: false
+
+weekend_run4:
+  # LULUCF BAU + energy_per_carrier_limits ON, 100% self-sufficiency by
+  # 2050 (per-carrier). Values = config.default.yaml's own current
+  # energy_limit_per_carrier_values / solid_biomass_import.max_amount --
+  # no override needed, just flip the two booleans on.
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  sector:
+    solid_biomass_import:
+      enable: true
+
+weekend_run5:
+  # Same as run4 but 60% self-sufficiency by 2050 (per-carrier) --
+  # recomputed values, target=0.6 instead of config.default.yaml's 1.0.
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  energy_limit_per_carrier_values:
+    gas:
+      2025: 753.7
+      2030: 595.9
+      2035: 392.6
+      2040: 299.3
+      2045: 228.5
+      2050: 170.8
+    oil:
+      2025: 1217.9
+      2030: 772.3
+      2035: 407.8
+      2040: 263.4
+      2045: 182.7
+      2050: 131.9
+    coal:
+      2025: 337.3
+      2030: 302.0
+      2035: 265.9
+      2040: 237.5
+      2045: 219.5
+      2050: 213.0
+    lignite:
+      2025: 319.5
+      2030: 344.9
+      2035: 384.8
+      2040: 435.1
+      2045: 483.7
+      2050: 506.3
+  sector:
+    solid_biomass_import:
+      enable: true
+      max_amount:
+        2025: 1562.3
+        2030: 1369.1
+        2035: 1177.2
+        2040: 1014.0
+        2045: 941.1
+        2050: 914.1
+
+weekend_run6:
+  # LULUCF Optimistic-weak + CO2_fossil_limits ON, 100% self-sufficiency
+  # (aggregate) -- same fossil_limit_values as run2.
+  lulucf_deviation_values:
+    2020: 0
+    2025: 64
+    2030: 127
+    2035: 127
+    2040: 127
+    2045: 127
+    2050: 127
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2494.9
+    2030: 1770.9
+    2035: 1157.8
+    2040: 868.8
+    2045: 702.3
+    2050: 613.2
+  energy_limit_per_carrier: false
+
+weekend_run7:
+  # LULUCF Optimistic-weak + CO2_fossil_limits ON, 60% self-sufficiency
+  # (aggregate) -- same fossil_limit_values as run3.
+  lulucf_deviation_values:
+    2020: 0
+    2025: 64
+    2030: 127
+    2035: 127
+    2040: 127
+    2045: 127
+    2050: 127
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2671.8
+    2030: 2175.0
+    2035: 1619.4
+    2040: 1337.6
+    2045: 1146.6
+    2050: 1022.0
+  energy_limit_per_carrier: false
+
+weekend_run8:
+  # LULUCF Optimistic-weak + energy_per_carrier_limits ON, 100%
+  # self-sufficiency (per-carrier) -- same values as run4 (config default).
+  lulucf_deviation_values:
+    2020: 0
+    2025: 64
+    2030: 127
+    2035: 127
+    2040: 127
+    2045: 127
+    2050: 127
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  sector:
+    solid_biomass_import:
+      enable: true
+
+weekend_run9:
+  # LULUCF Optimistic-weak + energy_per_carrier_limits ON, 60%
+  # self-sufficiency (per-carrier) -- same values as run5.
+  lulucf_deviation_values:
+    2020: 0
+    2025: 64
+    2030: 127
+    2035: 127
+    2040: 127
+    2045: 127
+    2050: 127
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  energy_limit_per_carrier_values:
+    gas:
+      2025: 753.7
+      2030: 595.9
+      2035: 392.6
+      2040: 299.3
+      2045: 228.5
+      2050: 170.8
+    oil:
+      2025: 1217.9
+      2030: 772.3
+      2035: 407.8
+      2040: 263.4
+      2045: 182.7
+      2050: 131.9
+    coal:
+      2025: 337.3
+      2030: 302.0
+      2035: 265.9
+      2040: 237.5
+      2045: 219.5
+      2050: 213.0
+    lignite:
+      2025: 319.5
+      2030: 344.9
+      2035: 384.8
+      2040: 435.1
+      2045: 483.7
+      2050: 506.3
+  sector:
+    solid_biomass_import:
+      enable: true
+      max_amount:
+        2025: 1562.3
+        2030: 1369.1
+        2035: 1177.2
+        2040: 1014.0
+        2045: 941.1
+        2050: 914.1
