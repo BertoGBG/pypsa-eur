@@ -232,50 +232,93 @@ plt.close(fig)
 print(f"Saved {out_dir}/energy_limit_per_carrier.png")
 
 # ---------------------------------------------------------------------------
+# Biomass CO2 intensity for the MtCO2 panel below: per the model's OWN code
+# (verified, see methodology doc Section 5.1) domestic solid biomass
+# (sustainable AND unsustainable) carries NO CO2-atmosphere link at all --
+# zero charge, treated as carbon-neutral. Only sector.solid_biomass_import
+# has a real emissions charge: efficiency2 = upstream_emissions_factor *
+# costs.at["solid biomass", "CO2 intensity"] (0.1 * 0.3667 = 0.03667
+# tCO2/MWh). So biomass's MtCO2 contribution comes ONLY from its import
+# share, not its (much larger) domestic total -- unlike the TWh panel where
+# domestic dominates by volume.
+BIOMASS_IMPORT_CO2_INTENSITY = 0.1 * 0.3667  # upstream_emissions_factor * solid biomass CO2 intensity
+
+TOTAL_CAP_MTCO2 = {
+    "gas": lambda y: total_cap_fossil(y, "gas") * INTENSITY_TCO2_MWH["gas"],
+    "oil": lambda y: total_cap_fossil(y, "oil") * INTENSITY_TCO2_MWH["oil"],
+    "coal": lambda y: total_cap_fossil(y, "coal") * INTENSITY_TCO2_MWH["coal"],
+    "lignite": lambda y: total_cap_fossil(y, "lignite") * INTENSITY_TCO2_MWH["lignite"],
+    "biomass": lambda y: biomass_import_cap(y) * BIOMASS_IMPORT_CO2_INTENSITY,  # domestic = 0, see above
+}
+
+# ---------------------------------------------------------------------------
 # Figure 2: all carriers stacked -- the combined "total energy-security-
 # capped supply" picture, ALL FIVE carriers (gas/oil/coal/lignite/biomass,
-# biomass's FULL total = domestic+import, not just the import margin) in
-# TWh on the left axis (a common energy unit, so directly stackable/
-# comparable -- no CO2-intensity weighting needed here). Right axis: each
-# carrier's own self-sufficiency fraction curve -- by construction all five
-# converge to the same 100%-by-2050 target, even though they start from
-# very different real 2020 levels (24-98%).
-fig, ax = plt.subplots(figsize=(12, 8.2))
-stack_vals = {c: np.array([TOTAL_CAP_TWH[c](y) for y in YEARS]) for c in ALL_CARRIERS}
-bottoms = np.zeros(len(YEARS))
-for c in ALL_CARRIERS:
-    color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
-    vals = stack_vals[c]
-    ax.bar(YEARS, vals, bottom=bottoms, width=3, label=f"{c.capitalize()}", color=color)
+# biomass's FULL total = domestic+import for the TWh panel, import-only for
+# the MtCO2 panel since domestic carries no charge -- see above) in TWO
+# PANELS: left = TWh (a common energy unit, directly stackable/comparable),
+# right = MtCO2-eq (what the caps mean in emissions terms -- note biomass
+# barely registers here despite dominating the TWh panel by volume). Both
+# panels share the same right-axis self-sufficiency fraction curves -- by
+# construction all five converge to the same 100%-by-2050 target, even
+# though they start from very different real 2020 levels (24-98%, or 50%
+# for biomass's deliberate scenario).
+fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(18, 8.2))
+legend_handles, legend_labels = None, None
+
+for ax, unit, cap_fn, ymax in [
+    (ax_l, "TWh/yr", TOTAL_CAP_TWH, 12500),
+    (ax_r, "MtCO2-eq/yr", TOTAL_CAP_MTCO2, None),
+]:
+    stack_vals = {c: np.array([cap_fn[c](y) for y in YEARS]) for c in ALL_CARRIERS}
+    bottoms = np.zeros(len(YEARS))
+    provisional_top = ymax if ymax else bottoms.copy()
+    if ymax is None:
+        for c in ALL_CARRIERS:
+            provisional_top = provisional_top + stack_vals[c]
+        provisional_top = provisional_top.max() * 1.15
+    label_thresh = 0.005 * provisional_top
+    for c in ALL_CARRIERS:
+        color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
+        vals = stack_vals[c]
+        ax.bar(YEARS, vals, bottom=bottoms, width=3, label=f"{c.capitalize()}", color=color)
+        for i, y in enumerate(YEARS):
+            if vals[i] > label_thresh:
+                ax.text(y, bottoms[i] + vals[i] / 2, f"{vals[i]:.0f}", ha="center", va="center", fontsize=7)
+        bottoms += vals
+    top = ymax if ymax else bottoms.max() * 1.15
     for i, y in enumerate(YEARS):
-        if vals[i] > 60:
-            ax.text(y, bottoms[i] + vals[i] / 2, f"{vals[i]:.0f}", ha="center", va="center", fontsize=7)
-    bottoms += vals
-for i, y in enumerate(YEARS):
-    ax.text(y, bottoms[i] + 150, f"{bottoms[i]:.0f}", ha="center", fontsize=8, fontweight="bold")
-ax.set_ylabel("Total per-carrier energy-security supply cap [TWh/yr]")
-ax.set_xlabel("Year")
-ax.set_xlim(2022, 2053)
-ax.set_ylim(0, 12500)
-ax.set_title(
-    f"All carriers, stacked -- energy_limit_per_carrier resolved values (TWh)\n"
-    f"(right axis: each carrier's self-sufficiency fraction, converging to "
-    f"{100*TARGET_SELF_SUFFICIENCY_2050:.0f}% by 2050)"
+        ax.text(y, bottoms[i] + 0.012 * top, f"{bottoms[i]:.0f}", ha="center", fontsize=8, fontweight="bold")
+    ax.set_ylabel(f"Total per-carrier energy-security supply cap [{unit}]")
+    ax.set_xlabel("Year")
+    ax.set_xlim(2022, 2053)
+    ax.set_ylim(0, top)
+
+    ax2 = ax.twinx()
+    for c in ALL_CARRIERS:
+        color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
+        frac_vals = [100 * frac_curve(y, c) for y in years_fine]
+        ax2.plot(years_fine, frac_vals, color=color, ls=":", lw=2, label=f"{c.capitalize()} self-sufficiency")
+    ax2.set_ylabel("Self-sufficiency [%]")
+    ax2.set_ylim(0, 105)
+
+    if legend_handles is None:
+        handles_bar, labels_bar = ax.get_legend_handles_labels()
+        handles_line, labels_line = ax2.get_legend_handles_labels()
+        legend_handles = handles_bar + handles_line
+        legend_labels = labels_bar + labels_line
+
+ax_l.set_title("Left: TWh/yr")
+ax_r.set_title("Right: MtCO2-eq/yr (biomass = import share only; domestic biomass carries no CO2 charge)")
+fig.suptitle(
+    f"All carriers, stacked -- energy_limit_per_carrier resolved values\n"
+    f"(self-sufficiency fraction converging to {100*TARGET_SELF_SUFFICIENCY_2050:.0f}% by 2050 on both panels)",
+    fontsize=12,
 )
 
-ax2 = ax.twinx()
-for c in ALL_CARRIERS:
-    color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
-    frac_vals = [100 * frac_curve(y, c) for y in years_fine]
-    ax2.plot(years_fine, frac_vals, color=color, ls=":", lw=2, label=f"{c.capitalize()} self-sufficiency")
-ax2.set_ylabel("Self-sufficiency [%]")
-ax2.set_ylim(0, 105)
-
-lines1, labels1 = ax.get_legend_handles_labels()
-lines2, labels2 = ax2.get_legend_handles_labels()
-fig.legend(lines1 + lines2, labels1 + labels2, fontsize=8, loc="lower center",
+fig.legend(legend_handles, legend_labels, fontsize=8, loc="lower center",
            bbox_to_anchor=(0.5, 0.0), ncol=5, frameon=False)
-fig.tight_layout(rect=(0, 0.11, 1, 1))
+fig.tight_layout(rect=(0, 0.11, 1, 0.94))
 fig.savefig(f"{out_dir}/energy_limit_per_carrier_stacked.png", dpi=150)
 plt.close(fig)
 print(f"Saved {out_dir}/energy_limit_per_carrier_stacked.png")
