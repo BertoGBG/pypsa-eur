@@ -1,0 +1,60 @@
+%YAML 1.1
+---
+# Overrides layered on top of config.default.yaml via
+#   --configfile config/config.default.yaml config/config.energy_limit_per_carrier_test_168h.yaml
+#
+# Fast solve-verification test of energy_limit_per_carrier (self-sufficiency-
+# fraction methodology, gas/oil/coal/lignite + solid_biomass_import -- see
+# commit 4005c5ec and text_docs/text/fossil_supply_security_methodology.md
+# Section 6). Mirrors config.run1_baseline_50_8h.yaml's settings otherwise
+# (50 nodes, myopic, nothing else of this fork's own additions activated) at
+# 168h resolution and a 3-horizon subset (2030/2040/2050), same pattern as
+# config.nuclear_fix_test_168h.yaml.
+#
+# EITHER/OR per your direction: energy_limit_per_carrier ON, fossil_limit
+# (the old aggregate climate-driven cap) explicitly OFF -- only one
+# supply-limit mechanism active at a time for this test.
+#
+# shared_resources kept isolated, same reasoning as the nuclear test config
+# (base_myopic_50_8h's provenance metadata predates several rule changes).
+
+run:
+  name: "energy_limit_per_carrier_test_168h"
+  shared_resources:
+    policy: false
+
+# Same right-sizing as the nuclear test config -- see that file's comment
+# for the ~10GB-actual-usage sourcing. 300GB default is oversized for a
+# 50-cluster/168h test and makes the solve job harder to schedule.
+solving:
+  mem_mb: 30000
+
+scenario:
+  clusters:
+  - 50
+  sector_opts:
+  - 168h
+  planning_horizons:
+  - 2030
+  - 2040
+  - 2050
+
+fossil_limit: false  # OFF -- either/or, not both
+energy_limit_per_carrier: true  # ON -- this is what's being tested
+lulucf_deviation: false
+
+sector:
+  solid_biomass_import:
+    enable: true  # ON -- new per-year import cap, part of the same mechanism
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false
