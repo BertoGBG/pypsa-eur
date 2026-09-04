@@ -680,77 +680,95 @@ some imports" scenario instead, and would need re-deriving the numbers below
 | oil | 1268.7 | 5259.1 | 24.1% |
 | hard coal | 380.3 (production) | 1052.8 | 36.1% |
 | lignite | 746.5 (production) | 762.6 | 97.9% |
-| solid biomass | 1609.3 (domestic potential, 2025) | 1630.8 (domestic + real import est.) | 98.7% |
+| solid biomass | — (see below) | — | **50% (deliberate scenario, not real data)** |
 
 Gas/oil consumption: Eurostat Complete Energy Balances, Gross Inland
 Consumption, natural gas (G3000) + oil & petroleum products excl. biofuels
 (O4000XBIO), same 33-country scope as `ANCHOR_2020_MTCO2` (Section 3);
 `text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv`.
 Hard coal / lignite production-vs-consumption: already sourced in Section
-4.3. Biomass: domestic potential is this model's own
-`biomass_potentials_s_50_{year}.csv` output (sustainable + unsustainable
-summed, per your direction — NOT just the sustainable share); real import
-estimate is new sourcing (below).
+4.3.
 
-**Biomass is structurally different from the fossil carriers**: in this
-model, domestic solid biomass already has its own separate, UNCONSTRAINED
-Generator (sized to real land-based potential, both sustainable and
-unsustainable). `sector.solid_biomass_import` is a second, optional,
-additional Store layered on top purely for cross-border trade. So instead of
-capping a single combined pool (as for gas/oil/coal/lignite), only the
-IMPORT top-up needs a cap:
+**Biomass is structurally different from the fossil carriers, in two ways.**
+First, mechanically: in this model, domestic solid biomass already has its
+own separate, UNCONSTRAINED Generator (sized to real land-based potential,
+sustainable + unsustainable summed, per your direction — this model's own
+`biomass_potentials_s_50_{year}.csv` output). `sector.solid_biomass_import`
+is a second, optional, additional Store layered on top purely for
+cross-border trade. So instead of capping a single combined pool (as for
+gas/oil/coal/lignite), only the IMPORT top-up needs a cap:
 ```
 import_cap(year) = domestic_potential(year) * (1/frac(year) - 1)
 ```
 which is exactly the "EU-safe + a margin for import" framing: at `frac=1.0`
-(2050 under the 100% target), `import_cap = 0` — imports phase out entirely,
-consistent with full independence; at any `frac<1`, it allows real
-additional import headroom on top of domestic supply.
+(2050 under the 100% target), `import_cap = 0` — imports phase out entirely;
+at any `frac<1`, it allows real additional import headroom on top of
+domestic supply.
 
-**Real current biomass import data** (new, 2026-09-04): USDA FAS "Wood
-Pellets Annual" (EU, 2025 edition) reports EU extra-EU wood pellet imports
-at **4.48 million tonnes in 2024** (down from ~4.9 Mt in 2023 — power-plant
-outages in Northwestern Europe and 2022 stock drawdown cited as the reason),
-mainly from the US (1.90 Mt), Canada, Russia/Ukraine/Belarus, and growing
-volumes from Brazil/Vietnam/Malaysia/Thailand. Converted at 4.8 MWh/tonne
-(this repo's own wood-pellet energy content,
-`scripts/build_biomass_transport_costs.py`) → **21.5 TWh/yr**. Wood-CHIP
-extra-EU import volume specifically was searched for but not found/
-quantified as a clean EU-wide aggregate (described in trade press as a
-smaller, growing niche — Denmark a notable importer, Brazil a growing
+Second, and more importantly: **biomass's real current self-sufficiency is
+NOT low like the fossil carriers.** Checked two independent ways (both
+2026-09-04): domestic land-based potential (1609.3 TWh, 2025) vs. real
+extra-EU pellet imports (see sourcing below, 21.5 TWh) → 98.7%; real EU27
+actual biomass consumption (~1108.7 TWh, EurObserv'ER 2023) vs. the same
+21.5 TWh import estimate → ~98.1%. Both land in the same place: Europe is
+already almost entirely self-sufficient in biomass today, structurally
+unlike oil/gas which it has never produced enough of domestically (Europe
+has substantial domestic forestry sectors — Scandinavia, France, Germany —
+supplying the great majority of its own biomass use). A curve anchored to
+that real ~98% figure gives a tiny import cap throughout (19.9→0 TWh —
+see git history, commit `4005c5ec`, for that version).
+
+**You explicitly asked (2026-09-04) for a different treatment**: rather than
+anchoring biomass's curve to its real (very high) current self-sufficiency,
+use a **deliberate scenario choice of ~50% starting self-sufficiency** —
+roughly matching the fossil carriers' order of magnitude, representing a
+"what if substantially more biomass trade capacity becomes available"
+assumption, not a claim about today's actual realized trade volumes. This
+is the version now in `config.default.yaml`. The real 2024 import data
+(below) is kept as a labeled reference point in the companion plot, clearly
+marked as NOT the curve's anchor, so the contrast between "what actually
+happens today" and "what this scenario assumes" stays visible rather than
+being silently discarded.
+
+**Real current biomass import data** (sourcing, unchanged by the scenario
+choice above): USDA FAS "Wood Pellets Annual" (EU, 2025 edition) reports EU
+extra-EU wood pellet imports at **4.48 million tonnes in 2024** (down from
+~4.9 Mt in 2023 — power-plant outages in Northwestern Europe and 2022 stock
+drawdown cited as the reason), mainly from the US (1.90 Mt), Canada,
+Russia/Ukraine/Belarus, and growing volumes from Brazil/Vietnam/Malaysia/
+Thailand. Converted at 4.8 MWh/tonne (this repo's own wood-pellet energy
+content, `scripts/build_biomass_transport_costs.py`) → **21.5 TWh/yr**.
+Wood-CHIP extra-EU import volume specifically was searched for but not
+found/quantified as a clean EU-wide aggregate (described in trade press as
+a smaller, growing niche — Denmark a notable importer, Brazil a growing
 supplier) — pellets dominate the traded volume by far, so 21.5 TWh is
 treated as a reasonable lower-bound estimate of total current solid biomass
-imports, not a complete chips+pellets figure. Because real current import
-dependency for biomass (1.3%) is dramatically lower than any fossil
-carrier's (24-53% import-dependent), the resulting import-cap curve is small
-throughout and shrinks to exactly zero by 2050 — very different from
-originally treating imports as a large, roughly-constant potential (the
-prior flat `max_amount: 1390` TWh figure, which traces to an uncited "5 EJ"
-upstream PyPSA-Eur default, commit `c71fa78b`, Millinger 2024 — not
-base-year-sourced at all).
+imports, not a complete chips+pellets figure.
 
 **Resolved values now in `config.default.yaml`** (`energy_limit_per_carrier_values`
 in MtCO2-eq/yr for gas/oil/coal/lignite; `sector.solid_biomass_import.max_amount`
-in TWh/yr):
+in TWh/yr, ~50%-self-sufficiency scenario):
 
 | Year | gas (MtCO2) | oil (MtCO2) | coal (MtCO2) | lignite (MtCO2) | biomass import (TWh) |
 |-----:|------:|------:|------:|------:|------:|
-| 2025 | 709.6 | 1096.6 | 312.8 | 309.8 | 19.9 |
-| 2030 | 493.8 |  589.4 | 242.6 | 308.6 | 15.0 |
-| 2035 | 285.5 |  276.4 | 187.8 | 307.0 |  9.5 |
-| 2040 | 196.4 |  166.3 | 153.2 | 305.5 |  4.7 |
-| 2045 | 140.4 |  111.0 | 134.1 | 304.3 |  1.3 |
-| 2050 | 102.5 |   79.2 | 127.8 | 303.8 |  0.0 |
+| 2025 | 709.6 | 1096.6 | 312.8 | 309.8 | 1387.3 |
+| 2030 | 493.8 |  589.4 | 242.6 | 308.6 |  893.4 |
+| 2035 | 285.5 |  276.4 | 187.8 | 307.0 |  479.6 |
+| 2040 | 196.4 |  166.3 | 153.2 | 305.5 |  203.6 |
+| 2045 | 140.4 |  111.0 | 134.1 | 304.3 |   52.6 |
+| 2050 | 102.5 |   79.2 | 127.8 | 303.8 |    0.0 |
 
 Companion script: `text_docs/scripts/build_energy_limit_per_carrier.py`
 (reuses the EU-safe potential curves from `build_fossil_supply_security.py`,
-no duplicated sourcing), producing a single combined figure
-`energy_limit_per_carrier.png` (3x2 panels: gas/oil/coal/lignite — EU-safe
-potential vs. total cap vs. self-sufficiency fraction, real 2020 point for
-validation — then solid biomass domestic potential and import cap on their
-own scale, since the import cap is ~80x smaller and would be invisible on a
-shared linear axis). Prints the full resolved table to stdout for
-cross-checking against `config.default.yaml`.
+no duplicated sourcing), producing two figures: `energy_limit_per_carrier.png`
+(3x2 panels: gas/oil/coal/lignite — EU-safe potential vs. total cap vs.
+self-sufficiency fraction, real 2020 point for validation — then solid
+biomass domestic potential and import cap, now on a SHARED scale since the
+~50% scenario makes them comparable in magnitude, unlike the ~80x gap under
+the real-data-anchored version) and `energy_limit_per_carrier_stacked.png`
+(all five carriers' total caps stacked in TWh, all five self-sufficiency
+fraction curves converging together on the right axis). Prints the full
+resolved table to stdout for cross-checking against `config.default.yaml`.
 
 **Implementation**: `add_energy_limit_per_carrier()` in
 `prepare_sector_network.py` (unchanged code, just new config numbers) for

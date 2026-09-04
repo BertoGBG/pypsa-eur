@@ -83,17 +83,29 @@ EU_SAFE_TWH = {
 INTENSITY_TCO2_MWH = {"gas": 0.198, "oil": 0.2571, "coal": 0.3361, "lignite": 0.4069}
 
 # ---------------------------------------------------------------------------
-# Real 2020 self-sufficiency fractions: EU-safe potential / real Eurostat
-# GIC consumption (gas/oil), or domestic/consumption production split
-# (coal/lignite, already sourced in the methodology doc Section 4.3), or
-# domestic potential / (domestic potential + real extra-EU import) for
-# biomass (see config comment for the 21.5 TWh 2024 pellet-import sourcing).
+# 2020 self-sufficiency fractions -- the curve's starting point.
+# gas/oil: EU-safe potential / real Eurostat GIC consumption. coal/lignite:
+# real production/consumption split (already sourced in the methodology doc
+# Section 4.3). All three are REAL, measured 2020 data -- no scenario choice.
+#
+# biomass is DIFFERENT: real current self-sufficiency, checked two ways
+# (domestic land-based potential vs. real extra-EU pellet imports: 98.7%;
+# real EU27 actual biomass consumption, EurObserv'ER 2023, ~1108.7 TWh, vs.
+# the same 21.5 TWh import estimate: ~98.1%) is genuinely ~98% -- Europe has
+# ample domestic biomass supply (forestry sectors), unlike oil/gas which it
+# has never produced enough of domestically. A curve anchored to that real
+# number gives a tiny import cap throughout (see git history for that
+# version). Per your explicit direction (2026-09-04), biomass instead uses
+# a DELIBERATE SCENARIO CHOICE -- NOT real current trade data -- of a ~50%
+# starting self-sufficiency (roughly matching the fossil carriers' order of
+# magnitude), representing a "what if more biomass trade capacity becomes
+# available" assumption rather than today's actual low realized volumes.
 SHARE_2020 = {
     "gas": 1813.4 / 3887.5,
     "oil": 1268.7 / 5259.1,
     "coal": 380259 / 1052769,
     "lignite": 746533 / 762560,
-    "biomass": 1609.3 / (1609.3 + 21.5),
+    "biomass": 0.50,  # deliberate scenario choice, NOT real 2020 data (see above)
 }
 
 REAL_CONSUMPTION_2020_TWH = {
@@ -183,37 +195,31 @@ for ax, carrier in zip(fossil_axes, FOSSIL_CARRIERS):
 ax_bio = fig.add_subplot(gs[2, :])
 domestic_vals = [EU_SAFE_TWH["biomass"](y) for y in years_fine]
 import_vals = [biomass_import_cap(y) for y in years_fine]
-ln1 = ax_bio.plot(years_fine, domestic_vals, color=TECH_COLORS.get("solid biomass", "#baa741"), lw=2.5,
-                    label="Domestic potential (sustainable+unsustainable, unconstrained; left axis)")
-ax_bio.scatter([2025], [1609.3], color="black", zorder=5, s=40, label="Real 2025 domestic potential (model)")
+# Single shared axis (not dual) -- with the 50%-starting scenario, the
+# import cap is comparable in magnitude to domestic potential (not ~80x
+# smaller as under the real-data-anchored ~98.7% version), so both fit
+# meaningfully on the same TWh scale.
+ax_bio.plot(years_fine, domestic_vals, color=TECH_COLORS.get("solid biomass", "#baa741"), lw=2.5,
+             label="Domestic potential (sustainable+unsustainable, unconstrained)")
+ax_bio.plot(years_fine, import_vals, color=TECH_COLORS.get("solid biomass import", "#d5ca8d"), lw=2.5,
+             label="Import cap (solid_biomass_import.max_amount)")
+ax_bio.scatter([2025], [21.5], color="black", marker="s", zorder=5, s=40,
+                label="Real 2024 extra-EU pellet imports (for reference -- NOT the curve's anchor)")
 for y in YEARS:
     ax_bio.annotate(f"{EU_SAFE_TWH['biomass'](y):.0f}", (y, EU_SAFE_TWH["biomass"](y)),
                      textcoords="offset points", xytext=(0, 8), fontsize=7, ha="center")
-ax_bio.set_ylabel("Domestic potential [TWh/yr]")
+    ax_bio.annotate(f"{biomass_import_cap(y):.0f}", (y, biomass_import_cap(y)),
+                     textcoords="offset points", xytext=(0, 8), fontsize=7, ha="center", color="#8a7d3a")
+ax_bio.set_ylabel("TWh/yr")
 ax_bio.set_ylim(0, 1750)
 ax_bio.set_xlim(2020, 2050)
 ax_bio.grid(alpha=0.3)
-
-ax_bio2 = ax_bio.twinx()
-ln2 = ax_bio2.plot(years_fine, import_vals, color=TECH_COLORS.get("solid biomass import", "#d5ca8d"), lw=2.5,
-                     label="Import cap (solid_biomass_import.max_amount; right axis)")
-ax_bio2.scatter([2025], [21.5], color="black", marker="s", zorder=5, s=40,
-                 label="Real 2024 extra-EU pellet imports (USDA FAS)")
-for y in YEARS:
-    ax_bio2.annotate(f"{biomass_import_cap(y):.1f}", (y, biomass_import_cap(y)),
-                      textcoords="offset points", xytext=(0, -12), fontsize=7, ha="center", color="#8a7d3a")
-ax_bio2.set_ylabel("Import cap [TWh/yr]", color="#8a7d3a")
-ax_bio2.set_ylim(0, 25)
-
 ax_bio.set_title(
     f"Solid biomass: domestic potential + import cap "
-    f"(2020 self-sufficiency: {100*SHARE_2020['biomass']:.1f}% -> 100% by 2050)"
+    f"(DELIBERATE scenario: {100*SHARE_2020['biomass']:.0f}% self-sufficient in 2020 -> 100% by 2050 -- "
+    f"NOT real trade data, see script comment)"
 )
-lines = ln1 + ln2
-labels = [l.get_label() for l in lines]
-handles2, labels2 = ax_bio.get_legend_handles_labels()
-handles3, labels3 = ax_bio2.get_legend_handles_labels()
-ax_bio.legend(handles2 + handles3, labels2 + labels3, fontsize=7.5, loc="lower left")
+ax_bio.legend(fontsize=7.5, loc="upper right")
 
 fig.suptitle(
     f"Per-carrier energy-security supply caps -- self-sufficiency-fraction methodology\n"
