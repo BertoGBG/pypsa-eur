@@ -744,12 +744,12 @@ in TWh/yr):
 
 Companion script: `text_docs/scripts/build_energy_limit_per_carrier.py`
 (reuses the EU-safe potential curves from `build_fossil_supply_security.py`,
-no duplicated sourcing), producing `energy_limit_per_carrier_fossil.png`
-(gas/oil/coal/lignite: EU-safe potential vs. total cap vs. self-sufficiency
-fraction, real 2020 point for validation) and
-`energy_limit_per_carrier_biomass.png` (domestic potential and import cap
-plotted separately, since the import cap is ~80x smaller and invisible on
-a shared linear scale). Both print their full resolved tables to stdout for
+no duplicated sourcing), producing a single combined figure
+`energy_limit_per_carrier.png` (3x2 panels: gas/oil/coal/lignite — EU-safe
+potential vs. total cap vs. self-sufficiency fraction, real 2020 point for
+validation — then solid biomass domestic potential and import cap on their
+own scale, since the import cap is ~80x smaller and would be invisible on a
+shared linear axis). Prints the full resolved table to stdout for
 cross-checking against `config.default.yaml`.
 
 **Implementation**: `add_energy_limit_per_carrier()` in

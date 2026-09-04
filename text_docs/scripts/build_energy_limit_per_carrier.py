@@ -125,11 +125,14 @@ def biomass_import_cap(year):
 
 
 # ---------------------------------------------------------------------------
-# Figure 1: gas/oil/coal/lignite -- EU-safe potential, self-sufficiency
-# fraction, and the resulting TOTAL supply cap now in config.default.yaml.
-fig, axes = plt.subplots(2, 2, figsize=(13, 9))
+# Single combined figure, 3x2: gas/oil, coal/lignite (EU-safe potential vs.
+# total supply cap vs. self-sufficiency fraction), then biomass domestic
+# potential / import cap (its own scale, since it dwarfs the import cap by
+# ~80x -- a shared scale would make the import cap invisible).
 FOSSIL_CARRIERS = ["gas", "oil", "coal", "lignite"]
-for ax, carrier in zip(axes.flat, FOSSIL_CARRIERS):
+fig, axes = plt.subplots(3, 2, figsize=(13, 13))
+
+for ax, carrier in zip(axes[:2].flat, FOSSIL_CARRIERS):
     color = TECH_COLORS.get(carrier, "tab:blue")
     safe_vals = [EU_SAFE_TWH[carrier](y) for y in years_fine]
     total_vals = [total_cap_fossil(y, carrier) for y in years_fine]
@@ -152,24 +155,9 @@ for ax, carrier in zip(axes.flat, FOSSIL_CARRIERS):
     if carrier == "gas":
         lines1, labels1 = ax.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax.legend(lines1 + lines2, labels1 + labels2, fontsize=7.5, loc="upper right")
+        ax.legend(lines1 + lines2, labels1 + labels2, fontsize=7, loc="upper right")
 
-fig.suptitle(
-    f"Per-carrier energy-security supply caps -- self-sufficiency-fraction methodology\n"
-    f"(target: {100*TARGET_SELF_SUFFICIENCY_2050:.0f}% self-sufficient by 2050, shared across all carriers)",
-    fontsize=12,
-)
-fig.tight_layout(rect=(0, 0, 1, 0.94))
-fig.savefig(f"{out_dir}/energy_limit_per_carrier_fossil.png", dpi=150)
-plt.close(fig)
-print(f"Saved {out_dir}/energy_limit_per_carrier_fossil.png")
-
-# ---------------------------------------------------------------------------
-# Figure 2: solid biomass -- domestic potential (unconstrained Generator,
-# left panel, its own scale since it dwarfs the import cap by ~80x) and the
-# import-only margin cap + self-sufficiency fraction (right panel).
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-
+ax1, ax2 = axes[2]
 domestic_vals = [EU_SAFE_TWH["biomass"](y) for y in years_fine]
 ax1.plot(years_fine, domestic_vals, color=TECH_COLORS.get("solid biomass", "#baa741"), lw=2.5,
           label="Domestic potential (sustainable+unsustainable, unconstrained)")
@@ -177,11 +165,11 @@ ax1.scatter([2025], [1609.3], color="black", zorder=5, s=40, label="Real 2025 do
 for y in YEARS:
     ax1.annotate(f"{EU_SAFE_TWH['biomass'](y):.0f}", (y, EU_SAFE_TWH["biomass"](y)),
                  textcoords="offset points", xytext=(0, 8), fontsize=7, ha="center")
-ax1.set_title("Domestic solid biomass potential (unconstrained)")
+ax1.set_title("Solid biomass: domestic potential (unconstrained)")
 ax1.set_ylabel("TWh/yr")
 ax1.set_xlim(2020, 2050)
 ax1.set_ylim(0, 1750)
-ax1.legend(fontsize=7.5, loc="lower left")
+ax1.legend(fontsize=7, loc="lower left")
 ax1.grid(alpha=0.3)
 
 import_vals = [biomass_import_cap(y) for y in years_fine]
@@ -196,20 +184,24 @@ frac_vals = [100 * frac_curve(y, "biomass") for y in years_fine]
 ax2b.plot(years_fine, frac_vals, color="grey", ls=":", lw=1.5, label="Self-sufficiency fraction")
 ax2b.set_ylim(90, 101)
 ax2b.set_ylabel("Self-sufficiency [%]", color="grey", fontsize=8)
-ax2.set_title(f"Import cap (2020 self-sufficiency: {100*SHARE_2020['biomass']:.1f}% -> 100% by 2050)")
+ax2.set_title(f"Solid biomass: import cap (2020 self-sufficiency: {100*SHARE_2020['biomass']:.1f}% -> 100% by 2050)")
 ax2.set_ylabel("TWh/yr")
 ax2.set_xlim(2020, 2050)
 ax2.set_ylim(0, 25)
 lines1, labels1 = ax2.get_legend_handles_labels()
 lines2, labels2 = ax2b.get_legend_handles_labels()
-ax2.legend(lines1 + lines2, labels1 + labels2, fontsize=7.5, loc="upper right")
+ax2.legend(lines1 + lines2, labels1 + labels2, fontsize=7, loc="upper right")
 ax2.grid(alpha=0.3)
 
-fig.suptitle("Solid biomass import cap -- self-sufficiency-fraction methodology", fontsize=12)
-fig.tight_layout(rect=(0, 0, 1, 0.94))
-fig.savefig(f"{out_dir}/energy_limit_per_carrier_biomass.png", dpi=150)
+fig.suptitle(
+    f"Per-carrier energy-security supply caps -- self-sufficiency-fraction methodology\n"
+    f"(target: {100*TARGET_SELF_SUFFICIENCY_2050:.0f}% self-sufficient by 2050, shared across all carriers)",
+    fontsize=12,
+)
+fig.tight_layout(rect=(0, 0, 1, 0.96))
+fig.savefig(f"{out_dir}/energy_limit_per_carrier.png", dpi=150)
 plt.close(fig)
-print(f"Saved {out_dir}/energy_limit_per_carrier_biomass.png")
+print(f"Saved {out_dir}/energy_limit_per_carrier.png")
 
 # ---------------------------------------------------------------------------
 print("\n=== Resolved config values (cross-check against config.default.yaml) ===")
