@@ -252,6 +252,35 @@ TOTAL_CAP_MTCO2 = {
 }
 
 # ---------------------------------------------------------------------------
+# CO2Limit (the model's real system-wide, net, CCS-credited emissions
+# budget from config.default.yaml's own co2_budget fractions of 1990
+# levels -- same table as build_fossil_supply_security.py's CO2LIMIT_1P9C,
+# already verified consistent with this config) and PROCESS EMISSIONS (a
+# genuinely separate, non-combustion CO2 source -- industrial calcination
+# + feedstock process CO2, "process emissions" Load in
+# prepare_sector_network.py, NOT captured by any of the five per-carrier
+# combustion caps above; even driving every fossil carrier to zero leaves
+# this baseline). Real process-emissions totals extracted directly from
+# this fork's own solved networks (energy_limit_per_carrier_test_168h,
+# 2026-09-04): 2030=128.83, 2040=112.90, 2050=96.38 MtCO2/yr -- only these
+# three years have a real solved-network value (matches this test's own
+# planning_horizons); 2025/2035/2045 are linearly interpolated between the
+# real points (flagged, not independently sourced), holding flat before
+# 2030 at the 2030 value (no earlier solved data available).
+_PROCESS_EMISSIONS_KNOWN = {2030: 128.83, 2040: 112.90, 2050: 96.38}
+_pe_years = sorted(_PROCESS_EMISSIONS_KNOWN)
+_pe_vals = [_PROCESS_EMISSIONS_KNOWN[y] for y in _pe_years]
+
+
+def process_emissions_mtco2(year):
+    y = max(year, _pe_years[0])
+    return float(np.interp(y, _pe_years, _pe_vals))
+
+
+CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
+                 2040: 460.4, 2045: 230.2, 2050: 0.0}
+
+# ---------------------------------------------------------------------------
 # Figure 2: all carriers stacked -- the combined "total energy-security-
 # capped supply" picture, ALL FIVE carriers (gas/oil/coal/lignite/biomass,
 # biomass's FULL total = domestic+import for the TWh panel, import-only for
@@ -266,29 +295,46 @@ TOTAL_CAP_MTCO2 = {
 fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(18, 8.2))
 legend_handles, legend_labels = None, None
 
-for ax, unit, cap_fn, ymax in [
-    (ax_l, "TWh/yr", TOTAL_CAP_TWH, 12500),
-    (ax_r, "MtCO2-eq/yr", TOTAL_CAP_MTCO2, None),
+for ax, unit, cap_fn, ymax, is_mtco2 in [
+    (ax_l, "TWh/yr", TOTAL_CAP_TWH, 12500, False),
+    (ax_r, "MtCO2-eq/yr", TOTAL_CAP_MTCO2, None, True),
 ]:
+    stack_carriers = list(ALL_CARRIERS) + (["process emissions"] if is_mtco2 else [])
     stack_vals = {c: np.array([cap_fn[c](y) for y in YEARS]) for c in ALL_CARRIERS}
+    if is_mtco2:
+        stack_vals["process emissions"] = np.array([process_emissions_mtco2(y) for y in YEARS])
     bottoms = np.zeros(len(YEARS))
     provisional_top = ymax if ymax else bottoms.copy()
     if ymax is None:
-        for c in ALL_CARRIERS:
+        for c in stack_carriers:
             provisional_top = provisional_top + stack_vals[c]
         provisional_top = provisional_top.max() * 1.15
     label_thresh = 0.005 * provisional_top
-    for c in ALL_CARRIERS:
-        color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
+    for c in stack_carriers:
         vals = stack_vals[c]
-        ax.bar(YEARS, vals, bottom=bottoms, width=3, label=f"{c.capitalize()}", color=color)
+        if c == "process emissions":
+            # Hatched, near-white fill so it reads as structurally different
+            # from the five fuel-carrier segments below it -- a genuinely
+            # separate, non-combustion CO2 source (industrial calcination +
+            # feedstock process CO2), not one of the capped fuel carriers.
+            ax.bar(YEARS, vals, bottom=bottoms, width=3, label="Process emissions (industry, uncapped here)",
+                   color="white", edgecolor="black", hatch="///", linewidth=0.8)
+        else:
+            color = TECH_COLORS.get(c if c != "biomass" else "solid biomass", "tab:blue")
+            ax.bar(YEARS, vals, bottom=bottoms, width=3, label=f"{c.capitalize()}", color=color)
         for i, y in enumerate(YEARS):
             if vals[i] > label_thresh:
                 ax.text(y, bottoms[i] + vals[i] / 2, f"{vals[i]:.0f}", ha="center", va="center", fontsize=7)
         bottoms += vals
     top = ymax if ymax else bottoms.max() * 1.15
     for i, y in enumerate(YEARS):
-        ax.text(y, bottoms[i] + 0.012 * top, f"{bottoms[i]:.0f}", ha="center", fontsize=8, fontweight="bold")
+        ax.text(y, bottoms[i] + 0.035 * top, f"{bottoms[i]:.0f}", ha="center", fontsize=8, fontweight="bold")
+    if is_mtco2:
+        co2limit_years = [y for y in CO2LIMIT_1P9C if y in YEARS]
+        co2limit_vals = [CO2LIMIT_1P9C[y] for y in co2limit_years]
+        ax.plot(co2limit_years, co2limit_vals,
+                color="purple", marker="D", lw=2, ms=6, label="CO2Limit (system-wide, config co2_budget)", zorder=6)
+        top = max(top, max(co2limit_vals) * 1.1)
     ax.set_ylabel(f"Total per-carrier energy-security supply cap [{unit}]")
     ax.set_xlabel("Year")
     ax.set_xlim(2022, 2053)
@@ -302,7 +348,9 @@ for ax, unit, cap_fn, ymax in [
     ax2.set_ylabel("Self-sufficiency [%]")
     ax2.set_ylim(0, 105)
 
-    if legend_handles is None:
+    # Capture legend handles from the MtCO2 panel (the superset -- it also
+    # has process emissions + CO2Limit, absent from the TWh panel).
+    if is_mtco2:
         handles_bar, labels_bar = ax.get_legend_handles_labels()
         handles_line, labels_line = ax2.get_legend_handles_labels()
         legend_handles = handles_bar + handles_line
