@@ -28,6 +28,17 @@ run:
   shared_resources:
     policy: false
 
+# config.default.yaml's solving.mem_mb (300000 = 300GB) is sized for full
+# production runs (90 clusters, finer resolution, all CDR techs) -- a
+# comparable but heavier 90-cluster/168h run (myopic_LULUCF_biometh_test,
+# all four CDRs + LULUCF deviation active) peaked at ~10GB actual usage per
+# its own memory.log, so 300GB for this smaller/simpler 50-cluster test is
+# wildly oversized and mostly just makes the job harder to schedule (few
+# nodes have 300GB free). Overridden here only, not in config.default.yaml,
+# so production runs keep their real headroom.
+solving:
+  mem_mb: 30000
+
 scenario:
   clusters:
   - 50
