@@ -1,0 +1,25 @@
+%YAML 1.1
+---
+# Quick end-to-end test of conventional.nuclear.representation: generator
+# (see config.nuclear_generator.yaml, commit a92f7ce8) -- that toggle has
+# never been run through prepare_sector_network.py / add_existing_baseyear.py
+# end-to-end yet. Layer on top of config.nuclear_fix_test_168h.yaml (which
+# already gives the cheap 50-cluster/168h/isolated-resources baseline) plus
+# config.nuclear_generator.yaml (the toggle itself), trimmed further to just
+# 2 horizons for the fastest possible pass/fail signal before committing to
+# the full 9-scenario weekend batch:
+#
+#   --configfile config/config.default.yaml \
+#                config/config.nuclear_fix_test_168h.yaml \
+#                config/config.nuclear_generator.yaml \
+#                config/config.nuclear_generator_test_168h.yaml
+
+run:
+  name: "nuclear_generator_test_168h"
+  shared_resources:
+    policy: false
+
+scenario:
+  planning_horizons:
+  - 2030
+  - 2040

@@ -1,0 +1,16 @@
+%YAML 1.1
+---
+# Sets nuclear representation to "generator" mode (commit a92f7ce8):
+# keeps add_electricity's plain Generator instead of the vintaged
+# uranium-bus Link, freezing the nuclear fleet at its base-year capacity
+# -- no decommissioning and no new build (nuclear is absent from
+# electricity.extendable_carriers). Default (unset) is "link", which ages
+# the fleet out on each plant's real/assumed DateOut -- see commit
+# f5d3543b.
+#
+# Layer this on top of any other configfile via --configfile; it only
+# touches this one key so it composes cleanly with test configs and the
+# weekend-batch config alike.
+conventional:
+  nuclear:
+    representation: generator
