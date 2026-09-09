@@ -20,6 +20,7 @@ import xarray as xr
 from scripts._helpers import (
     configure_logging,
     load_costs,
+    nuclear_representation,
     sanitize_custom_columns,
     set_scenario_config,
     update_config_from_wildcards,
@@ -162,6 +163,7 @@ def add_power_capacities_installed_before_baseyear(
     renewable_carriers: list[str],
     solar_rooftop_ratio: float = 0.5,
     unknown_dateout_lifetime_overrides: dict[str, float] | None = None,
+    nuclear_repr: str = "link",
 ) -> None:
     """
     Add power generation capacities installed before base year.
@@ -361,6 +363,11 @@ def add_power_capacities_installed_before_baseyear(
     }
 
     for grouping_year, generator, resource_class in df.index:
+        if generator == "nuclear" and nuclear_repr == "generator":
+            # Fleet is represented by add_electricity's plain Generator, which
+            # prepare_sector_network.py keeps in this mode. Building the
+            # vintaged Link too would double-count nuclear (see f5d3543b).
+            continue
         # capacity is the capacity in MW at each node for this
         capacity = df.loc[grouping_year, generator, resource_class]
         capacity = capacity[~capacity.isna()]
@@ -1181,6 +1188,7 @@ if __name__ == "__main__":
         renewable_carriers=renewable_carriers,
         solar_rooftop_ratio=snakemake.params.existing_capacities["solar_rooftop_ratio"],
         unknown_dateout_lifetime_overrides=unknown_dateout_lifetime_overrides,
+        nuclear_repr=nuclear_representation(snakemake.config),
     )
 
     if options["heating"]:

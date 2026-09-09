@@ -1235,3 +1235,37 @@ def _load_data_version(file: str | Path, validate: bool = True) -> pd.DataFrame:
         data_versions = VersionsSchema.validate(data_versions)
 
     return data_versions
+
+
+def nuclear_representation(config: dict) -> str:
+    """
+    How the existing nuclear fleet is represented in the sector-coupled network.
+
+    Config key: ``conventional.nuclear.representation``.
+
+    Returns
+    -------
+    str
+        ``"link"`` (default)
+            Vintaged Links off the "EU uranium" bus, built by
+            add_existing_baseyear.py, each retiring on its plant's reported
+            DateOut -- or, where that is missing, on
+            ``conventional.nuclear.lifetime_unknown_dateout``. Capacity
+            therefore declines over the horizons as the fleet ages out.
+        ``"generator"``
+            add_electricity.py's plain Generator is kept instead, which is how
+            upstream PyPSA-Eur represents nuclear. That Generator carries no
+            build_year/lifetime, so the fleet is frozen at today's capacity: no
+            decommissioning, and no new build either, since "nuclear" is absent
+            from ``electricity.extendable_carriers``. The uranium-bus Links are
+            suppressed in this mode so nuclear is never represented twice --
+            the double-counting fixed in commit f5d3543b.
+    """
+    nuclear = config.get("conventional", {}).get("nuclear", {})
+    value = nuclear.get("representation", "link") if isinstance(nuclear, dict) else "link"
+    if value not in ("link", "generator"):
+        raise ValueError(
+            "conventional.nuclear.representation must be 'link' or 'generator', "
+            f"got {value!r}"
+        )
+    return value

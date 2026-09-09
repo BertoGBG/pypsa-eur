@@ -631,6 +631,17 @@ conventional:
     # Assumed lifetime [years] used ONLY to estimate a missing DateOut for
     # existing plants with no recorded closure date (add_existing_baseyear.py)
     lifetime_unknown_dateout: 60
+    # How the existing nuclear fleet is represented:
+    #   link      - vintaged Links off the "EU uranium" bus, retiring on each
+    #               plant's DateOut (or lifetime_unknown_dateout above where
+    #               that is missing), so capacity declines as the fleet ages.
+    #   generator - upstream PyPSA-Eur's representation: keep add_electricity's
+    #               plain Generator, which has no build_year/lifetime. The fleet
+    #               is frozen at today's capacity -- no decommissioning, and no
+    #               new build either (nuclear is not in extendable_carriers).
+    #               The uranium-bus Links are suppressed in this mode so nuclear
+    #               is not counted twice (the bug fixed in f5d3543b).
+    representation: link
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#lines
 lines:

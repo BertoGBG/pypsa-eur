@@ -25,6 +25,7 @@ from scripts._helpers import (
     configure_logging,
     get,
     load_costs,
+    nuclear_representation,
     set_scenario_config,
     update_config_from_wildcards,
 )
@@ -8731,6 +8732,15 @@ if __name__ == "__main__":
     gas_input_nodes = pd.read_csv(fn, index_col=0)
 
     carriers_to_keep = snakemake.params.pypsa_eur
+    if nuclear_representation(snakemake.config) == "generator":
+        # Exempt add_electricity's plain nuclear Generator from
+        # remove_elec_base_techs(), freezing the fleet at today's capacity.
+        # add_existing_baseyear.py suppresses the uranium-bus Links in this same
+        # mode, so nuclear stays represented exactly once.
+        carriers_to_keep = {
+            **carriers_to_keep,
+            "Generator": [*carriers_to_keep.get("Generator", []), "nuclear"],
+        }
     profiles = {
         key: snakemake.input[key]
         for key in snakemake.input.keys()
