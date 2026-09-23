@@ -5,6 +5,7 @@
 
 <!-- Upcoming Release -->
 <!-- ================= -->
+* feat: Add optional endogenous shipping fuel choice (`sector: shipping_endogenous: true`): oil, methanol, gas/LNG, and hydrogen compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix, instead of following fixed year-indexed shares. The original fixed-share behaviour remains available by setting `shipping_endogenous: false`.
 * Streamlined workflow ([#1838](https://github.com/PyPSA/pypsa-eur/pull/1838)): overnight, myopic, and perfect foresight are now handled by a unified set of rules for both electricity-only and sector-coupled models. See the [migration guide](migration.md) for detailed migration guidance.
 
     **Workflow structure:**

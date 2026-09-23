@@ -820,6 +820,15 @@ sector:
   agriculture_machinery_fuel_efficiency: 0.7
   agriculture_machinery_electric_efficiency: 0.3
   shipping_hydrogen_liquefaction: false
+  # endogenous: enabled fuels below compete on a shared demand bus and the
+  # optimiser picks the cost-minimal mix; exogenous (false): shipping_*_share
+  # below fixes each fuel's share per year instead
+  shipping_endogenous: true
+  shipping_oil: true
+  shipping_methanol: true
+  shipping_lng: true
+  shipping_hydrogen: false
+  # shares below are used in exogenous mode only (shipping_endogenous: false)
   shipping_hydrogen_share:
     2020: 0
     2025: 0
@@ -846,6 +855,9 @@ sector:
     2050: 0
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
+  # placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust
+  # once a technology-data-sourced figure is available
+  shipping_lng_efficiency: 0.45
   aviation_demand_factor: 1.0
   HVC_demand_factor: 1.0
   time_dep_hp_cop: true

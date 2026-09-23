@@ -4553,25 +4553,90 @@
           "description": "Whether to include liquefaction costs for hydrogen demand in shipping.",
           "type": "boolean"
         },
+        "shipping_endogenous": {
+          "default": true,
+          "description": "If true, shipping fuel choice is endogenous: enabled fuels (shipping_oil/methanol/lng/hydrogen) compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix. If false, falls back to the original fixed year-indexed shipping_*_share behaviour.",
+          "type": "boolean"
+        },
+        "shipping_oil": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether oil is an available fuel for shipping."
+        },
+        "shipping_methanol": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether methanol is an available fuel for shipping."
+        },
+        "shipping_lng": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether LNG (drawn from the existing gas bus/network and liquefied) is an available fuel for shipping."
+        },
+        "shipping_hydrogen": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": false,
+          "description": "Whether hydrogen is an available fuel for shipping."
+        },
         "shipping_hydrogen_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by hydrogen in a given year.",
+          "description": "The share of ships powered by hydrogen in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_methanol_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by methanol in a given year.",
+          "description": "The share of ships powered by methanol in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_oil_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by oil in a given year.",
+          "description": "The share of ships powered by oil in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_methanol_efficiency": {
@@ -4583,6 +4648,11 @@
         "shipping_oil_efficiency": {
           "default": 0.4,
           "description": "The efficiency of oil-powered ships in the conversion of oil to meet shipping needs (propulsion). Base value derived from 2011.",
+          "type": "number"
+        },
+        "shipping_lng_efficiency": {
+          "default": 0.45,
+          "description": "Placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust once a technology-data-sourced figure is available.",
           "type": "number"
         },
         "aviation_demand_factor": {
@@ -11201,25 +11271,90 @@
           "description": "Whether to include liquefaction costs for hydrogen demand in shipping.",
           "type": "boolean"
         },
+        "shipping_endogenous": {
+          "default": true,
+          "description": "If true, shipping fuel choice is endogenous: enabled fuels (shipping_oil/methanol/lng/hydrogen) compete on a shared per-node demand bus and the optimiser picks the cost-minimal mix. If false, falls back to the original fixed year-indexed shipping_*_share behaviour.",
+          "type": "boolean"
+        },
+        "shipping_oil": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether oil is an available fuel for shipping."
+        },
+        "shipping_methanol": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether methanol is an available fuel for shipping."
+        },
+        "shipping_lng": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": true,
+          "description": "Whether LNG (drawn from the existing gas bus/network and liquefied) is an available fuel for shipping."
+        },
+        "shipping_hydrogen": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "type": "object"
+            }
+          ],
+          "default": false,
+          "description": "Whether hydrogen is an available fuel for shipping."
+        },
         "shipping_hydrogen_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by hydrogen in a given year.",
+          "description": "The share of ships powered by hydrogen in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_methanol_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by methanol in a given year.",
+          "description": "The share of ships powered by methanol in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_oil_share": {
           "additionalProperties": {
             "type": "number"
           },
-          "description": "The share of ships powered by oil in a given year.",
+          "description": "The share of ships powered by oil in a given year (exogenous mode only).",
           "type": "object"
         },
         "shipping_methanol_efficiency": {
@@ -11231,6 +11366,11 @@
         "shipping_oil_efficiency": {
           "default": 0.4,
           "description": "The efficiency of oil-powered ships in the conversion of oil to meet shipping needs (propulsion). Base value derived from 2011.",
+          "type": "number"
+        },
+        "shipping_lng_efficiency": {
+          "default": 0.45,
+          "description": "Placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust once a technology-data-sourced figure is available.",
           "type": "number"
         },
         "aviation_demand_factor": {
