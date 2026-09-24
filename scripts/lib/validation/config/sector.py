@@ -606,6 +606,18 @@ class SectorConfig(BaseModel):
         },
         description="The share of ships powered by oil in a given year (exogenous mode only).",
     )
+    shipping_lng_share: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 0,
+            2025: 0,
+            2030: 0,
+            2035: 0,
+            2040: 0,
+            2045: 0,
+            2050: 0,
+        },
+        description="The share of ships powered by LNG in a given year (exogenous mode only). Gas is drawn from the gas bus and liquefied via CH4 liquefaction, as in endogenous mode.",
+    )
     shipping_methanol_efficiency: float = Field(
         0.46,
         description="The efficiency of methanol-powered ships in the conversion of methanol to meet shipping needs (propulsion). The efficiency increase from oil can be 10-15% higher according to the `IEA <https://web.archive.org/web/20220119063102/https://iea-amf.org/app/webroot/files/file/Annex%20Reports/AMF_Annex_56.pdf>`_.",

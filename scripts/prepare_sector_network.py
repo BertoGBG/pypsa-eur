@@ -5088,6 +5088,48 @@ def add_aviation(
         )
 
 
+def _add_lng_liquefaction(
+    n: pypsa.Network,
+    costs: pd.DataFrame,
+    nodes: pd.Index,
+    spatial: SimpleNamespace,
+) -> None:
+    """
+    Add a per-node "<node> LNG" bus fed from the gas bus by a "CH4
+    liquefaction" Link. Shared by the endogenous and exogenous shipping
+    implementations.
+
+    Gas-fuelled shipping only exists in practice as LNG -- a ship cannot
+    bunker directly from a pipeline -- so liquefaction is unconditional
+    whenever LNG shipping is enabled. The step is electricity-driven, not
+    gas-combusting: CH4 passes through at efficiency=1 (technology-data
+    "methane-input" of 1.0) and the refrigeration load is drawn from the
+    node's electricity bus via bus2 ("electricity-input").
+    """
+    n.add(
+        "Bus",
+        nodes,
+        suffix=" LNG",
+        carrier="LNG",
+        location=nodes,
+        unit="MWh_LHV",
+    )
+
+    n.add(
+        "Link",
+        nodes + " CH4 liquefaction",
+        bus0=spatial.gas.df.loc[nodes, "nodes"].values,
+        bus1=nodes + " LNG",
+        bus2=nodes,
+        carrier="CH4 liquefaction",
+        efficiency=1.0,
+        efficiency2=-costs.at["CH4 liquefaction", "electricity-input"],
+        capital_cost=costs.at["CH4 liquefaction", "capital_cost"],
+        p_nom_extendable=True,
+        lifetime=costs.at["CH4 liquefaction", "lifetime"],
+    )
+
+
 def add_shipping(
     n: pypsa.Network,
     costs: pd.DataFrame,
@@ -5124,8 +5166,14 @@ def add_shipping(
     shipping_hydrogen_share = get(options["shipping_hydrogen_share"], investment_year)
     shipping_methanol_share = get(options["shipping_methanol_share"], investment_year)
     shipping_oil_share = get(options["shipping_oil_share"], investment_year)
+    shipping_lng_share = get(options.get("shipping_lng_share", 0), investment_year)
 
-    total_share = shipping_hydrogen_share + shipping_methanol_share + shipping_oil_share
+    total_share = (
+        shipping_hydrogen_share
+        + shipping_methanol_share
+        + shipping_oil_share
+        + shipping_lng_share
+    )
     if total_share != 1:
         logger.warning(
             f"Total shipping shares sum up to {total_share:.2%}, corresponding to increased or decreased demand assumptions."
@@ -5263,6 +5311,45 @@ def add_shipping(
             efficiency2=costs.at["oil", "CO2 intensity"],
         )
 
+    if shipping_lng_share:
+        efficiency = (
+            options["shipping_oil_efficiency"] / options["shipping_lng_efficiency"]
+        )
+        p_set_lng = (
+            shipping_lng_share
+            * p_set.rename(lambda x: x + " shipping LNG")
+            * efficiency
+        )
+
+        _add_lng_liquefaction(n, costs, nodes, spatial)
+
+        n.add(
+            "Bus",
+            nodes + " shipping LNG",
+            location=nodes,
+            carrier="shipping LNG",
+            unit="MWh_LHV",
+        )
+
+        n.add(
+            "Load",
+            nodes + " shipping LNG",
+            bus=nodes + " shipping LNG",
+            carrier="shipping LNG",
+            p_set=p_set_lng,
+        )
+
+        n.add(
+            "Link",
+            nodes + " shipping LNG",
+            bus0=nodes + " LNG",
+            bus1=nodes + " shipping LNG",
+            bus2="co2 atmosphere",
+            carrier="shipping LNG",
+            p_nom_extendable=True,
+            efficiency2=costs.at["gas", "CO2 intensity"],
+        )
+
 
 def _add_shipping_endogenous(
     n: pypsa.Network,
@@ -5372,28 +5459,7 @@ def _add_shipping_endogenous(
         # unconditional here, unlike the optional hydrogen liquefaction
         # step below (gaseous H2 is a physically valid alternative; raw
         # pipeline gas bunkered directly onto a ship is not).
-        n.add(
-            "Bus",
-            nodes,
-            suffix=" LNG",
-            carrier="LNG",
-            location=nodes,
-            unit="MWh_LHV",
-        )
-
-        n.add(
-            "Link",
-            nodes + " CH4 liquefaction",
-            bus0=spatial.gas.df.loc[nodes, "nodes"].values,
-            bus1=nodes + " LNG",
-            bus2=nodes,
-            carrier="CH4 liquefaction",
-            efficiency=1.0,
-            efficiency2=-costs.at["CH4 liquefaction", "electricity-input"],
-            capital_cost=costs.at["CH4 liquefaction", "capital_cost"],
-            p_nom_extendable=True,
-            lifetime=costs.at["CH4 liquefaction", "lifetime"],
-        )
+        _add_lng_liquefaction(n, costs, nodes, spatial)
 
         n.add(
             "Link",
