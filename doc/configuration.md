@@ -634,6 +634,8 @@ Only used for sector-coupling studies.
     | `shipping_methanol_efficiency` | number | `0.46` | The efficiency of methanol-powered ships in the conversion of methanol to meet shipping needs (propulsion). The efficiency increase from oil can be 10-15% higher according to the [IEA ](https://www.iea-amf.org/app/webroot/files/file/Annex%20Reports/AMF_Annex_56.pdf). |
     | `shipping_oil_efficiency` | number | `0.4` | The efficiency of oil-powered ships in the conversion of oil to meet shipping needs (propulsion). Base value derived from 2011. |
     | `shipping_lng_efficiency` | number | `0.45` | Placeholder efficiency of LNG (dual-fuel) ship engines in converting LNG to shipping needs (propulsion); to be replaced by a technology-data value. |
+    | `shipping_lng_methane_slip` | number | `0.031` | Share of LNG fuel mass leaving ship engines unburnt as methane (methane slip). Default is the FuelEU Maritime (Regulation (EU) 2023/1805, Annex II) value for LNG Otto dual-fuel medium-speed engines. Counted as CO2-equivalent against the CO2 limit. |
+    | `shipping_methane_gwp100` | number | `25.0` | 100-year global warming potential of methane used to convert LNG methane slip to CO2-equivalent (IPCC AR4, as in FuelEU Maritime). |
     | `aviation_demand_factor` | number | `1.0` | The proportion of demand for aviation compared to today's consumption. |
     | `HVC_demand_factor` | number | `1.0` | The proportion of demand for high-value chemicals compared to today's consumption. |
     | `time_dep_hp_cop` | boolean | `true` | Consider the time dependent coefficient of performance (COP) of the heat pump. |

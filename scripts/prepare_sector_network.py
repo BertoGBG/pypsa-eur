@@ -5130,6 +5130,31 @@ def _add_lng_liquefaction(
     )
 
 
+def _shipping_lng_co2_equivalent(costs: pd.DataFrame, options: dict) -> float:
+    """
+    Tank-to-wake CO2-equivalent emissions of LNG-fuelled shipping, in
+    tCO2eq per MWh_LHV of LNG fed to the engine.
+
+    A share ``s = options["shipping_lng_methane_slip"]`` of the fuel (by
+    mass) leaves the engine unburnt as methane (FuelEU Maritime "Cslip").
+    The burnt share emits combustion CO2, the slipped share is converted to
+    CO2eq with ``options["shipping_methane_gwp100"]``; both are routed to
+    "co2 atmosphere", so methane slip counts against the CO2 limit:
+
+        (1 - s) * CO2 intensity of gas + s * m_CH4 * GWP100
+
+    with m_CH4 = 3.6 GJ / 50 MJ/kg = 0.072 t CH4 per MWh_LHV. The engine
+    efficiency ``shipping_lng_efficiency`` is left unchanged: it is defined
+    per unit of fuel fed to the engine and so already reflects the energy
+    lost with the slipped methane.
+    """
+    slip = options["shipping_lng_methane_slip"]
+    methane_t_per_mwh = 3.6 / 50.0
+    return (1 - slip) * costs.at["gas", "CO2 intensity"] + slip * (
+        methane_t_per_mwh * options["shipping_methane_gwp100"]
+    )
+
+
 def add_shipping(
     n: pypsa.Network,
     costs: pd.DataFrame,
@@ -5347,7 +5372,7 @@ def add_shipping(
             bus2="co2 atmosphere",
             carrier="shipping LNG",
             p_nom_extendable=True,
-            efficiency2=costs.at["gas", "CO2 intensity"],
+            efficiency2=_shipping_lng_co2_equivalent(costs, options),
         )
 
 
@@ -5470,7 +5495,7 @@ def _add_shipping_endogenous(
             carrier="shipping LNG",
             p_nom_extendable=True,
             efficiency=options["shipping_lng_efficiency"] / oil_efficiency,
-            efficiency2=costs.at["gas", "CO2 intensity"],
+            efficiency2=_shipping_lng_co2_equivalent(costs, options),
         )
 
     if fuel_enabled["hydrogen"]:

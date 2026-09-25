@@ -860,6 +860,8 @@ sector:
   shipping_methanol_efficiency: 0.46
   shipping_oil_efficiency: 0.4
   shipping_lng_efficiency: 0.45
+  shipping_lng_methane_slip: 0.031
+  shipping_methane_gwp100: 25.0
   aviation_demand_factor: 1.0
   HVC_demand_factor: 1.0
   time_dep_hp_cop: true

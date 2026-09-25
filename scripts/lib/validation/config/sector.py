@@ -630,6 +630,14 @@ class SectorConfig(BaseModel):
         0.45,
         description="Placeholder marine dual-fuel/LNG engine efficiency assumption -- adjust once a technology-data-sourced figure is available.",
     )
+    shipping_lng_methane_slip: float = Field(
+        0.031,
+        description="Share of LNG fuel mass that leaves the ship engine unburnt as methane (methane slip). Default 3.1% is the FuelEU Maritime (Regulation (EU) 2023/1805, Annex II) default for LNG Otto dual-fuel medium-speed engines. Slipped methane is converted to CO2-equivalent with shipping_methane_gwp100 and counted against the CO2 limit.",
+    )
+    shipping_methane_gwp100: float = Field(
+        25.0,
+        description="100-year global warming potential of methane used to convert LNG methane slip to CO2-equivalent. Default 25 (IPCC AR4), as used by FuelEU Maritime.",
+    )
 
     aviation_demand_factor: float = Field(
         1.0,
