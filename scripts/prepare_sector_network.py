@@ -5143,15 +5143,27 @@ def _shipping_lng_co2_equivalent(costs: pd.DataFrame, options: dict) -> float:
 
         (1 - s) * CO2 intensity of gas + s * m_CH4 * GWP100
 
-    with m_CH4 = 3.6 GJ / 50 MJ/kg = 0.072 t CH4 per MWh_LHV. The engine
-    efficiency ``shipping_lng_efficiency`` is left unchanged: it is defined
-    per unit of fuel fed to the engine and so already reflects the energy
-    lost with the slipped methane.
+    with m_CH4 = 3.6 GJ / 50 MJ/kg = 0.072 t CH4 per MWh_LHV. The slipped
+    fuel also does no work: see ``_shipping_lng_useful_efficiency``.
     """
     slip = options["shipping_lng_methane_slip"]
     methane_t_per_mwh = 3.6 / 50.0
     return (1 - slip) * costs.at["gas", "CO2 intensity"] + slip * (
         methane_t_per_mwh * options["shipping_methane_gwp100"]
+    )
+
+
+def _shipping_lng_useful_efficiency(options: dict) -> float:
+    """
+    Propulsion energy per MWh_LHV of LNG fed to the engine.
+
+    ``options["shipping_lng_efficiency"]`` is the efficiency of the fuel
+    that is actually burnt; the slipped share
+    ``options["shipping_lng_methane_slip"]`` leaves unburnt and delivers no
+    work, so the useful efficiency is ``eta_LNG * (1 - slip)``.
+    """
+    return options["shipping_lng_efficiency"] * (
+        1 - options["shipping_lng_methane_slip"]
     )
 
 
@@ -5337,8 +5349,8 @@ def add_shipping(
         )
 
     if shipping_lng_share:
-        efficiency = (
-            options["shipping_oil_efficiency"] / options["shipping_lng_efficiency"]
+        efficiency = options["shipping_oil_efficiency"] / (
+            _shipping_lng_useful_efficiency(options)
         )
         p_set_lng = (
             shipping_lng_share
@@ -5494,7 +5506,7 @@ def _add_shipping_endogenous(
             bus2="co2 atmosphere",
             carrier="shipping LNG",
             p_nom_extendable=True,
-            efficiency=options["shipping_lng_efficiency"] / oil_efficiency,
+            efficiency=_shipping_lng_useful_efficiency(options) / oil_efficiency,
             efficiency2=_shipping_lng_co2_equivalent(costs, options),
         )
 
