@@ -7398,6 +7398,85 @@ def add_aviation(
         )
 
 
+def _add_lng_liquefaction(
+    n: pypsa.Network,
+    costs: pd.DataFrame,
+    nodes: pd.Index,
+    spatial: SimpleNamespace,
+) -> None:
+    """
+    Add a per-node "<node> LNG" bus fed from the gas bus by a "CH4
+    liquefaction" Link. Shared by the endogenous and exogenous shipping
+    implementations.
+
+    Gas-fuelled shipping only exists in practice as LNG -- a ship cannot
+    bunker directly from a pipeline -- so liquefaction is unconditional
+    whenever LNG shipping is enabled. The step is electricity-driven, not
+    gas-combusting: CH4 passes through at efficiency=1 (technology-data
+    "methane-input" of 1.0) and the refrigeration load is drawn from the
+    node's electricity bus via bus2 ("electricity-input").
+    """
+    n.add(
+        "Bus",
+        nodes,
+        suffix=" LNG",
+        carrier="LNG",
+        location=nodes,
+        unit="MWh_LHV",
+    )
+
+    n.add(
+        "Link",
+        nodes + " CH4 liquefaction",
+        bus0=spatial.gas.df.loc[nodes, "nodes"].values,
+        bus1=nodes + " LNG",
+        bus2=nodes,
+        carrier="CH4 liquefaction",
+        efficiency=1.0,
+        efficiency2=-costs.at["CH4 liquefaction", "electricity-input"],
+        capital_cost=costs.at["CH4 liquefaction", "capital_cost"],
+        p_nom_extendable=True,
+        lifetime=costs.at["CH4 liquefaction", "lifetime"],
+    )
+
+
+def _shipping_lng_co2_equivalent(costs: pd.DataFrame, options: dict) -> float:
+    """
+    Tank-to-wake CO2-equivalent emissions of LNG-fuelled shipping, in
+    tCO2eq per MWh_LHV of LNG fed to the engine.
+
+    A share ``s = options["shipping_lng_methane_slip"]`` of the fuel (by
+    mass) leaves the engine unburnt as methane (FuelEU Maritime "Cslip").
+    The burnt share emits combustion CO2, the slipped share is converted to
+    CO2eq with ``options["shipping_methane_gwp100"]``; both are routed to
+    "co2 atmosphere", so methane slip counts against the CO2 limit:
+
+        (1 - s) * CO2 intensity of gas + s * m_CH4 * GWP100
+
+    with m_CH4 = 3.6 GJ / 50 MJ/kg = 0.072 t CH4 per MWh_LHV. The slipped
+    fuel also does no work: see ``_shipping_lng_useful_efficiency``.
+    """
+    slip = options["shipping_lng_methane_slip"]
+    methane_t_per_mwh = 3.6 / 50.0
+    return (1 - slip) * costs.at["gas", "CO2 intensity"] + slip * (
+        methane_t_per_mwh * options["shipping_methane_gwp100"]
+    )
+
+
+def _shipping_lng_useful_efficiency(options: dict) -> float:
+    """
+    Propulsion energy per MWh_LHV of LNG fed to the engine.
+
+    ``options["shipping_lng_efficiency"]`` is the efficiency of the fuel
+    that is actually burnt; the slipped share
+    ``options["shipping_lng_methane_slip"]`` leaves unburnt and delivers no
+    work, so the useful efficiency is ``eta_LNG * (1 - slip)``.
+    """
+    return options["shipping_lng_efficiency"] * (
+        1 - options["shipping_lng_methane_slip"]
+    )
+
+
 def add_shipping(
     n: pypsa.Network,
     costs: pd.DataFrame,
@@ -7453,7 +7532,7 @@ def _add_shipping_endogenous(
     """
     Endogenous shipping: one shared per-node "<node> shipping"
     service-demand Bus/Load, fed by competing supply Links from oil,
-    methanol, gas, and hydrogen. The optimiser picks the cost-minimal fuel
+    methanol, LNG, and hydrogen. The optimiser picks the cost-minimal fuel
     mix each snapshot rather than following a fixed exogenous share,
     mirroring how endogenous industry heat (add_low_t_industry et al.)
     lets technologies compete for a shared demand bus.
@@ -7462,28 +7541,23 @@ def _add_shipping_endogenous(
     the shared bus's "oil-equivalent" service-energy units (matching the
     historical demand data's own convention) as
     (that fuel's engine efficiency) / options["shipping_oil_efficiency"];
-    for oil this is 1 by construction. Oil and gas combustion additionally
-    emit to "co2 atmosphere" via ``efficiency2`` (their CO2 intensity, same
-    convention as gas/oil-for-industry); methanol's combustion emission
+    for oil this is 1 by construction. Oil and LNG combustion additionally
+    emit to "co2 atmosphere" via ``efficiency2`` (oil: its CO2 intensity;
+    LNG: combustion CO2 plus methane slip as CO2-equivalent, see
+    ``_shipping_lng_co2_equivalent``); methanol's combustion emission
     here is offset elsewhere in the network by its own upstream synthesis
     from captured CO2 (methanolisation); hydrogen (via fuel cell) emits
     nothing at the point of use.
 
-    If options["shipping_gas_liquefaction"] is true, gas is first liquefied
-    to LNG (own "CH4 liquefaction" Link, real capital cost -- an LNG plant,
-    not a ship retrofit) before the "shipping LNG" Link draws from that LNG
-    bus instead of directly from the gas network, mirroring the optional
-    hydrogen liquefaction step below. The "shipping LNG" carrier name
-    reflects that ships bunker LNG in reality regardless of whether the
-    liquefaction step itself is modelled explicitly. The liquefaction step is
-    electricity-driven, not gas-combusting: CH4 passes through at
-    efficiency=1 (no gas is burned to run the process, matching the
-    technology-data "methane-input" of 1.0), and the parasitic refrigeration
-    load is drawn separately from the node's electricity bus via bus2
-    ("electricity-input" from technology-data).
+    Gas-fuelled shipping only exists in practice as LNG -- a ship cannot
+    bunker directly from a pipeline -- so gas is always liquefied first
+    (``_add_lng_liquefaction``: own "CH4 liquefaction" Link with real
+    capital cost, electricity-driven) before the "shipping LNG" Link draws
+    from the LNG bus. The LNG engine's useful efficiency is reduced by the
+    methane slip (``_shipping_lng_useful_efficiency``).
 
     Individual fuels are toggled independently via options["shipping_oil"]
-    / ["shipping_methanol"] / ["shipping_gas"] / ["shipping_hydrogen"]
+    / ["shipping_methanol"] / ["shipping_lng"] / ["shipping_hydrogen"]
     (each a flat bool or a year-indexed dict, resolved at investment_year)
     -- at least one must be true for this investment_year. The mix is
     entirely a model outcome, constrained only by the economy-wide
@@ -7494,13 +7568,13 @@ def _add_shipping_endogenous(
     """
     fuel_enabled = {
         fuel: bool(get(options[f"shipping_{fuel}"], investment_year))
-        for fuel in ["oil", "methanol", "gas", "hydrogen"]
+        for fuel in ["oil", "methanol", "lng", "hydrogen"]
     }
 
     if not any(fuel_enabled.values()):
         raise ValueError(
             "At least one of sector.shipping_oil/shipping_methanol/"
-            "shipping_gas/shipping_hydrogen must be true for "
+            "shipping_lng/shipping_hydrogen must be true for "
             f"investment_year={investment_year}."
         )
 
@@ -7548,45 +7622,19 @@ def _add_shipping_endogenous(
             efficiency2=costs.at["methanolisation", "carbondioxide-input"],
         )
 
-    if fuel_enabled["gas"]:
-        gas_bus = spatial.gas.df.loc[nodes, "nodes"].values
-
-        if options["shipping_gas_liquefaction"]:
-            n.add(
-                "Bus",
-                nodes,
-                suffix=" LNG",
-                carrier="LNG",
-                location=nodes,
-                unit="MWh_LHV",
-            )
-
-            n.add(
-                "Link",
-                nodes + " CH4 liquefaction",
-                bus0=gas_bus,
-                bus1=nodes + " LNG",
-                bus2=nodes,
-                carrier="CH4 liquefaction",
-                efficiency=1.0,
-                efficiency2=-costs.at["CH4 liquefaction", "electricity-input"],
-                capital_cost=costs.at["CH4 liquefaction", "capital_cost"],
-                p_nom_extendable=True,
-                lifetime=costs.at["CH4 liquefaction", "lifetime"],
-            )
-
-            gas_bus = nodes + " LNG"
+    if fuel_enabled["lng"]:
+        _add_lng_liquefaction(n, costs, nodes, spatial)
 
         n.add(
             "Link",
             nodes + " shipping LNG",
-            bus0=gas_bus,
+            bus0=nodes + " LNG",
             bus1=nodes + " shipping",
             bus2="co2 atmosphere",
             carrier="shipping LNG",
             p_nom_extendable=True,
-            efficiency=options["shipping_gas_efficiency"] / oil_efficiency,
-            efficiency2=costs.at["gas", "CO2 intensity"],
+            efficiency=_shipping_lng_useful_efficiency(options) / oil_efficiency,
+            efficiency2=_shipping_lng_co2_equivalent(costs, options),
         )
 
     if fuel_enabled["hydrogen"]:
@@ -7639,7 +7687,7 @@ def _add_shipping_exogenous(
     """
     Exogenous shipping (original behaviour): fixed year-indexed shares
     (options["shipping_hydrogen_share"] / ["shipping_methanol_share"] /
-    ["shipping_oil_share"] / ["shipping_gas_share"]) split total demand
+    ["shipping_oil_share"] / ["shipping_lng_share"]) split total demand
     into separate per-fuel Loads, each on its own demand bus fed by a
     single Link from that fuel's source. No competition between fuels --
     each share is met regardless of relative cost.
@@ -7647,13 +7695,13 @@ def _add_shipping_exogenous(
     shipping_hydrogen_share = get(options["shipping_hydrogen_share"], investment_year)
     shipping_methanol_share = get(options["shipping_methanol_share"], investment_year)
     shipping_oil_share = get(options["shipping_oil_share"], investment_year)
-    shipping_gas_share = get(options["shipping_gas_share"], investment_year)
+    shipping_lng_share = get(options.get("shipping_lng_share", 0), investment_year)
 
     total_share = (
         shipping_hydrogen_share
         + shipping_methanol_share
         + shipping_oil_share
-        + shipping_gas_share
+        + shipping_lng_share
     )
     if total_share != 1:
         logger.warning(
@@ -7775,37 +7823,43 @@ def _add_shipping_exogenous(
             efficiency2=costs.at["oil", "CO2 intensity"],
         )
 
-    if shipping_gas_share:
-        efficiency = (
-            options["shipping_oil_efficiency"] / options["shipping_gas_efficiency"]
+    if shipping_lng_share:
+        efficiency = options["shipping_oil_efficiency"] / (
+            _shipping_lng_useful_efficiency(options)
         )
-        p_set_gas = shipping_gas_share * p_set.rename(lambda x: x + " shipping gas") * efficiency
+        p_set_lng = (
+            shipping_lng_share
+            * p_set.rename(lambda x: x + " shipping LNG")
+            * efficiency
+        )
+
+        _add_lng_liquefaction(n, costs, nodes, spatial)
 
         n.add(
             "Bus",
-            nodes + " shipping gas",
+            nodes + " shipping LNG",
             location=nodes,
-            carrier="shipping gas",
+            carrier="shipping LNG",
             unit="MWh_LHV",
         )
 
         n.add(
             "Load",
-            nodes + " shipping gas",
-            bus=nodes + " shipping gas",
-            carrier="shipping gas",
-            p_set=p_set_gas,
+            nodes + " shipping LNG",
+            bus=nodes + " shipping LNG",
+            carrier="shipping LNG",
+            p_set=p_set_lng,
         )
 
         n.add(
             "Link",
-            nodes + " shipping gas",
-            bus0=spatial.gas.df.loc[nodes, "nodes"].values,
-            bus1=nodes + " shipping gas",
+            nodes + " shipping LNG",
+            bus0=nodes + " LNG",
+            bus1=nodes + " shipping LNG",
             bus2="co2 atmosphere",
-            carrier="shipping gas",
+            carrier="shipping LNG",
             p_nom_extendable=True,
-            efficiency2=costs.at["gas", "CO2 intensity"],
+            efficiency2=_shipping_lng_co2_equivalent(costs, options),
         )
 
 
