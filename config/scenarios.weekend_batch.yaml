@@ -32,8 +32,9 @@
 # override needed here); 60%-target values computed fresh 2026-09-04 using
 # the same formula/script, target=0.6 instead of 1.0.
 #
-# LULUCF: "BAU" = config.default.yaml's own active lulucf_deviation_values
-# (no override needed). "Optimistic-weak" = the documented alternative
+# LULUCF: "BAU" = config.default.yaml's own lulucf_deviation_values. Runs 2-9
+# set lulucf_deviation: true explicitly, because the default is false since
+# 2026-09-28 (the batch ran with the old default true, so results are unchanged). "Optimistic-weak" = the documented alternative
 # table from text_docs/text/lulucf_deviation_methodology.md (2020=0,
 # 2025=64, 2030=127, flat at 127 from 2035-2050).
 
@@ -55,6 +56,7 @@ weekend_run1:
     biomethanation_CO2: false
 
 weekend_run2:
+  lulucf_deviation: true
   # LULUCF BAU (config default, no override) + CO2_fossil_limits ON, 100%
   # self-sufficiency by 2050 (aggregate). Biomethanation + aCDRs ON
   # (config default, no override needed).
@@ -69,6 +71,7 @@ weekend_run2:
   energy_limit_per_carrier: false
 
 weekend_run3:
+  lulucf_deviation: true
   # Same as run2 but 60% self-sufficiency by 2050 (aggregate).
   fossil_limit: true
   fossil_limit_values:
@@ -81,6 +84,7 @@ weekend_run3:
   energy_limit_per_carrier: false
 
 weekend_run4:
+  lulucf_deviation: true
   # LULUCF BAU + energy_per_carrier_limits ON, 100% self-sufficiency by
   # 2050 (per-carrier). Values = config.default.yaml's own current
   # energy_limit_per_carrier_values / solid_biomass_import.max_amount --
@@ -92,6 +96,7 @@ weekend_run4:
       enable: true
 
 weekend_run5:
+  lulucf_deviation: true
   # Same as run4 but 60% self-sufficiency by 2050 (per-carrier) --
   # recomputed values, target=0.6 instead of config.default.yaml's 1.0.
   fossil_limit: false
@@ -137,6 +142,7 @@ weekend_run5:
         2050: 914.1
 
 weekend_run6:
+  lulucf_deviation: true
   # LULUCF Optimistic-weak + CO2_fossil_limits ON, 100% self-sufficiency
   # (aggregate) -- same fossil_limit_values as run2.
   lulucf_deviation_values:
@@ -158,6 +164,7 @@ weekend_run6:
   energy_limit_per_carrier: false
 
 weekend_run7:
+  lulucf_deviation: true
   # LULUCF Optimistic-weak + CO2_fossil_limits ON, 60% self-sufficiency
   # (aggregate) -- same fossil_limit_values as run3.
   lulucf_deviation_values:
@@ -179,6 +186,7 @@ weekend_run7:
   energy_limit_per_carrier: false
 
 weekend_run8:
+  lulucf_deviation: true
   # LULUCF Optimistic-weak + energy_per_carrier_limits ON, 100%
   # self-sufficiency (per-carrier) -- same values as run4 (config default).
   lulucf_deviation_values:
@@ -196,6 +204,7 @@ weekend_run8:
       enable: true
 
 weekend_run9:
+  lulucf_deviation: true
   # LULUCF Optimistic-weak + energy_per_carrier_limits ON, 60%
   # self-sufficiency (per-carrier) -- same values as run5.
   lulucf_deviation_values:

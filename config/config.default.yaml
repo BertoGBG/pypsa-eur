@@ -276,7 +276,7 @@ energy_limit_per_carrier_values:
 #           scenario choice; revisit if/when the EC's 2040 Climate Target
 #           Impact Assessment SWD (not yet checked here) publishes actual
 #           post-2030 LULUCF projections.
-lulucf_deviation: true  # set to true to activate the values below
+lulucf_deviation: false  # off by default; set to true to apply the values below to the CO2 limit
 lulucf_deviation_values:  # MtCO2/yr deviation from the assumed LULUCF offset
   2020: 0
   2025: 64
