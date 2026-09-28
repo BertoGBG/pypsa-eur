@@ -102,6 +102,16 @@ def break_even_table(n, market_carrier):
         if s.get("e_nom_extendable", False):
             ext_store_capex[s["bus"]] = ext_store_capex.get(s["bus"], 0.0) + s["capital_cost"] * s["e_nom_opt"]
 
+    def link_node(link):
+        """Node of a link: the location of its first port at a real node. bus0 alone is not enough:
+        CDR links draw from the single 'co2 atmosphere' bus and oil products from 'EU oil', but
+        their store or demand bus sits at a node."""
+        for i in ports:
+            loc = n.buses.location.get(link[f"bus{i}"], "") if isinstance(link[f"bus{i}"], str) else ""
+            if loc and loc != "EU":
+                return loc
+        return n.buses.location.get(link["bus0"], "") or link["bus0"]
+
     rows = []
     for lk in cand:
         link = L.loc[lk]
@@ -130,7 +140,7 @@ def break_even_table(n, market_carrier):
         mc = n.links_t.marginal_cost[lk] if lk in n.links_t.marginal_cost.columns else link["marginal_cost"]
         om = (mc * p0 * w).sum()
         rows.append(dict(
-            link=lk, carrier=link["carrier"], node=n.buses.at[link["bus0"], "location"] or link["bus0"],
+            link=lk, carrier=link["carrier"], node=link_node(link),
             # brownfield industry-heat links re-added as "-derated" (add_brownfield.py) are extendable
             # only downwards: capex 0 and p_nom_max = existing capacity, so they are sunk capacity too
             extendable=bool(link["p_nom_extendable"])
