@@ -131,7 +131,11 @@ def break_even_table(n, market_carrier):
         om = (mc * p0 * w).sum()
         rows.append(dict(
             link=lk, carrier=link["carrier"], node=n.buses.at[link["bus0"], "location"] or link["bus0"],
-            extendable=bool(link["p_nom_extendable"]), q=q, lam_q=lam_q,
+            # brownfield industry-heat links re-added as "-derated" (add_brownfield.py) are extendable
+            # only downwards: capex 0 and p_nom_max = existing capacity, so they are sunk capacity too
+            extendable=bool(link["p_nom_extendable"])
+            and not (link["capital_cost"] == 0 and link["p_nom_opt"] >= link["p_nom_max"] - 1e-3),
+            q=q, lam_q=lam_q,
             profit_excl=value - capex - own_capex - om,
         ))
     d = pd.DataFrame(rows)
