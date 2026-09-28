@@ -14,7 +14,9 @@ computed with the LCOP rule on everything EXCEPT the market's own port:
     p*          = -profit_excl / q          (in the market bus's own price units)
 
 Links delivering into the bus are the supply side (sorted by ascending p*),
-links withdrawing from it the demand side (sorted by descending p*). By LP
+links withdrawing from it the demand side (sorted by descending p*). Both are
+drawn as bands of constant thickness with a thin black line at the value:
+supply hangs below it, demand sits above it, so they touch where they meet. By LP
 duality, every link whose capacity is free to expand breaks even exactly at
 its own flow-weighted market price, so the curves cross at the market price;
 links held at a bound (potentials, sunk capacity) show up as rents.
@@ -23,9 +25,10 @@ Market A, atmosphere (bus carrier "co2", one bus, price = CO2Limit dual):
     the atmosphere port is left out; captured CO2 is priced at the hourly
     nodal "co2 stored" price. Shown in permit-price terms (pi = -price >= 0):
     emitters (demand) with their willingness to pay per tonne emitted,
-    removers (supply) with their cost per tonne removed. A net-negative
-    CO2Limit is a fixed block of required net removal on the demand side, a
-    positive one a free block of supply at 0.
+    removers (supply) with their cost per tonne removed. The CO2Limit is split
+    into its two parts, read from the config stored in the network: the base
+    CO2 budget is a free block of supply at 0, the LULUCF correction (the
+    land-sink shortfall) a fixed block of demand at any price.
 Market B, captured CO2 (bus carrier "co2 stored", 50 nodal buses):
     the "co2 stored" port is left out; the atmosphere port is priced at the
     CO2 price. Capture (BECCS, DAC, industry and process CC) is supply,
@@ -42,6 +45,7 @@ Outputs in <out_dir>: co2_market_{A_atmosphere,B_captured}_<label>.png and
 .csv (one row per technology and node), plus a printed validation summary.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -69,13 +73,16 @@ def official_colour(carrier):
     return TECH_COLORS.get(carrier) or TECH_COLORS.get(rename_techs(carrier)) or "#9e9e9e"
 
 # Two colour families so the sides of a market never share a colour:
-# cool for supply (removers / capture, bars), warm for demand (emitters / storage and use, step line).
+# cool for supply (removers / capture), warm for demand (emitters / storage and use).
 COOL = ["#1f5f99", "#2ca02c", "#17becf", "#6a51a3", "#1b9e77", "#66a61e", "#4575b4", "#74add1",
         "#006d2c", "#41ab5d", "#08519c", "#6baed6", "#807dba", "#a1d99b", "#35978f", "#9ecae1"]
 WARM = ["#d62728", "#ff7f0e", "#8c564b", "#e377c2", "#b8860b", "#e6550d", "#a50f15", "#fb6a4a",
         "#fdae6b", "#843c39", "#d6616b", "#f16913", "#cb181d", "#b15928", "#e7969c", "#fd8d3c"]
 OTHER_COOL, OTHER_WARM = "#b7c9d9", "#e3c2b5"
 N_SHOWN = 14
+LINE_WIDTH = 18       # step-line width (points) of the fixed-requirement block
+SUPPLY_AS_LINE = True  # draw supply as a band like demand (False: bars from the axis)
+BAND = 0.04            # band thickness as a share of the y-range: supply hangs below its value, demand sits above
 
 OWN_TERMINAL = {"co2 afforestation", "co2 perennials", "co2 biochar", "co2 rock weathering", "co2 sequestered"}
 MIN_TONNES = 1e3  # a technology-node pair counts as deployed above 1 kt/yr
@@ -171,24 +178,31 @@ def step_bars(ax, df, x0, ylab_col, color_map, alpha, hatch=None, edge="white", 
     return x
 
 
-def step_line(ax, df, x0, ylab_col, color_map, ylim):
-    """Demand curve as a thick step line, each segment coloured by technology."""
+def step_line(ax, df, x0, ylab_col, color_map, ylim, side):
+    """Market curve as a band of constant thickness, each segment coloured by technology.
+
+    The band lies entirely on one side of the curve (side="below" for supply, "above" for
+    demand), and a thin black line marks the value itself, so where supply and demand meet
+    the two bands touch along their black edges instead of overlapping."""
+    h = BAND * (ylim[1] - ylim[0])
+    xs, ys = [], []
     x = x0
-    prev = None
     for _, r in df.iterrows():
         w = abs(r.q) / 1e6
         y = float(np.clip(r[ylab_col], *ylim))
-        if prev is not None:
-            ax.plot([x, x], [prev, y], color="black", lw=1.5, zorder=4)
-        ax.plot([x, x + w], [y, y], color=color_map.get(r.carrier, "#9e9e9e"), lw=6, zorder=5,
-                solid_capstyle="butt")
+        ax.bar(x, h, bottom=y - h if side == "below" else y, width=w, align="edge",
+               color=color_map.get(r.carrier, "#9e9e9e"), linewidth=0, zorder=4)
+        xs += [x, x + w]
+        ys += [y, y]
         x += w
-        prev = y
+    ax.plot(xs, ys, color="black", lw=0.6, zorder=5)  # the value: horizontal steps and vertical risers
     return x
 
 
 def plot_market(df, *, title, ylabel, price_lines, out_path, fixed_demand=0.0, fixed_supply=0.0,
-                note="", sign=1.0, supply_label="Supply (bars)", demand_label="Demand (step line)"):
+                fixed_demand_label="required net removal\n(net-negative CO2Limit, inelastic)",
+                fixed_supply_label="CO2Limit\n(free)",
+                note="", sign=1.0, supply_label="Supply (band below value)", demand_label="Demand (band above value)"):
     d = df.copy()
     d["y"] = sign * d["p_star"]
     supply = d[d.q > 0].sort_values("y")
@@ -214,21 +228,29 @@ def plot_market(df, *, title, ylabel, price_lines, out_path, fixed_demand=0.0, f
 
     fig, (ax, axl) = plt.subplots(1, 2, figsize=(17, 7.5), gridspec_kw={"width_ratios": [4.2, 1]})
     x = 0.0
+    h = BAND * (ylim[1] - ylim[0])
     if fixed_supply > 0:
-        ax.bar(0, 0.02 * (ylim[1] - ylim[0]), width=fixed_supply / 1e6, align="edge", color="#cfcfcf", edgecolor="#555")
-        ax.text(fixed_supply / 2e6, 0.03 * (ylim[1] - ylim[0]), "CO2Limit\n(free)", ha="center", fontsize=8)
+        # free block (emissions the target still allows): a band below 0 €/t, like any supply
+        ax.bar(0, h, bottom=-h, width=fixed_supply / 1e6, align="edge", color="#cfcfcf", linewidth=0, zorder=4)
+        ax.plot([0, fixed_supply / 1e6], [0, 0], color="black", lw=0.6, zorder=5)
+        ax.text(fixed_supply / 2e6, 0.5 * h, fixed_supply_label, ha="center", va="bottom", fontsize=8,
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=1.2), zorder=6)
         x = fixed_supply / 1e6
     # negative-price market (e.g. captured CO2 as a waste): grow bars from the axis bottom, not from 0
-    x_s = step_bars(ax, supply, x, "y", cmap_s, alpha=0.9, base=0.0 if eq >= 0 else ylim[0])
+    if SUPPLY_AS_LINE:
+        x_s = step_line(ax, supply, x, "y", cmap_s, ylim, side="below")
+    else:
+        x_s = step_bars(ax, supply, x, "y", cmap_s, alpha=0.9, base=0.0 if eq >= 0 else ylim[0])
     x = 0.0
     if fixed_demand > 0:
-        # inelastic block: the required net removal of a net-negative CO2Limit (unbounded willingness to pay)
-        ax.plot([0, fixed_demand / 1e6], [ylim[1], ylim[1]], color="black", lw=6, zorder=5, solid_capstyle="butt")
-        ax.annotate("required net removal\n(net-negative CO2Limit, inelastic)", xy=(fixed_demand / 2e6, ylim[1]),
-                    xytext=(fixed_demand / 2e6, ylim[1] - 0.12 * (ylim[1] - ylim[0])), ha="center", fontsize=8,
+        # inelastic block (e.g. the LULUCF land-sink shortfall): removal required at any price, drawn at the top
+        ax.bar(0, h, bottom=ylim[1] - h, width=fixed_demand / 1e6, align="edge", color="#5a4a3a", linewidth=0,
+               hatch="//", edgecolor="#cbbfa8", zorder=4)
+        ax.annotate(fixed_demand_label, xy=(fixed_demand / 2e6, ylim[1] - h),
+                    xytext=(0.01 * fixed_demand / 1e6, ylim[1] - 0.14 * (ylim[1] - ylim[0])), ha="left", fontsize=8,
                     arrowprops=dict(arrowstyle="->", lw=0.8), bbox=dict(facecolor="white", edgecolor="none", alpha=0.85))
         x = fixed_demand / 1e6
-    x_d = step_line(ax, demand, x, "y", cmap_d, ylim)
+    x_d = step_line(ax, demand, x, "y", cmap_d, ylim, side="above")
 
     for label, val, ls in price_lines:
         ax.axhline(val, color="black", ls=ls, lw=1.3, zorder=6)
@@ -241,8 +263,8 @@ def plot_market(df, *, title, ylabel, price_lines, out_path, fixed_demand=0.0, f
     ax.set_ylabel(ylabel)
     ax.set_title(title, fontsize=12)
     ax.spines[["top", "right"]].set_visible(False)
-    foot = [f"Bars: supply ({abs(supply.q).sum() / 1e6:.1f} Mt, ascending).  "
-            f"Step line: demand ({abs(demand.q).sum() / 1e6 + fixed_demand / 1e6:.1f} Mt, descending), segment colour = technology.  "
+    foot = [f"{'Band below the black line' if SUPPLY_AS_LINE else 'Bars'}: supply ({abs(supply.q).sum() / 1e6:.1f} Mt, ascending).  "
+            f"Band above the black line: demand ({abs(demand.q).sum() / 1e6 + fixed_demand / 1e6:.1f} Mt incl. fixed block, descending), segment colour = technology.  "
             f"Width = annual tonnes of one technology at one node."]
     if n_clip:
         foot.append(f"{n_clip} bars extend beyond the y-range (clipped).")
@@ -298,12 +320,22 @@ def main():
     gc = n.global_constraints
     co2_price = -float(gc.at["CO2Limit", "mu"])
     cap = float(gc.at["CO2Limit", "constant"])
+    # split the CO2Limit into the base budget and the LULUCF correction (co2_limit -= deviation in
+    # prepare_sector_network), read from the config stored in the network
+    nyears = n.snapshot_weightings.generators.sum() / 8760
+    year = int(re.search(r"(\d{4})\.nc$", path.name).group(1)) if re.search(r"(\d{4})\.nc$", path.name) else None
+    lulucf = 0.0
+    if n.meta.get("lulucf_deviation") and year is not None:
+        vals = n.meta.get("lulucf_deviation_values") or {}
+        lulucf = float(vals.get(year, vals.get(str(year), 0.0))) * 1e6 * nyears
+    base = cap + lulucf
 
     # --- A: atmosphere
     A = break_even_table(n, "co2")
     A.to_csv(out_dir / f"co2_market_A_atmosphere_{label}.csv", index=False)
     emit, remove = A.loc[A.q > 0, "q"].sum(), -A.loc[A.q < 0, "q"].sum()
-    print(f"\n[A] atmosphere: CO2 price {co2_price:.1f} €/t, CO2Limit {cap / 1e6:.1f} Mt; "
+    print(f"\n[A] atmosphere: CO2 price {co2_price:.1f} €/t, CO2Limit {cap / 1e6:.1f} Mt "
+          f"(base {base / 1e6:.1f} - LULUCF {lulucf / 1e6:.1f}); "
           f"emitted {emit / 1e6:.1f} Mt, removed {remove / 1e6:.1f} Mt, net {(emit - remove) / 1e6:.1f} Mt")
     if A.empty:
         print("  [A] no deployed technology on the atmosphere bus: figure skipped")
@@ -314,8 +346,11 @@ def main():
         title=f"Atmosphere: emitters (demand) vs removers (supply) — {label}",
         ylabel="Break-even CO2 price [€/tCO2]\n(emitters: willingness to pay per t emitted; removers: cost per t removed)",
         price_lines=[("CO2 price (CO2Limit dual)", co2_price, "--")],
-        fixed_demand=max(-cap, 0.0), fixed_supply=max(cap, 0.0),
-        supply_label="REMOVERS — supply (bars)", demand_label="EMITTERS — demand (step line)",
+        fixed_demand=max(lulucf, 0.0) + max(-base, 0.0), fixed_supply=max(base, 0.0) + max(-lulucf, 0.0),
+        fixed_demand_label=(f"land-sink shortfall: LULUCF correction {lulucf / 1e6:.0f} Mt\n(removal required at any price)"
+                            if lulucf > 0 else "required net removal\n(net-negative CO2Limit, inelastic)"),
+        fixed_supply_label=f"base CO2 budget\n{base / 1e6:.0f} Mt (free)",
+        supply_label="REMOVERS — supply (band below value)", demand_label="EMITTERS — demand (band above value)",
         note="Captured CO2 is priced at the hourly nodal 'co2 stored' price; fuels at their bus prices, which include any "
              "fossil-limit shadow price. Electrobiofuels / biogas upgrading count as removals because biogenic carbon is "
              "credited at conversion; it is emitted again when the fuel is burned (demand side).",
@@ -342,7 +377,7 @@ def main():
     plot_market(
         B,
         title=f"Captured CO2 ('co2 stored'): capture (supply) vs storage and use (demand) — {label}",
-        supply_label="CAPTURE — supply (bars)", demand_label="STORAGE & USE — demand (step line)",
+        supply_label="CAPTURE — supply (band below value)", demand_label="STORAGE & USE — demand (band above value)",
         ylabel="Break-even 'co2 stored' price [€/tCO2]\n(supply: price needed per t delivered; demand: price payable per t taken)",
         price_lines=[("flow-weighted 'co2 stored' price", lam_eq, "--"), ("CO2 price (atmosphere)", -co2_price, ":")],
         note="Atmosphere port priced at the CO2 price (a credit for BECCS/DAC, a charge for residual emissions of "
