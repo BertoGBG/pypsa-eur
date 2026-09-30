@@ -1,0 +1,63 @@
+# Fossil-supply limits for the next scenario round, anchored in 2025
+# (2026-09-30). Only the limit-related overrides; merge into the real
+# scenario file together with LULUCF, CDR and other settings.
+#
+# All curves start from real 2024 consumption in 2025 (Eurostat GIC, UK via
+# DESNZ DUKES 1.1.1, see text_docs/literature/eurostat_desnz_GIC_fossil_2024_scope.csv),
+# so every target gives the SAME 2025 limit and they only diverge after.
+# The 2050 endpoints are unchanged from the weekend batch.
+#
+# Generated with text_docs/scripts/build_fossil_supply_security.py
+# (aggregate) and build_energy_limit_per_carrier.py (per-carrier; 60 % =
+# TARGET_SELF_SUFFICIENCY_2050 = 0.6). The per-carrier 100 % values are also
+# the config.default.yaml defaults. MtCO2-eq/yr at the wellhead/mine;
+# biomass import in TWh/yr.
+
+aggregate_100:
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2993.2
+    2030: 2254.9
+    2035: 1368.3
+    2040: 942.3
+    2045: 718.1
+    2050: 613.2
+  energy_limit_per_carrier: false
+
+aggregate_60:
+  fossil_limit: true
+  fossil_limit_values:
+    2025: 2993.2
+    2030: 2491.3
+    2035: 1793.6
+    2040: 1411.9
+    2045: 1164.6
+    2050: 1022.0
+  energy_limit_per_carrier: false
+
+per_carrier_100:
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  energy_limit_per_carrier_values:
+    gas: {2025: 768.0, 2030: 571.1, 2035: 319.6, 2040: 208.3, 2045: 142.8, 2050: 102.5}
+    oil: {2025: 1653.9, 2030: 919.6, 2035: 357.5, 2040: 186.2, 2045: 114.3, 2050: 79.2}
+    coal: {2025: 289.7, 2030: 256.0, 2035: 200.4, 2040: 159.1, 2045: 135.7, 2050: 127.8}
+    lignite: {2025: 255.0, 2030: 259.3, 2035: 270.3, 2040: 284.6, 2045: 297.9, 2050: 303.8}
+  sector:
+    solid_biomass_import:
+      enable: true
+      max_amount: {2025: 1609.3, 2030: 1232.6, 2035: 689.6, 2040: 291.9, 2045: 75.1, 2050: 0.0}
+
+per_carrier_60:
+  fossil_limit: false
+  energy_limit_per_carrier: true
+  energy_limit_per_carrier_values:
+    gas: {2025: 768.0, 2030: 620.4, 2035: 407.2, 2040: 305.8, 2045: 230.1, 2050: 170.8}
+    oil: {2025: 1653.9, 2030: 1079.6, 2035: 506.0, 2040: 291.5, 2045: 187.8, 2050: 131.9}
+    coal: {2025: 289.7, 2030: 279.2, 2035: 257.1, 2040: 234.9, 2045: 219.0, 2050: 213.0}
+    lignite: {2025: 255.0, 2030: 268.9, 2035: 309.0, 2040: 375.9, 2045: 459.3, 2050: 506.3}
+  sector:
+    solid_biomass_import:
+      enable: true
+      # 60 % target also for biomass (the weekend batch used the 100 % biomass cap in its 60 % runs)
+      max_amount: {2025: 1609.3, 2030: 1456.9, 2035: 1249.5, 2040: 1053.1, 2045: 952.8, 2050: 914.1}

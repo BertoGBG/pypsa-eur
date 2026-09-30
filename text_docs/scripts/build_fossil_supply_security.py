@@ -14,9 +14,9 @@ Each variant gets:
   1. A main plot: three total-fossil-limit curves (Norway+UK[+coal] share
      reaching 100%/80%/60% by 2050, share bounded by construction via a
      smoothstep polynomial -- see doc Section 3) + the ceiling + CO2Limit
-     (~1.9C pathway, extended back to 2020) on the left axis, the three
+     (~1.9C pathway) on the left axis, the three
      share curves (dotted, colour-matched) on the right axis.
-  2. A 2020-vs-2050 resource mix breakdown (stacked bars).
+  2. A 2025-2050 resource mix breakdown (stacked bars).
 
 Usage: python3 build_fossil_supply_security.py [out_dir]
 """
@@ -37,44 +37,36 @@ _config_path = os.path.join(
 with open(_config_path) as f:
     TECH_COLORS = yaml.safe_load(f)["plotting"]["tech_colors"]
 
-# 2020 is still used internally as the share-curve's anchor point (real
-# Eurostat actual, see ANCHOR_2020_MTCO2 below) -- Section 3.1's caveat
-# means it's not a great *displayed* reference year (this model's own
-# CO2Limit(2020) checkpoint isn't independently validated the way 2030 is),
-# so plots/tables now start at 2025, the first year these myopic runs
-# actually solve.
+# Plots/tables start at 2025, the first year the myopic runs solve.
 YEARS = [2025, 2030, 2035, 2040, 2045, 2050]
 years_fine = np.linspace(2025, 2050, 101)
 
 # ---------------------------------------------------------------------------
-# Historical anchor: GENUINE 2020 actual, all 34 model countries.
-# Eurostat Complete Energy Balances (nrg_bal_c), Gross Inland Consumption
-# (GIC) of natural gas (G3000) + oil & petroleum products excl. biofuels
-# (O4000XBIO) + solid fossil fuels (C0000X0350-0370), summed across 33 of
-# this fork's 34 countries (all except Switzerland, which Eurostat's
-# nrg_bal_c does not cover). Source:
-# data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz on the
-# cluster; compact extract at
-# text_docs/literature/eurostat_GIC_fossil_by_country_2020_scope.csv.
-# 33-country cross-check years: 2018=3616.4, 2023=2628.7, 2024=2554.9.
-#
-# Switzerland (added 2026-09-01, see doc Section 3 for full sourcing):
-# Swiss Federal Office for the Environment (BAFU/FOEN), "CO2-Statistik:
-# Emissionen aus Brenn- und Treibstoffen" (thermal + motor fuel CO2),
-# <https://www.bafu.admin.ch/en/co2-statistics>, data table
-# CO2-Statistik-2026-07_DE.xlsx (published 2026-07-13), sheet "Brenn- und
-# Treibstoffe", columns "Treibstoffe total" (motor fuels) + "Brennstoffe
-# total" (thermal/heating fuels) -- Switzerland has no material domestic
-# coal use, so this genuinely covers the same oil+gas(+trace other) scope
-# as the Eurostat GIC figure above. File saved at
-# text_docs/literature/BAFU_CO2-Statistik_2026-07_DE.xlsx; compact extract
-# at text_docs/literature/switzerland_BAFU_fossil_co2_2018-2024.csv.
-# 2020: 29.2, 2023: 27.2, 2024: 26.6 MtCO2.
-#
-# Combined 34-country totals: 2018=3648.2, 2020=2768.2, 2023=2655.9,
-# 2024=2581.5 MtCO2-eq -- 2024 sits close to this config's own
-# fossil_limit_values[2025]=2600.
-ANCHOR_2020_MTCO2 = 2768.2
+# Historical anchor: real fossil use in 2024 (latest data), 34 model
+# countries. The share curves start in 2025 at this value, so every target
+# gives the same 2025 limit.
+# - 33 countries: Eurostat Complete Energy Balances (nrg_bal_c, 2026-02
+#   vintage, data/eurostat_balances/archive/2026-02/estat_nrg_bal_c.tsv.gz on
+#   the cluster), Gross Inland Consumption of natural gas (G3000), oil excl.
+#   biofuels (O4000XBIO), hard coal (C0000X0350-0370 minus lignite) and
+#   lignite (C0210 + C0220). Eurostat has no UK after 2019: UK 2024 =
+#   Eurostat UK 2019 x DESNZ DUKES 1.1.1 ratio 2024/2019 (DUKES 2026,
+#   text_docs/literature/DESNZ_DUKES_2026_table_1.1.1.xlsx). AL/BA/ME/MK/XK
+#   have no 2024 values yet and use 2023. Extract:
+#   text_docs/literature/eurostat_desnz_GIC_fossil_2024_scope.csv.
+#   TWh: gas 3878.7, oil 6432.9, hard coal 861.9, lignite 626.7; at
+#   0.198 / 0.2571 / 0.3361 / 0.4069 tCO2/MWh = 768.0 + 1653.9 + 289.7 +
+#   255.0 = 2966.6 MtCO2-eq.
+# - Switzerland (not in Eurostat): Swiss Federal Office for the Environment
+#   (BAFU/FOEN), "CO2-Statistik: Emissionen aus Brenn- und Treibstoffen",
+#   <https://www.bafu.admin.ch/en/co2-statistics>, CO2-Statistik-2026-07_DE.xlsx,
+#   sheet "Brenn- und Treibstoffe", "Treibstoffe total" + "Brennstoffe total"
+#   (no material Swiss coal use). Saved at
+#   text_docs/literature/BAFU_CO2-Statistik_2026-07_DE.xlsx; extract
+#   text_docs/literature/switzerland_BAFU_fossil_co2_2018-2024.csv. 2024: 26.6.
+# Total 2024: 2993.2 MtCO2-eq.
+ANCHOR_YEAR = 2025
+ANCHOR_2024_MTCO2 = 2993.2
 
 # ---------------------------------------------------------------------------
 # Norway: Sodir "Resource Report 2024", three scenarios to 2050, million
@@ -296,7 +288,7 @@ VARIANT_COLORS = {
 # co2_budget fractions of 1990 levels -- ~1.9C pathway. 2020 added:
 # CO2Limit(year) = base_1990 x fraction[year], base_1990 back-solved as
 # 2983.3/0.648 = 4603.6 MtCO2, consistent across all points to rounding.
-CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
+CO2LIMIT_1P9C = {2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
                  2040: 460.4, 2045: 230.2, 2050: 0.0}
 
 
@@ -309,12 +301,12 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
     (used for the ceiling/print-table, grouped by country); mix_component_keys:
     list of FUEL_COMPONENTS keys (used for the mix chart, split by fuel)."""
     ceiling = {y: ceiling_fn(y) for y in YEARS}
-    anchor = ANCHOR_2020_MTCO2
-    share_2020 = ceiling_fn(2020) / anchor  # still the curve's anchor point, just not displayed
+    anchor = ANCHOR_2024_MTCO2
+    share_2025 = ceiling_fn(ANCHOR_YEAR) / anchor  # limit(2025) = latest real fossil use for every target
 
     def share_curve(year, target):
-        x = (year - 2020) / 30
-        return share_2020 + (target - share_2020) * smoothstep(x)
+        x = (year - ANCHOR_YEAR) / (2050 - ANCHOR_YEAR)
+        return share_2025 + (target - share_2025) * smoothstep(x)
 
     def total_curve(year, target):
         return ceiling_fn(year) / share_curve(year, target)
@@ -375,9 +367,9 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
         bottoms += np.array(vals)
     for xi in range(len(mix_years)):
         ax_co2.text(xi, bottoms[xi] + 15, f"{bottoms[xi]:.0f}", ha="center", fontsize=8)
-    ax_co2.axhline(ANCHOR_2020_MTCO2, color="red", ls="--", lw=1)
-    ax_co2.text(0.3, ANCHOR_2020_MTCO2 - 70,
-             f"2020 actual total fossil use: {ANCHOR_2020_MTCO2:.0f}", color="red", fontsize=8, ha="left")
+    ax_co2.axhline(ANCHOR_2024_MTCO2, color="red", ls="--", lw=1)
+    ax_co2.text(0.3, ANCHOR_2024_MTCO2 - 70,
+             f"2024 actual total fossil use: {ANCHOR_2024_MTCO2:.0f}", color="red", fontsize=8, ha="left")
     ax_co2.set_xticks(x)
     ax_co2.set_xticklabels([str(y) for y in mix_years])
     ax_co2.set_ylabel("MtCO2-eq/yr")
@@ -422,7 +414,7 @@ def build_variant(name, ceiling_fn, mix_components, out_prefix, energy_component
 
     # --- print table ---
     print(f"\n=== {name} ===")
-    print(f"share(2020) = {share_2020*100:.1f}%")
+    print(f"share(2025) = {share_2025*100:.1f}%")
     for y in YEARS:
         comps = "  ".join(f"{c}={fn(y):.1f}" for c, fn in mix_components.items())
         print(f"  {y}: ceiling={ceiling[y]:.1f}  ({comps})  CO2Limit={CO2LIMIT_1P9C.get(y)}")

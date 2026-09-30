@@ -12,8 +12,8 @@ share targets, for the climate-vs-security discussion), this script plots
 the REAL numbers now sitting in config/config.default.yaml, per carrier,
 so the two can be visually cross-checked against each other.
 
-Formula, per carrier: frac(year) = share_2020 + (target-share_2020) *
-smoothstep((year-2020)/30); total_cap(year) = EU_safe_potential(year) /
+Formula, per carrier: frac(year) = share_2025 + (target-share_2025) *
+smoothstep((year-2025)/25); total_cap(year) = EU_safe_potential(year) /
 frac(year), except for biomass where the domestic Generator is already
 unconstrained by real land potential and only the IMPORT top-up is capped:
 import_cap(year) = domestic_potential(year) * (1/frac(year) - 1).
@@ -35,7 +35,7 @@ with open(_config_path) as f:
     TECH_COLORS = yaml.safe_load(f)["plotting"]["tech_colors"]
 
 YEARS = [2025, 2030, 2035, 2040, 2045, 2050]
-years_fine = np.linspace(2020, 2050, 121)
+years_fine = np.linspace(2025, 2050, 101)
 
 TARGET_SELF_SUFFICIENCY_2050 = 1.0  # 100% -- base-case scenario choice, see config comment
 
@@ -83,10 +83,10 @@ EU_SAFE_TWH = {
 INTENSITY_TCO2_MWH = {"gas": 0.198, "oil": 0.2571, "coal": 0.3361, "lignite": 0.4069}
 
 # ---------------------------------------------------------------------------
-# 2020 self-sufficiency fractions -- the curve's starting point.
+# 2025 self-sufficiency fractions -- the curve's starting point.
 # gas/oil: EU-safe potential / real Eurostat GIC consumption. coal/lignite:
 # real production/consumption split (already sourced in the methodology doc
-# Section 4.3). All three are REAL, measured 2020 data -- no scenario choice.
+# Section 4.3). All are REAL, measured data -- no scenario choice.
 #
 # biomass is DIFFERENT: real current self-sufficiency, checked two ways
 # (domestic land-based potential vs. real extra-EU pellet imports: 98.7%;
@@ -100,20 +100,25 @@ INTENSITY_TCO2_MWH = {"gas": 0.198, "oil": 0.2571, "coal": 0.3361, "lignite": 0.
 # starting self-sufficiency (roughly matching the fossil carriers' order of
 # magnitude), representing a "what if more biomass trade capacity becomes
 # available" assumption rather than today's actual low realized volumes.
-SHARE_2020 = {
-    "gas": 1813.4 / 3887.5,
-    "oil": 1268.7 / 5259.1,
-    "coal": 380259 / 1052769,
-    "lignite": 746533 / 762560,
-    "biomass": 0.50,  # deliberate scenario choice, NOT real 2020 data (see above)
+#
+# ANCHOR: the curves start in 2025, the first model year, so every
+# self-sufficiency target (100 %, 60 %, ...) gives the SAME 2025 cap, equal
+# to the latest real consumption (2024). Eurostat nrg_bal_c GIC, 2026-02
+# vintage, 33 countries (Switzerland not covered). The UK is missing from
+# Eurostat after 2019: UK 2024 = Eurostat UK 2019 x the DESNZ DUKES 1.1.1
+# ratio 2024/2019 (DUKES 2026, table 1.1.1.B, mtoe: gas 58.59/72.62,
+# petroleum 62.48/67.15, coal 2.53/6.12). The Western Balkans (AL, BA, ME,
+# MK, XK) have no 2024 values yet and use 2023. Extract:
+# text_docs/literature/eurostat_desnz_GIC_fossil_2024_scope.csv.
+CONSUMPTION_2024_TWH = {
+    "gas": 3878.7,       # G3000
+    "oil": 6432.9,       # O4000XBIO
+    "coal": 861.9,       # C0000X0350-0370 minus lignite
+    "lignite": 626.7,    # C0210 + C0220
 }
-
-REAL_CONSUMPTION_2020_TWH = {
-    "gas": 3887.5,
-    "oil": 5259.1,
-    "coal": 1052769 / 1000,
-    "lignite": 762560 / 1000,
-}
+ANCHOR_YEAR = 2025
+SHARE_2025 = {c: EU_SAFE_TWH[c](ANCHOR_YEAR) / CONSUMPTION_2024_TWH[c] for c in CONSUMPTION_2024_TWH}
+SHARE_2025["biomass"] = 0.50  # deliberate scenario choice, NOT real data (see above)
 
 
 def smoothstep(x):
@@ -122,8 +127,8 @@ def smoothstep(x):
 
 
 def frac_curve(year, carrier, target=TARGET_SELF_SUFFICIENCY_2050):
-    x = (year - 2020) / 30
-    return SHARE_2020[carrier] + (target - SHARE_2020[carrier]) * smoothstep(x)
+    x = (year - ANCHOR_YEAR) / (2050 - ANCHOR_YEAR)
+    return SHARE_2025[carrier] + (target - SHARE_2025[carrier]) * smoothstep(x)
 
 
 def total_cap_fossil(year, carrier):
@@ -173,19 +178,19 @@ for ax, carrier in zip(fossil_axes, FOSSIL_CARRIERS):
     total_vals = [total_cap_fossil(y, carrier) for y in years_fine]
     ax.plot(years_fine, safe_vals, color=color, ls="--", lw=1.5, label="EU-safe potential (domestic-only)")
     ax.plot(years_fine, total_vals, color=color, ls="-", lw=2.5, label="Total supply cap (config value)")
-    ax.scatter([2020], [REAL_CONSUMPTION_2020_TWH[carrier]], color="black", zorder=5, s=40,
-               label="Real 2020 consumption (Eurostat)")
+    ax.scatter([2025], [CONSUMPTION_2024_TWH[carrier]], color="black", zorder=5, s=40,
+               label="Real 2024 consumption (Eurostat, UK via DESNZ)")
     for y in YEARS:
         ax.annotate(f"{total_cap_fossil(y, carrier):.0f}", (y, total_cap_fossil(y, carrier)),
                     textcoords="offset points", xytext=(0, 6), fontsize=7, ha="center")
     ax2 = ax.twinx()
     frac_vals = [100 * frac_curve(y, carrier) for y in years_fine]
     ax2.plot(years_fine, frac_vals, color="grey", ls=":", lw=1.5, label="Self-sufficiency fraction")
-    ax2.set_ylim(0, 105)
+    ax2.set_ylim(0, max(105, 100 * SHARE_2025[carrier] + 5))
     ax2.set_ylabel("Self-sufficiency [%]", color="grey", fontsize=8)
-    ax.set_title(f"{carrier.capitalize()} (2020 self-sufficiency: {100*SHARE_2020[carrier]:.1f}%)")
+    ax.set_title(f"{carrier.capitalize()} (2025 self-sufficiency: {100*SHARE_2025[carrier]:.1f}%)")
     ax.set_ylabel("TWh/yr")
-    ax.set_xlim(2020, 2050)
+    ax.set_xlim(2025, 2050)
     ax.grid(alpha=0.3)
     if carrier == "gas":
         lines1, labels1 = ax.get_legend_handles_labels()
@@ -212,11 +217,11 @@ for y in YEARS:
                      textcoords="offset points", xytext=(0, 8), fontsize=7, ha="center", color="#8a7d3a")
 ax_bio.set_ylabel("TWh/yr")
 ax_bio.set_ylim(0, 1750)
-ax_bio.set_xlim(2020, 2050)
+ax_bio.set_xlim(2025, 2050)
 ax_bio.grid(alpha=0.3)
 ax_bio.set_title(
     f"Solid biomass: domestic potential + import cap "
-    f"(DELIBERATE scenario: {100*SHARE_2020['biomass']:.0f}% self-sufficient in 2020 -> 100% by 2050 -- "
+    f"(DELIBERATE scenario: {100*SHARE_2025['biomass']:.0f}% self-sufficient in 2025 -> 100% by 2050 -- "
     f"NOT real trade data, see script comment)"
 )
 ax_bio.legend(fontsize=7.5, loc="upper right")
@@ -277,7 +282,7 @@ def process_emissions_mtco2(year):
     return float(np.interp(y, _pe_years, _pe_vals))
 
 
-CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
+CO2LIMIT_1P9C = {2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
                  2040: 460.4, 2045: 230.2, 2050: 0.0}
 
 # ---------------------------------------------------------------------------
@@ -290,7 +295,7 @@ CO2LIMIT_1P9C = {2020: 3314.9, 2025: 2983.3, 2030: 2071.8, 2035: 1151.0,
 # barely registers here despite dominating the TWh panel by volume). Both
 # panels share the same right-axis self-sufficiency fraction curves -- by
 # construction all five converge to the same 100%-by-2050 target, even
-# though they start from very different real 2020 levels (24-98%, or 50%
+# though they start from very different real 2025 levels (20-119%, or 50%
 # for biomass's deliberate scenario).
 fig, (ax_l, ax_r) = plt.subplots(1, 2, figsize=(18, 8.2))
 legend_handles, legend_labels = None, None
@@ -346,7 +351,7 @@ for ax, unit, cap_fn, ymax, is_mtco2 in [
         frac_vals = [100 * frac_curve(y, c) for y in years_fine]
         ax2.plot(years_fine, frac_vals, color=color, ls=":", lw=2, label=f"{c.capitalize()} self-sufficiency")
     ax2.set_ylabel("Self-sufficiency [%]")
-    ax2.set_ylim(0, 105)
+    ax2.set_ylim(0, max(105, 100 * max(SHARE_2025.values()) + 5))
 
     # Capture legend handles from the MtCO2 panel (the superset -- it also
     # has process emissions + CO2Limit, absent from the TWh panel).
