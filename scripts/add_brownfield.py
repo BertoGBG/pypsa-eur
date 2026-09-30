@@ -126,6 +126,23 @@ def add_brownfield(
             # TODO: Needs to be rewritten to
             n._import_series_from_df(c.dynamic[tattr], c.name, tattr)
 
+    # afforestation: the potential is land area x growth rate, so forests
+    # planted in earlier horizons (still alive, lifetime 30 y) occupy part of
+    # it. Subtract their capacity from the new vintage's cap per node.
+    affo = n.stores[n.stores.carrier == "co2 afforestation"]
+    if not affo.empty:
+        new_i = affo.index[affo.e_nom_extendable]
+        built = affo.loc[~affo.e_nom_extendable].groupby("bus").e_nom.sum()
+        remaining = (
+            affo.loc[new_i, "e_nom_max"]
+            - affo.loc[new_i, "bus"].map(built).fillna(0).values
+        ).clip(lower=0)
+        n.stores.loc[new_i, "e_nom_max"] = remaining
+        logger.info(
+            f"Afforestation: {built.sum() / 1e6:.1f} MtCO2/yr already built, "
+            f"{remaining.sum() / 1e6:.1f} MtCO2/yr left for {year}."
+        )
+
     # deal with gas network
     if h2_retrofit:
         # subtract the already retrofitted from the maximum capacity
