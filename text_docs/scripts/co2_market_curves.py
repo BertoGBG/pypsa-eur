@@ -374,15 +374,19 @@ def main():
     validation(B, "co2 stored")
     if not np.isfinite(lam_eq):
         lam_eq = 0.0
+    # plotted as a disposal fee = -'co2 stored' price: captured CO2 is a waste when storage is capped,
+    # so capture plants pay to get rid of it. Capture then demands disposal (max fee it can pay,
+    # descending = cheapest capture first) and storage/use supply it (min fee they need, ascending).
     plot_market(
-        B,
-        title=f"Captured CO2 ('co2 stored'): capture (supply) vs storage and use (demand) — {label}",
-        supply_label="CAPTURE — supply (band below value)", demand_label="STORAGE & USE — demand (band above value)",
-        ylabel="Break-even 'co2 stored' price [€/tCO2]\n(supply: price needed per t delivered; demand: price payable per t taken)",
-        price_lines=[("flow-weighted 'co2 stored' price", lam_eq, "--"), ("CO2 price (atmosphere)", -co2_price, ":")],
-        note="Atmosphere port priced at the CO2 price (a credit for BECCS/DAC, a charge for residual emissions of "
-             "capture plants). Negative prices: captured CO2 is a waste that needs disposal, typically when "
-             "geological storage is capped.",
+        B, sign=-1.0,
+        title=f"Captured CO2: disposal fee paid by capture to storage and use — {label}",
+        supply_label="STORAGE & USE — take CO2 (band below)",
+        demand_label="CAPTURE — pays to dispose (band above)",
+        ylabel="Disposal fee [€/tCO2] = − 'co2 stored' price\n(capture: max fee it can pay; storage & use: min fee they need)",
+        price_lines=[("flow-weighted disposal fee", -lam_eq, "--"), ("CO2 price (atmosphere)", co2_price, ":")],
+        note="Capture margin = CO2 price − disposal fee: what is left per tonne for the capture step itself. "
+             "Capture plants high on the curve are cheap (they could pay a high fee); the one at the fee sets the price. "
+             "Atmosphere port priced at the CO2 price (a credit for BECCS/DAC, a charge for residual emissions).",
         out_path=out_dir / f"co2_market_B_captured_{label}.png",
     )
 
