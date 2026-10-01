@@ -5644,7 +5644,54 @@ def add_biomass(
         )
 
 
-def add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
+def industry_heat_pump_cop(
+    temp_air_total_file: str,
+    nodes: pd.Index,
+    snapshots: pd.Index,
+    sink_temperature: float,
+    carnot_efficiency: float,
+) -> pd.DataFrame:
+    """
+    Time- and node-dependent COP of industrial air-source heat pumps.
+
+    The COP is a fixed fraction of the theoretical (Carnot) COP between the
+    ambient air and the steam sink temperature. The DEA technology catalogue
+    states that real-world heat pumps reach around 55% of the theoretical COP.
+    The air-source and steam-sink temperatures are outside the validity range
+    of the refrigerant-specific approximation in build_cop_profiles.
+
+    Parameters
+    ----------
+    temp_air_total_file : str
+        Path to the ambient air temperature profiles (°C, time x node).
+    nodes : pd.Index
+        Nodes to return the COP for.
+    snapshots : pd.Index
+        Network snapshots.
+    sink_temperature : float
+        Heat pump sink (steam) temperature in °C.
+    carnot_efficiency : float
+        Ratio of real to theoretical COP.
+
+    Returns
+    -------
+    pd.DataFrame
+        COP with snapshots as index and nodes as columns, at least 1.
+    """
+    t_source = (
+        xr.open_dataarray(temp_air_total_file)
+        .to_pandas()
+        .reindex(index=snapshots)[nodes]
+        + 273.15
+    )
+    t_sink = sink_temperature + 273.15
+    cop = carnot_efficiency * t_sink / (t_sink - t_source)
+    return cop.clip(lower=1.0)
+
+
+def add_low_t_industry(
+    n, nodes, industrial_demand, costs, must_run, nhours, heat_pump_cop=None
+):
     """
     Add low temperature heat supply for industry (endogenous mode).
 
@@ -5769,7 +5816,14 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
         )
 
     if options["industry_t"]["low_T"]["heat_pumps"]:
-        eta = costs.at["industrial heat pump high temperature", "efficiency"]
+        if heat_pump_cop is None:
+            eta = costs.at["industrial heat pump high temperature", "efficiency"]
+            eta_design = eta
+        else:
+            # capacity is on the electricity side (bus0); the cost per MW_th is
+            # converted with the node's annual mean COP as design point
+            eta = heat_pump_cop[nodes]
+            eta_design = eta.mean()
         n.add(
             "Link",
             nodes,
@@ -5781,7 +5835,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
             p_min_pu=must_run,
             efficiency=eta,
             capital_cost=costs.at["industrial heat pump high temperature", "capital_cost"]
-                         * eta,
+                         * eta_design,
             marginal_cost=costs.at["industrial heat pump high temperature", "VOM"],
             lifetime=costs.at["industrial heat pump high temperature", "lifetime"],
         )
@@ -6331,6 +6385,7 @@ def add_industry(
     spatial: SimpleNamespace,
     cf_industry: dict,
     investment_year: int,
+    temp_air_total_file: str | None = None,
 ):
     """
     Add industry and their corresponding carrier buses to the network.
@@ -6434,7 +6489,21 @@ def add_industry(
         logger.info(
             f"Endogenising industry heat supply with must_run={must_run}"
         )
-        add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
+        hp_cop_options = options["industry_t"]["heat_pump_cop"]
+        heat_pump_cop = (
+            industry_heat_pump_cop(
+                temp_air_total_file,
+                nodes,
+                n.snapshots,
+                hp_cop_options["sink_temperature"],
+                hp_cop_options["carnot_efficiency"],
+            )
+            if hp_cop_options["time_dep"]
+            else None
+        )
+        add_low_t_industry(
+            n, nodes, industrial_demand, costs, must_run, nhours, heat_pump_cop
+        )
         add_medium_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
         add_high_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
     else:
@@ -8977,6 +9046,7 @@ if __name__ == "__main__":
             spatial=spatial,
             cf_industry=cf_industry,
             investment_year=investment_year,
+            temp_air_total_file=snakemake.input.temp_air_total,
         )
 
     if options["shipping"]:

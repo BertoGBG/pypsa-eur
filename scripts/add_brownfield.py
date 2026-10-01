@@ -165,6 +165,20 @@ def add_brownfield(
             # TODO: Needs to be rewritten to
             n._import_series_from_df(c.dynamic[tattr], c.name, tattr)
 
+        # derated proxies need the time-dependent efficiencies of their
+        # originals too (e.g. heat pump COP), otherwise they fall back to 1
+        if len(industry_heat_i) > 0:
+            for tattr in n.component_attrs[c.name].index[selection]:
+                if not tattr.startswith("efficiency"):
+                    continue
+                cols = c.dynamic[tattr].columns.intersection(industry_heat_i)
+                if cols.empty:
+                    continue
+                derated_series = c.dynamic[tattr][cols].rename(
+                    columns=lambda name: name + "-derated"
+                )
+                n._import_series_from_df(derated_series, c.name, tattr)
+
     # afforestation: the potential is land area x growth rate, so forests
     # planted in earlier horizons (still alive, lifetime 30 y) occupy part of
     # it. Subtract their capacity from the new vintage's cap per node.

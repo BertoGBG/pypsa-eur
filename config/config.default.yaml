@@ -1234,6 +1234,10 @@ sector:
     # TODO: improve by splitting per country and sector
     share_medium: 0.42
     share_high: 0.58
+    heat_pump_cop: # lowT industrial air-source heat pumps
+      time_dep: true # hourly, node-resolved COP from ambient air; false: fixed COP from technology-data
+      sink_temperature: 150 # °C, steam; DEA high-temperature heat pump sheet covers sinks up to 150 °C
+      carnot_efficiency: 0.55 # real COP as share of Carnot COP (DEA technology catalogue)
     low_T:
       biomass: true
       heat_pumps: true
