@@ -1236,7 +1236,7 @@ sector:
     share_high: 0.58
     low_T:
       biomass: true
-      heat_pumps: false
+      heat_pumps: true
       electric_boiler: true
       methane: true
       methanol: true
