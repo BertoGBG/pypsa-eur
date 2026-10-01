@@ -2693,7 +2693,12 @@ def insert_electricity_distribution_grid(
     v2gs = n.links.index[n.links.carrier == "V2G"]
     n.links.loc[v2gs, "bus1"] += " low voltage"
 
-    hps = n.links.index[n.links.carrier.str.contains("heat pump")]
+    # industry heat pumps are not reversed (electricity on bus0) and stay on
+    # the AC node like the other industry converters
+    hps = n.links.index[
+        n.links.carrier.str.contains("heat pump")
+        & ~n.links.carrier.str.contains("industry")
+    ]
     n.links.loc[hps, "bus1"] += " low voltage"
 
     rh = n.links.index[n.links.carrier.str.contains("resistive heater")]
@@ -5639,7 +5644,7 @@ def add_biomass(
         )
 
 
-def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
+def add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
     """
     Add low temperature heat supply for industry (endogenous mode).
 
@@ -5665,7 +5670,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
         suffix=" lowT industry",
         bus=nodes + " lowT industry",
         carrier="lowT industry",
-        p_set=industrial_demand.loc[nodes, "solid biomass"] / 8760.0,
+        p_set=industrial_demand.loc[nodes, "solid biomass"] / nhours,
     )
 
     if (
@@ -5837,7 +5842,7 @@ def add_low_t_industry(n, nodes, industrial_demand, costs, must_run):
         )
 
 
-def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
+def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
     """
     Add medium temperature heat supply for industry (endogenous mode).
 
@@ -5861,7 +5866,7 @@ def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
         suffix=" mediumT industry",
         bus=nodes + " mediumT industry",
         carrier="mediumT industry",
-        p_set=share_m * industrial_demand.loc[nodes, "methane"] / 8760.0,
+        p_set=share_m * industrial_demand.loc[nodes, "methane"] / nhours,
     )
 
     if options["industry_t"]["medium_T"]["biomass"]:
@@ -6033,7 +6038,7 @@ def add_medium_t_industry(n, nodes, industrial_demand, costs, must_run):
         )
 
 
-def add_high_t_industry(n, nodes, industrial_demand, costs, must_run):
+def add_high_t_industry(n, nodes, industrial_demand, costs, must_run, nhours):
     """
     Add high temperature heat supply for industry (endogenous mode).
 
@@ -6056,7 +6061,7 @@ def add_high_t_industry(n, nodes, industrial_demand, costs, must_run):
         suffix=" highT industry",
         bus=nodes + " highT industry",
         carrier="highT industry",
-        p_set=share_h * industrial_demand.loc[nodes, "methane"] / 8760.0,
+        p_set=share_h * industrial_demand.loc[nodes, "methane"] / nhours,
     )
 
     if options["industry_t"]["high_T"]["methane"]:
@@ -6429,9 +6434,9 @@ def add_industry(
         logger.info(
             f"Endogenising industry heat supply with must_run={must_run}"
         )
-        add_low_t_industry(n, nodes, industrial_demand, costs, must_run)
-        add_medium_t_industry(n, nodes, industrial_demand, costs, must_run)
-        add_high_t_industry(n, nodes, industrial_demand, costs, must_run)
+        add_low_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
+        add_medium_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
+        add_high_t_industry(n, nodes, industrial_demand, costs, must_run, nhours)
     else:
         add_exogen_t_industry(n, nodes, industrial_demand, costs, nhours)
 
