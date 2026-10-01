@@ -5649,7 +5649,7 @@ def industry_heat_pump_cop(
     nodes: pd.Index,
     snapshots: pd.Index,
     sink_temperature: float,
-    carnot_efficiency: float,
+    second_law_efficiency: float,
 ) -> pd.DataFrame:
     """
     Time- and node-dependent COP of industrial air-source heat pumps.
@@ -5670,8 +5670,8 @@ def industry_heat_pump_cop(
         Network snapshots.
     sink_temperature : float
         Heat pump sink (steam) temperature in °C.
-    carnot_efficiency : float
-        Ratio of real to theoretical COP.
+    second_law_efficiency : float
+        Real COP as a fraction of the theoretical Carnot COP.
 
     Returns
     -------
@@ -5685,7 +5685,7 @@ def industry_heat_pump_cop(
         + 273.15
     )
     t_sink = sink_temperature + 273.15
-    cop = carnot_efficiency * t_sink / (t_sink - t_source)
+    cop = second_law_efficiency * t_sink / (t_sink - t_source)
     return cop.clip(lower=1.0)
 
 
@@ -6496,7 +6496,7 @@ def add_industry(
                 nodes,
                 n.snapshots,
                 hp_cop_options["sink_temperature"],
-                hp_cop_options["carnot_efficiency"],
+                hp_cop_options["second_law_efficiency"],
             )
             if hp_cop_options["time_dep"]
             else None
