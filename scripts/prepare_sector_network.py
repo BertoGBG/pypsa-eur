@@ -1591,7 +1591,7 @@ def add_biochar(n, costs):
         The PyPSA network container object
     costs : pd.DataFrame
         Costs and parameters for different technologies. Must contain a
-        'biochar pyrolysis' entry with 'biomass-input', 'yield-biochar',
+        'biochar pyrolysis' entry with 'biomass-input', 'biochar-output',
         'electricity-input', 'heat-output', 'capital_cost', and 'VOM'
         parameters
 
@@ -1625,7 +1625,7 @@ def add_biochar(n, costs):
 
     co2_per_tonne = (
         1 / costs.at["biochar pyrolysis", "biomass-input"]
-        * 1 / costs.at["biochar pyrolysis", "yield-biochar"]
+        * 1 / costs.at["biochar pyrolysis", "biochar-output"]
     )  # tCO2 / t_biochar
 
     n.add(
