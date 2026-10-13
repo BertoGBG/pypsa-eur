@@ -6,6 +6,16 @@
 <!-- Upcoming Release -->
 <!-- ================= -->
 
+## Upcoming Release
+
+* Added the option `sector: unsustainable_biomass_upstream_emissions` to account for the upstream (feedstock
+  cultivation) emissions of the unsustainable bioliquids and solid biomass. Per-country emission factors (JRC
+  ENSPRESO cultivation emissions of starchy crops and rapeseed per unit of fuel, and of willow) come from the
+  new dataset `co2_removal_data` (CO2-removal on Zenodo, https://doi.org/10.5281/zenodo.23341173). The
+  bioliquids factor is weighted by each country's Eurostat production mix of biogasoline vs. biodiesels and
+  added to the CO2 balance of the `unsustainable bioliquids` link; unsustainable solid biomass enters the
+  solid biomass bus through a new link that emits the willow factor; its price stays the fuelwood price.
+
 ## PyPSA-Eur v2026.08.0 (19th August 2026)
 
 **Features**
