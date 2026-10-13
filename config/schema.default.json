@@ -5122,7 +5122,7 @@
         },
         "unsustainable_biomass_upstream_emissions": {
           "default": false,
-          "description": "Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, and price the unsustainable solid biomass as willow, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
+          "description": "Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
           "type": "boolean"
         },
         "biogas_upgrading": {
@@ -11788,7 +11788,7 @@
         },
         "unsustainable_biomass_upstream_emissions": {
           "default": false,
-          "description": "Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, and price the unsustainable solid biomass as willow, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
+          "description": "Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
           "type": "boolean"
         },
         "biogas_upgrading": {

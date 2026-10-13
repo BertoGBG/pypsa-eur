@@ -981,7 +981,7 @@ class SectorConfig(BaseModel):
     )
     unsustainable_biomass_upstream_emissions: bool = Field(
         False,
-        description="Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, and price the unsustainable solid biomass as willow, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
+        description="Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
     )
     biogas_upgrading: bool = Field(True, description="Biogas upgrading.")
     biogas_upgrading_cc: bool = Field(

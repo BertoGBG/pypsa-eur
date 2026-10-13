@@ -14,7 +14,7 @@
   come from the new dataset `unsustainable_biomass_upstream`. The bioliquids factor is weighted by each
   country's Eurostat production mix of biogasoline vs. biodiesels and added to the CO2 balance of the
   `unsustainable bioliquids` link; unsustainable solid biomass enters the solid biomass bus through a new
-  link that emits the willow factor, and is priced at a single EU willow price.
+  link that emits the willow factor; its price stays the fuelwood price.
 
 ## PyPSA-Eur v2026.08.0 (19th August 2026)
 

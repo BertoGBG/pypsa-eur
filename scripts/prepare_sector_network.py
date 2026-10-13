@@ -4942,8 +4942,8 @@ def add_biomass(
         Path to CSV file with, per node, the shares of bioethanol and biodiesel
         in the unsustainable bioliquids ("bioethanol share", "biodiesel share"),
         the upstream emission factors of "bioethanol", "biodiesel" and "solid
-        biomass" (tCO2eq/MWh) and the "solid biomass price" (EUR/MWh). Required
-        if unsustainable_biomass_upstream_emissions is True.
+        biomass" (tCO2eq/MWh). Required if unsustainable_biomass_upstream_emissions
+        is True.
 
     Returns
     -------
@@ -5007,7 +5007,7 @@ def add_biomass(
 
     # upstream (feedstock cultivation) emissions of unsustainable biomass per
     # node (tCO2eq/MWh): bioliquids weighted by the node's biofuel mix; solid
-    # biomass as willow, also priced at the willow price
+    # biomass as willow (the price stays the fuelwood price)
     upstream = options["unsustainable_biomass_upstream_emissions"]
     if upstream:
         upstream_data = pd.read_csv(unsustainable_biomass_upstream_file, index_col=0)
@@ -5016,7 +5016,6 @@ def add_biomass(
             + upstream_data["biodiesel share"] * upstream_data["biodiesel"]
         )
         solid_intensity = upstream_data["solid biomass"]
-        solid_price = upstream_data["solid biomass price"]
 
         def weighted_mean(intensity, weight):
             return (
@@ -5030,9 +5029,6 @@ def add_biomass(
             solid_upstream_emissions = solid_intensity.rename(
                 index=lambda x: x + " unsustainable solid biomass"
             )
-            solid_biomass_price = solid_price.rename(
-                index=lambda x: x + " unsustainable solid biomass"
-            )
         else:
             bioliquids_upstream_emissions = weighted_mean(
                 bioliquids_intensity, biomass_potentials["unsustainable bioliquids"]
@@ -5040,10 +5036,8 @@ def add_biomass(
             solid_upstream_emissions = weighted_mean(
                 solid_intensity, biomass_potentials["unsustainable solid biomass"]
             )
-            solid_biomass_price = solid_price.mean()
     else:
         bioliquids_upstream_emissions = 0.0
-        solid_biomass_price = costs.at["fuelwood", "fuel"]
 
     n.add("Carrier", "biogas")
     n.add("Carrier", "solid biomass")
@@ -5221,7 +5215,7 @@ def add_biomass(
             carrier="unsustainable solid biomass",
             p_nom=unsustainable_solid_biomass_potentials_spatial,
             p_nom_extendable=False,
-            marginal_cost=solid_biomass_price,
+            marginal_cost=costs.at["fuelwood", "fuel"],
             e_sum_min=unsustainable_solid_biomass_potentials_spatial,
             e_sum_max=unsustainable_solid_biomass_potentials_spatial,
         )
@@ -5415,7 +5409,7 @@ def add_biomass(
                 ),
                 carrier="unsustainable solid biomass",
                 p_nom=10000,
-                marginal_cost=solid_biomass_price
+                marginal_cost=costs.at["fuelwood", "fuel"]
                 + bus_transport_costs.rename(
                     dict(
                         zip(spatial.biomass.nodes, spatial.biomass.nodes_unsustainable)
