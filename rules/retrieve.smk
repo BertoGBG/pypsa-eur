@@ -1647,6 +1647,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
             afforestation_nuts2_monthly_weights=resources("afforestation_nuts2_monthly_weights.csv"),
             eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
             eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
+            unsustainable_biomass_upstream=resources("unsustainable_biomass_upstream.csv"),
         retries: 2
         run:
             with ZipFile(input.zip) as z:
@@ -1659,6 +1660,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
                     ("outputs/afforestation/afforestation_nuts2_monthly_weights.csv", output.afforestation_nuts2_monthly_weights),
                     ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
                     ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+                    ("outputs/biomass_inputs/unsustainable_biomass_upstream.csv", output.unsustainable_biomass_upstream),
                 ]:
                     with z.open(f"{top_dir}/{src_path}") as src, open(dest, "wb") as dst:
                         dst.write(src.read())
