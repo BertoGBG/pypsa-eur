@@ -1103,22 +1103,13 @@ rule build_afforestation_potentials:
     params:
         network_geojson=resources("regions_onshore_base_s_{clusters}.geojson"),
         nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
-        afforestation_potential_type=config["afforestation"]["potential_type"],
         snapshots=config["snapshots"],
     input:
         afforestation_corine_potentials_csv_file=resources(
             "afforestation_available_land_s_{clusters}.csv"
         ),
-        afforestation_nuts_file=lambda w: (
-            rules.retrieve_co2_removal_data.output.afforestation_nuts_biomass_densities
-            if config["afforestation"]["potential_type"] == "density"
-            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_afforestation_rates
-        ),
-        afforestation_monthly_weights_file=lambda w: (
-            []
-            if config["afforestation"]["potential_type"] == "density"
-            else rules.retrieve_co2_removal_data.output.afforestation_nuts2_monthly_weights
-        ),
+        afforestation_nuts_file=rules.retrieve_co2_removal_data.output.afforestation_nuts2_afforestation_rates,
+        afforestation_monthly_weights_file=rules.retrieve_co2_removal_data.output.afforestation_nuts2_monthly_weights,
     output:
         csv_file=resources("afforestation_potentials_s_{clusters}.csv"),
         monthly_weights_csv_file=resources(
@@ -1929,10 +1920,7 @@ rule prepare_sector_network:
         ),
         afforestation_seasonal_profile=lambda w: (
             resources("afforestation_seasonal_profile_s_{clusters}.csv")
-            if (
-                config_provider("sector", "afforestation")(w)
-                and config["afforestation"]["potential_type"] == "growth"
-            )
+            if config_provider("sector", "afforestation")(w)
             else []
         ),
         perennials_yields_1G_biofuels=lambda w: (
@@ -1993,7 +1981,6 @@ rule prepare_sector_network:
         temperature_limited_stores=config_provider(
             "sector", "district_heating", "temperature_limited_stores"
         ),
-        afforestation_potential_type=config_provider("afforestation", "potential_type"),
     message:
         "Preparing integrated sector-coupled energy network for {wildcards.clusters} clusters, {wildcards.planning_horizons} planning horizon, {wildcards.opts} electric options and {wildcards.sector_opts} sector options"
     script:

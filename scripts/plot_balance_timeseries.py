@@ -207,7 +207,7 @@ if __name__ == "__main__":
     # Load network and prepare data
     n = pypsa.Network(snakemake.input.network)
 
-    # Redistribute afforestation seasonal signal if solved in free_mode (growth mode only)
+    # Redistribute afforestation seasonal signal if solved in free_mode
     _aff_profile = getattr(snakemake.input, "afforestation_seasonal_profile", None)
     if snakemake.params.get("afforestation_free_mode", False) and _aff_profile:
         from scripts.afforestation_postprocess import redistribute_afforestation_seasonal
