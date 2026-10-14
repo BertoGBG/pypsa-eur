@@ -472,7 +472,6 @@ rule plot_balance_timeseries:
             if (
                 config_provider("sector", "afforestation")(w)
                 and config["afforestation"].get("free_mode", False)
-                and config["afforestation"]["potential_type"] == "growth"
             )
             else []
         ),
@@ -511,7 +510,6 @@ rule plot_heatmap_timeseries:
             if (
                 config_provider("sector", "afforestation")(w)
                 and config["afforestation"].get("free_mode", False)
-                and config["afforestation"]["potential_type"] == "growth"
             )
             else []
         ),

@@ -15,7 +15,6 @@ check_perennials_pipeline.py / check_rock_weathering_pipeline.py scripts.
 Wildcards are read from the saved run config automatically.
 Override any value on the CLI:
     --run-name NAME  --clusters N  --horizon YEAR  --sector-opts OPTS
-    --potential-type density|growth   (afforestation only)
     --shared-resources NAME           (perennials only)
     --config PATH    (direct path to a saved config YAML)
 """
@@ -33,11 +32,6 @@ from _check_utils import parse_check_args, load_check_params, print_co2_system_d
 
 # ── Configuration (from config file + CLI overrides) ──────────────────────────
 _args = parse_check_args(extra_args=[
-    (["--potential-type"],
-     {"default": None,
-      "metavar": "TYPE",
-      "help": "Override afforestation potential type (density or growth). "
-              "Reads afforestation.potential_type from config if not set."}),
     (["--shared-resources"],
      {"default": None,
       "metavar": "NAME",
@@ -60,10 +54,6 @@ RESULTS          = _p["RESULTS"]
 SHARED_RES       = _p["SHARED_RES"]
 CFG              = _p["cfg"]
 
-POTENTIAL_TYPE = (
-    _args.potential_type
-    or CFG.get("afforestation", {}).get("potential_type", "density")
-)
 _assign_capacity_duals = CFG.get("solving", {}).get("options", {}).get("assign_capacity_duals", False)
 
 # ── Active-tech detection ───────────────────────────────────────────────────────
@@ -439,14 +429,10 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
 
 def check_afforestation_build():
     section("AFFORESTATION 1. RETRIEVE: afforestation NUTS data")
-    if POTENTIAL_TYPE == "density":
-        nuts_file = RES_RUN / "afforestation_nuts_biomass_densities.xlsx"
-        check_file(nuts_file, "NUTS0 biomass densities (Excel, density mode)")
-    else:
-        nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"
-        check_file(nuts_file, "NUTS2 growth rates (CSV, growth mode)")
-        weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"
-        check_file(weights_file, "NUTS2 monthly weights (CSV, growth mode)")
+    nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"
+    check_file(nuts_file, "NUTS2 growth rates (CSV)")
+    weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"
+    check_file(weights_file, "NUTS2 monthly weights (CSV)")
 
     section("AFFORESTATION 2. BUILD: CORINE afforestation land area")
     corine_csv = RES_RUN / f"afforestation_available_land_s_{CLUSTERS}.csv"
@@ -467,11 +453,7 @@ def check_afforestation_build():
     if pot_ok:
         df_pot = pd.read_csv(affo_pot, index_col="node")
         print(f"        Rows: {len(df_pot)}  |  Columns: {list(df_pot.columns)}")
-        if POTENTIAL_TYPE == "density" and "AGB [t]" in df_pot.columns:
-            print(f"        AGB [t] — min: {df_pot['AGB [t]'].min():,.0f}, "
-                  f"mean: {df_pot['AGB [t]'].mean():,.0f}, "
-                  f"max: {df_pot['AGB [t]'].max():,.0f}")
-        elif POTENTIAL_TYPE == "growth" and "potential [tCO2/y]" in df_pot.columns:
+        if "potential [tCO2/y]" in df_pot.columns:
             total_gross_potential = df_pot["potential [tCO2/y]"].sum()
             print(f"        Total potential (gross, pre-CRCF): {total_gross_potential:,.0f} tCO2/y  "
                   f"({total_gross_potential / 1e6:.3f} MtCO2/y)")
@@ -485,23 +467,22 @@ def check_afforestation_build():
         if df_pot.isnull().any().any():
             print(f"{WARN}  NaN values detected in afforestation potentials CSV.")
 
-    if POTENTIAL_TYPE == "growth":
-        section("AFFORESTATION 3b. BUILD: node-level monthly weights and seasonal profile")
-        mw_csv = RES_RUN / f"afforestation_monthly_weights_s_{CLUSTERS}.csv"
-        sp_csv = RES_RUN / f"afforestation_seasonal_profile_s_{CLUSTERS}.csv"
-        pot_png = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.png"
-        mw_ok = check_file(mw_csv, f"Monthly weights CSV  s_{CLUSTERS}")
-        check_file(sp_csv, f"Seasonal profile CSV  s_{CLUSTERS}")
-        check_file(pot_png, f"Afforestation potentials PNG  s_{CLUSTERS}")
-        if mw_ok:
-            df_mw = pd.read_csv(mw_csv, index_col="node")
-            print(f"        Rows: {len(df_mw)}  |  Columns: {list(df_mw.columns)}")
-            row_sums = df_mw.sum(axis=1)
-            bad = row_sums[(row_sums - 1.0).abs() > 0.01]
-            if bad.empty:
-                print(f"        Monthly weights sum to ~1.0 for all nodes  {OK}")
-            else:
-                print(f"{WARN}  {len(bad)} nodes have weights not summing to 1: {bad.index.tolist()[:5]}")
+    section("AFFORESTATION 3b. BUILD: node-level monthly weights and seasonal profile")
+    mw_csv = RES_RUN / f"afforestation_monthly_weights_s_{CLUSTERS}.csv"
+    sp_csv = RES_RUN / f"afforestation_seasonal_profile_s_{CLUSTERS}.csv"
+    pot_png = RES_RUN / f"afforestation_potentials_s_{CLUSTERS}.png"
+    mw_ok = check_file(mw_csv, f"Monthly weights CSV  s_{CLUSTERS}")
+    check_file(sp_csv, f"Seasonal profile CSV  s_{CLUSTERS}")
+    check_file(pot_png, f"Afforestation potentials PNG  s_{CLUSTERS}")
+    if mw_ok:
+        df_mw = pd.read_csv(mw_csv, index_col="node")
+        print(f"        Rows: {len(df_mw)}  |  Columns: {list(df_mw.columns)}")
+        row_sums = df_mw.sum(axis=1)
+        bad = row_sums[(row_sums - 1.0).abs() > 0.01]
+        if bad.empty:
+            print(f"        Monthly weights sum to ~1.0 for all nodes  {OK}")
+        else:
+            print(f"{WARN}  {len(bad)} nodes have weights not summing to 1: {bad.index.tolist()[:5]}")
 
 
 def check_afforestation_prenet(n):
