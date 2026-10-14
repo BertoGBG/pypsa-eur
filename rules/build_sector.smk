@@ -932,7 +932,7 @@ rule build_biomass_potentials:
         swiss_population=rules.retrieve_bfs_gdp_and_population.output["xlsx"],
         country_shapes=resources("country_shapes.geojson"),
         unsustainable_biomass_upstream_data=lambda w: (
-            rules.retrieve_unsustainable_biomass_upstream.output["csv"]
+            rules.retrieve_co2_removal_data.output["unsustainable_biomass_upstream"]
             if config_provider("sector", "unsustainable_biomass_upstream_emissions")(w)
             else []
         ),

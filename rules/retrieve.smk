@@ -1005,24 +1005,6 @@ if (GEM_GCCT_DATASET := dataset_version("gem_gcct"))["source"] in [
             copy2(input["xlsx"], output["xlsx"])
 
 
-if (
-    UNSUSTAINABLE_BIOMASS_UPSTREAM_DATASET := dataset_version("unsustainable_biomass_upstream")
-)["source"] in [
-    "primary",
-    "archive",
-]:
-
-    rule retrieve_unsustainable_biomass_upstream:
-        input:
-            csv=storage(UNSUSTAINABLE_BIOMASS_UPSTREAM_DATASET["url"]),
-        output:
-            csv=f"{UNSUSTAINABLE_BIOMASS_UPSTREAM_DATASET['folder']}/unsustainable_biomass_upstream.csv",
-        message:
-            "Retrieving upstream emission factors and price of unsustainable biomass"
-        run:
-            copy2(input["csv"], output["csv"])
-
-
 if (BFS_ROAD_VEHICLE_STOCK_DATASET := dataset_version("bfs_road_vehicle_stock"))[
     "source"
 ] in [
@@ -1657,7 +1639,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
 
     rule retrieve_co2_removal_data:
         message:
-            "Downloading carbon dioxide removal data (afforestation, perennialisation inputs)"
+            "Downloading carbon dioxide removal data"
         input:
             zip=storage(CO2_REMOVAL_DATASET["url"]),
         output:
@@ -1665,6 +1647,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
             afforestation_nuts2_monthly_weights=resources("afforestation_nuts2_monthly_weights.csv"),
             eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
             eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
+            unsustainable_biomass_upstream=resources("unsustainable_biomass_upstream.csv"),
         retries: 2
         run:
             with ZipFile(input.zip) as z:
@@ -1677,6 +1660,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
                     ("outputs/afforestation/afforestation_nuts2_monthly_weights.csv", output.afforestation_nuts2_monthly_weights),
                     ("outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv", output.eurostat_crops_nuts2),
                     ("outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv", output.eurostat_crops_nuts0),
+                    ("outputs/biomass_inputs/unsustainable_biomass_upstream.csv", output.unsustainable_biomass_upstream),
                 ]:
                     with z.open(f"{top_dir}/{src_path}") as src, open(dest, "wb") as dst:
                         dst.write(src.read())

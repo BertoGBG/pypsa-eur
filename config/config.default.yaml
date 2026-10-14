@@ -1816,9 +1816,6 @@ data:
   natura:
     source: archive
     version: latest
-  unsustainable_biomass_upstream:
-    source: primary
-    version: latest
   bfs_road_vehicle_stock:
     source: primary
     version: latest
