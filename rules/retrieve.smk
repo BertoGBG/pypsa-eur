@@ -1639,7 +1639,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
 
     rule retrieve_co2_removal_data:
         message:
-            "Downloading carbon dioxide removal data (afforestation, perennialisation inputs)"
+            "Downloading carbon dioxide removal data"
         input:
             zip=storage(CO2_REMOVAL_DATASET["url"]),
         output:
