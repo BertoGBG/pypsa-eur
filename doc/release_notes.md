@@ -6,6 +6,8 @@
 <!-- Upcoming Release -->
 <!-- ================= -->
 
+* Fix: `build_swiss_energy_balances` now reads the October 2026 edition of the Swiss energy balances (data for 2000-2025), which renamed table rows. ([#2380](https://github.com/PyPSA/pypsa-eur/pull/2380)).
+
 * Fix: integrate TABULA data used in building retrofitting back to the model ([#2285](https://github.com/PyPSA/pypsa-eur/pull/2285))
 
 * Fix: fix bugs in retrofitting scripts which happens due to pandas version change and other code changes ([#2273](https://github.com/PyPSA/pypsa-eur/pull/2273))
