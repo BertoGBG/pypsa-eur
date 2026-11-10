@@ -5,8 +5,8 @@
 """
 Post-processing redistribution for afforestation carbon dioxide removal links/stores.
 
-When afforestation is solved in 'free_mode' (fixed p_nom = peak rate,
-p_min_pu=0), the LP solver freely distributes the annual CO₂ removal
+Afforestation is solved with free dispatch (fixed p_nom = peak rate,
+p_min_pu=0): the LP solver freely distributes the annual CO₂ removal
 across the year without a seasonal signal. The solved dispatch is
 physically valid (annual total correct, instantaneous rate bounded) but
 its temporal shape is arbitrary (LP degeneracy).
@@ -35,7 +35,7 @@ Mathematical definition
 Given:
   w[t, node]  — seasonal weight from profile CSV (raw, not normalised)
   E[node]     — optimised annual CO₂ store size [tCO₂]  (= e_nom_opt)
-  η           — link efficiency (CRCF, e.g. 0.8)
+  η           — link efficiency (1: the CRCF factor is applied to the potential)
 
   Δe[t, node] = w[t, node] / Σ_t w[t, node]  ×  E[node]   [tCO₂ per snapshot]
   e[t, node]  = cumsum_t Δe                                  [tCO₂]
@@ -139,8 +139,8 @@ def redistribute_afforestation_seasonal(
         delta_e = weights / w_sum * e_nom_opt
 
         n.stores_t.e[store_name] = delta_e.cumsum().values
-        n.links_t.p0[link_name] = (delta_e / eff).values   # withdrawal from atmosphere
-        n.links_t.p1[link_name] = (-delta_e).values         # injection into store bus
+        n.links_t.p0[link_name] = (delta_e / eff).values  # withdrawal from atmosphere
+        n.links_t.p1[link_name] = (-delta_e).values  # injection into store bus
 
         n_done += 1
 

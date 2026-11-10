@@ -1436,7 +1436,6 @@ rock_weathering:
   max_land_usage: 0.2 # maximum fraction of suitable area used for rock weathering
 
 afforestation:
-  free_mode: false  # fix p_nom to seasonal peak rate, dispatch unconstrained;  call redistribute_afforestation_seasonal() before temporal plotting
   use_discount_rate: false  # use config discount rate in annuity formula; false → no discounting (r=0)
   crcf_efficiency: 0.80 # fraction of gross MAI sequestration credited as net removal under the EU CRCF
                         # (Regulation EU 2024/3012, delegated act draft 22/01/2026).
