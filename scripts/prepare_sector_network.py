@@ -1664,14 +1664,16 @@ def add_afforestation(n, costs):
     tables), with dispatch following a precomputed monthly seasonal profile
     (FluxCom GPP-derived). The gross potential is discounted by the EU CRCF
     net/gross credit fraction (``crcf_efficiency``) before being used as the
-    store's ``e_nom_max`` (and, in ``free_mode``, the link's peak-rate cap);
+    store's ``e_nom_max`` and the link's peak-rate cap;
     ``capital_cost``'s denominator is scaled by the same factor so the
     annualized per-hectare cost is spread over net (not gross) creditable
-    tonnes.
+    tonnes. The lifetime of the store and the link is the node's optimal
+    rotation age, the same period as the annuity; in myopic runs a mature
+    forest keeps its land (see ``add_brownfield``).
 
-    In ``afforestation.free_mode``, ``p_nom`` is fixed to the peak physical
-    rate and dispatch is left unconstrained (``p_min_pu=0``) instead of
-    following the seasonal profile exactly; ``redistribute_afforestation_seasonal()``
+    The link's ``p_nom`` is fixed to the peak physical rate and dispatch is
+    left free (``p_min_pu=0``) instead of following the seasonal profile
+    exactly; ``redistribute_afforestation_seasonal()``
     (``afforestation_postprocess.py``) must then be called before any
     temporal plotting to remap the free dispatch back onto the biological
     seasonal profile.
@@ -1696,7 +1698,7 @@ def add_afforestation(n, costs):
     Reads ``snakemake.input.afforestation_potentials`` and
     ``snakemake.input.afforestation_seasonal_profile`` (from
     ``build_afforestation_potentials.py``). Config keys:
-    ``afforestation.crcf_efficiency``, ``use_discount_rate``, ``free_mode``.
+    ``afforestation.crcf_efficiency``, ``use_discount_rate``.
     """
     logger.info("Adding afforestation.")
 
@@ -1705,11 +1707,10 @@ def add_afforestation(n, costs):
     ).set_index("node")
 
     crcf_efficiency = snakemake.config["afforestation"]["crcf_efficiency"]
-    # free_mode: fix p_nom to the peak physical rate and leave dispatch free (p_min_pu=0).
-    # Spikes are bounded: the p_nom in the link can never exceed the seasonal peak rate.
+    # The link's p_nom is fixed to the peak physical rate and dispatch is left free
+    # (p_min_pu=0). Spikes are bounded: the flow can never exceed the seasonal peak rate.
     # Call redistribute_afforestation_seasonal() from afforestation_postprocess.py
     # before any temporal plotting.
-    free_mode = snakemake.config["afforestation"].get("free_mode", False)
 
     # Pilli gross MAI-based potential, discounted by the EU CRCF net/gross credit
     # fraction here (rather than on the link) so e_nom_max directly represents the
@@ -1749,17 +1750,16 @@ def add_afforestation(n, costs):
     profile_full.columns = spatial.nodes + " afforestation"
     monthly_rate = profile_full.reindex(dates).set_axis(n.snapshots)
 
-    if free_mode:
-        # cap: peak seasonal rate at full deployment
-        # w_sum/w_max gives minimum hours needed to fill annual potential at peak rate,
-        # bounding how concentrated the solver can make the dispatch.
-        w_sum = (
-            monthly_rate.sum()
-        )  # total weight per node (indexed by "{node} afforestation")
-        w_max = monthly_rate.max()  # peak weight per node
-        # align with spatial.nodes order
-        node_cols = spatial.nodes + " afforestation"
-        p_nom_cap = potentials * (w_max / w_sum).reindex(node_cols).values
+    # cap: peak seasonal rate at full deployment
+    # w_sum/w_max gives minimum hours needed to fill annual potential at peak rate,
+    # bounding how concentrated the solver can make the dispatch.
+    w_sum = (
+        monthly_rate.sum()
+    )  # total weight per node (indexed by "{node} afforestation")
+    w_max = monthly_rate.max()  # peak weight per node
+    # align with spatial.nodes order
+    node_cols = spatial.nodes + " afforestation"
+    p_nom_cap = potentials * (w_max / w_sum).reindex(node_cols).values
 
     n.add("Carrier", "co2 afforestation")
 
@@ -1779,7 +1779,7 @@ def add_afforestation(n, costs):
         capital_cost=capital_cost,
         e_nom_extendable=True,
         e_nom_max=potentials,
-        lifetime=costs.at["Afforestation", "lifetime"],
+        lifetime=rotation_age,
     )
 
     # CRCF discount is applied to the potential (see above), not the link:
@@ -1787,49 +1787,25 @@ def add_afforestation(n, costs):
     # removed from the shared "co2 atmosphere" bus.
     link_efficiency = 1.0
 
-    if free_mode:
-        # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
-        # No capital cost on the link since investment is captured by the store.
-        n.add(
-            "Link",
-            spatial.nodes + " afforestation",
-            bus0="co2 atmosphere",
-            bus1=spatial.nodes + " co2 afforestation",
-            carrier="co2 afforestation",
-            efficiency=link_efficiency,
-            p_nom=p_nom_cap,
-            p_nom_extendable=False,
-            p_min_pu=0.0,
-            p_max_pu=1.0,
-            lifetime=costs.at["Afforestation", "lifetime"],
-        )
-        logger.info(
-            "Afforestation free_mode=True: p_nom fixed to peak rate, dispatch unconstrained. "
-            "Call redistribute_afforestation_seasonal() before temporal plotting."
-        )
-    else:
-        n.add(
-            "Link",
-            spatial.nodes + " afforestation",
-            bus0="co2 atmosphere",
-            bus1=spatial.nodes + " co2 afforestation",
-            carrier="co2 afforestation",
-            efficiency=link_efficiency,
-            p_nom_extendable=True,
-            p_min_pu=1.0,
-            p_max_pu=1.0,
-            lifetime=costs.at["Afforestation", "lifetime"],
-        )
-
-        # dispatch follows the time-varying seasonal profile
-        n.links_t.p_min_pu = n.links_t.p_min_pu.reindex(
-            columns=n.links_t.p_min_pu.columns.union(monthly_rate.columns)
-        )
-        n.links_t.p_max_pu = n.links_t.p_max_pu.reindex(
-            columns=n.links_t.p_max_pu.columns.union(monthly_rate.columns)
-        )
-        n.links_t.p_min_pu[monthly_rate.columns] = monthly_rate.values
-        n.links_t.p_max_pu[monthly_rate.columns] = monthly_rate.values
+    # Fixed p_nom = peak physical rate; optimizer dispatches freely within [0, p_nom].
+    # No capital cost on the link since investment is captured by the store.
+    n.add(
+        "Link",
+        spatial.nodes + " afforestation",
+        bus0="co2 atmosphere",
+        bus1=spatial.nodes + " co2 afforestation",
+        carrier="co2 afforestation",
+        efficiency=link_efficiency,
+        p_nom=p_nom_cap,
+        p_nom_extendable=False,
+        p_min_pu=0.0,
+        p_max_pu=1.0,
+        lifetime=rotation_age,
+    )
+    logger.info(
+        "Afforestation: p_nom fixed to peak rate, dispatch free. "
+        "Call redistribute_afforestation_seasonal() before temporal plotting."
+    )
 
 
 def add_co2limit(n, options, co2_totals_file, countries, nyears, limit):
