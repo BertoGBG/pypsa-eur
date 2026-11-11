@@ -94,7 +94,7 @@ costs:
 
 ## Rule `retrieve_co2_removal_data`
 
-This rule downloads the preprocessed input data for the carbon dioxide removal technologies and the upstream emissions of the unsustainable bioliquids from the [CO2-removal dataset on Zenodo](https://doi.org/10.5281/zenodo.23341173) (dataset `co2_removal_data` in `data/versions.csv`) and unpacks the files used here. The method is documented in the `docs/` folder of the dataset.
+This rule downloads the preprocessed input data for the carbon dioxide removal technologies and the upstream emissions of the unsustainable bioliquids from the [CO2-removal dataset on Zenodo](https://doi.org/10.5281/zenodo.23954311) (dataset `co2_removal_data` in `data/versions.csv`) and unpacks the files used here. The method is documented in the `docs/` folder of the dataset.
 
 **Relevant Settings**
 
@@ -102,6 +102,7 @@ This rule downloads the preprocessed input data for the carbon dioxide removal t
 sector:
     afforestation:
     perennials:
+    unsustainable_biomass_upstream_emissions:
 data:
     co2_removal_data:
         source:
@@ -117,3 +118,4 @@ data:
 - `resources/afforestation_rates_nuts2_full.csv`: rotation-averaged CO2 sequestration rates, rotation ages and carbon densities per NUTS-2 region (JRC forest yield tables)
 - `resources/afforestation_nuts2_monthly_weights.csv`: monthly weights of the seasonal profile per NUTS-2 region (FluxCom GPP)
 - `resources/eurostat_apro_cpshr_nuts2_raw.csv`, `resources/eurostat_apro_cpshr_nuts0_raw.csv`: Eurostat crop yields (`apro_cpshr`) at NUTS-2 and country level
+- `resources/unsustainable_biomass_upstream.csv`: upstream (feedstock cultivation) emission factors of bioethanol and biodiesel per year, in tCO2eq/MWh of fuel
