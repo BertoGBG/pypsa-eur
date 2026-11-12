@@ -8,13 +8,21 @@
 
 * Fix: fix bugs in retrofitting scripts which happens due to pandas version change and other code changes ([#2273](https://github.com/PyPSA/pypsa-eur/pull/2273))
 
-* Added the option `sector: unsustainable_biomass_upstream_emissions` to account for the upstream
-  (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass. Per-country emission
-  factors (JRC ENSPRESO cultivation emissions of starchy crops and rapeseed per unit of fuel, and of willow)
-  come from the new dataset `unsustainable_biomass_upstream`. The bioliquids factor is weighted by each
-  country's Eurostat production mix of biogasoline vs. biodiesels and added to the CO2 balance of the
-  `unsustainable bioliquids` link; unsustainable solid biomass enters the solid biomass bus through a new
-  link that emits the willow factor; its price stays the fuelwood price.
+* Added the option `sector: unsustainable_biomass_upstream_emissions` to account for the upstream (feedstock
+  cultivation) emissions of the unsustainable bioliquids, as exogenous emission factors from the
+  new dataset `co2_removal_data` (CO2-removal v1.0.4 on Zenodo,
+  https://doi.org/10.5281/zenodo.23954311). The 1st-generation crops of the bioliquids (bioethanol
+  from wheat, biodiesel from rapeseed; JRC input data for the RED default values, Edwards et al. 2019) are
+  allocated to the energy system: the factor counts their field emissions in full (N2O and soil acidification from
+  the N fertiliser) and the production emissions of the imported N fertiliser (30%, made outside Europe from fossil
+  fuels). The N fertiliser made in Europe is already in the industrial ammonia demand, which is not changed (land
+  freed by the phase-out is assumed to grow food/feed with the same fertiliser per hectare, outside the model), and
+  farm diesel is in the agriculture energy demand. This gives 0.091 (bioethanol) and 0.066 (biodiesel) tCO2eq/MWh
+  of fuel, weighted by each country's Eurostat production mix of biogasoline vs. biodiesels and added to the CO2
+  balance of the `unsustainable bioliquids` link. Unsustainable solid biomass is not changed: it is wood and black
+  liquor without fertiliser or field N2O, its use is exogenous and only declines from today's level, so the effect of
+  its harvest on the forest carbon stock is part of the LULUCF sink (treated separately), and the energy for harvest,
+  processing and transport is approximately covered by the sector energy demands of PyPSA-Eur.
 
 ## PyPSA-Eur v2026.08.0 (19th August 2026)
 

@@ -981,7 +981,7 @@ class SectorConfig(BaseModel):
     )
     unsustainable_biomass_upstream_emissions: bool = Field(
         False,
-        description="Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids and solid biomass per country, using the unsustainable_biomass_upstream dataset (CO2-removal, based on JRC ENSPRESO).",
+        description="Add the upstream (feedstock cultivation) emissions of the unsustainable bioliquids as exogenous emission factors from the co2_removal_data dataset (CO2-removal): field N2O and soil acidification in full, and production of the imported N fertiliser (30%); the N fertiliser made in Europe is in the industrial ammonia demand (unchanged) and farm diesel in the agriculture energy demand. Unsustainable solid biomass (mostly forest wood and black liquor) has no cultivation emissions and is not changed.",
     )
     biogas_upgrading: bool = Field(True, description="Biogas upgrading.")
     biogas_upgrading_cc: bool = Field(

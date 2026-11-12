@@ -248,13 +248,14 @@ def convert_nuts2_to_regions(bio_nuts2, regions):
 
 def upstream_per_node(nodes, fn, year):
     """
-    Upstream emission factors of unsustainable biomass per node, from the
-    country table of the CO2-removal dataset (columns "<quantity>_<year>"),
+    Upstream emission factors of the unsustainable bioliquids per node, from
+    the country table of the CO2-removal dataset (columns "<quantity>_<year>"),
     linearly interpolated to the given year (constant outside the table years).
     """
     table = pd.read_csv(fn, index_col=0)
-    # emission factors only; the table's price columns are not used
-    quantities = ["bioethanol", "biodiesel", "solid biomass"]
+    # bioliquids factors only; the table's solid biomass and price columns are
+    # not used
+    quantities = ["bioethanol", "biodiesel"]
     data = {}
     for q in quantities:
         columns = table.filter(regex=rf"^{re.escape(q)}_\d{{4}}$")

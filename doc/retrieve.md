@@ -94,7 +94,7 @@ costs:
 
 ## Rule `retrieve_co2_removal_data`
 
-This rule downloads the preprocessed input data for the carbon dioxide removal technologies and the upstream emissions of the unsustainable bioliquids from the [CO2-removal dataset on Zenodo](https://doi.org/10.5281/zenodo.23341173) (dataset `co2_removal_data` in `data/versions.csv`) and unpacks the files used here. The method is documented in the `docs/` folder of the dataset.
+This rule downloads the preprocessed input data for the carbon dioxide removal technologies and the upstream emissions of the unsustainable bioliquids from the [CO2-removal dataset on Zenodo](https://doi.org/10.5281/zenodo.23954311) (dataset `co2_removal_data` in `data/versions.csv`) and unpacks the files used here. The method is documented in the `docs/` folder of the dataset.
 
 **Relevant Settings**
 
