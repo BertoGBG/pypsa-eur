@@ -147,6 +147,22 @@ class ConfigSchema(BaseModel):
         default_factory=Co2BudgetConfig,
         description="CO2 budget as fraction of 1990 emissions per planning horizon year.",
     )
+    lulucf_deviation: bool = Field(
+        False,
+        description="Correct the CO2 budget for the deviation of the real LULUCF sink from the sink the budget implicitly assumes: `lulucf_deviation_values` (MtCO2/yr) are subtracted from the upper CO2 bound of each planning horizon (positive: sink underperforms, budget tightened).",
+    )
+    lulucf_deviation_values: dict[int, float] = Field(
+        default_factory=lambda: {
+            2020: 0,
+            2025: 64,
+            2030: 127,
+            2035: 191,
+            2040: 254,
+            2045: 318,
+            2050: 381,
+        },
+        description="Deviation of the LULUCF sink in MtCO2/yr per year, linearly interpolated between years. 2030: -310 MtCO2 target (Regulation (EU) 2023/839) minus -183 MtCO2 WEM projection (EEA 2024 submissions, via CAP Reform 2025); 2020 assumed 0 and 2025 interpolated; 2035-2050 extrapolate the 2020-2030 slope (modelling assumption, not sourced).",
+    )
     electricity: ElectricityConfig = Field(
         default_factory=ElectricityConfig,
         description="Electricity sector configuration.",

@@ -221,6 +221,25 @@ def apply_co2_budget_constraints(
         baseline_1990=baseline_1990,
     )
 
+    # LULUCF deviation (MtCO2/yr): the CO2 budget implicitly relies on the
+    # LULUCF sink performing as assumed; a weaker sink tightens the budget of
+    # the modelled sectors by the shortfall (positive values), a stronger one
+    # loosens it.
+    if params.get("lulucf_deviation", False) and upper is not None:
+        deviation = get(params.get("lulucf_deviation_values", {}), current_horizon)
+        if deviation:
+            if budget_is_scalar and foresight == "perfect":
+                logger.warning(
+                    "lulucf_deviation is not applied to a cumulative perfect "
+                    "foresight CO2 budget."
+                )
+            else:
+                logger.info(
+                    f"Adjusting the CO2 upper bound for the LULUCF sink deviation "
+                    f"of {deviation:+.1f} MtCO2/yr."
+                )
+                upper -= deviation / 1e3  # MtCO2 -> GtCO2
+
     is_last_horizon = current_horizon == horizons[-1]
     elec_only = not params.sector["enabled"]
     glc_type = "primary_energy" if elec_only else "co2_atmosphere"

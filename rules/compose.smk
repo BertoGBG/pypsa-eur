@@ -320,6 +320,8 @@ rule compose_network:
             "sector", "district_heating", "direct_utilisation_heat_sources"
         ),
         co2_budget=config_provider("co2_budget"),
+        lulucf_deviation=config_provider("lulucf_deviation"),
+        lulucf_deviation_values=config_provider("lulucf_deviation_values"),
         adjustments=config_provider("adjustments"),
     script:
         scripts("compose_network.py")

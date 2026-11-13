@@ -11135,6 +11135,18 @@
         }
       }
     },
+    "lulucf_deviation": {
+      "default": false,
+      "description": "Correct the CO2 budget for the deviation of the real LULUCF sink from the sink the budget implicitly assumes: `lulucf_deviation_values` (MtCO2/yr) are subtracted from the upper CO2 bound of each planning horizon (positive: sink underperforms, budget tightened).",
+      "type": "boolean"
+    },
+    "lulucf_deviation_values": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "description": "Deviation of the LULUCF sink in MtCO2/yr per year, linearly interpolated between years. 2030: -310 MtCO2 target (Regulation (EU) 2023/839) minus -183 MtCO2 WEM projection (EEA 2024 submissions, via CAP Reform 2025); 2020 assumed 0 and 2025 interpolated; 2035-2050 extrapolate the 2020-2030 slope (modelling assumption, not sourced).",
+      "type": "object"
+    },
     "electricity": {
       "description": "Configuration for `electricity` settings.",
       "properties": {

@@ -102,6 +102,19 @@ co2_budget:
     2050: 0.0
   lower:
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#lulucf_deviation_cf
+lulucf_deviation: false
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#lulucf_deviation_values_cf
+lulucf_deviation_values:
+  2020: 0
+  2025: 64
+  2030: 127
+  2035: 191
+  2040: 254
+  2045: 318
+  2050: 381
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#electricity_cf
 electricity:
   voltages:
