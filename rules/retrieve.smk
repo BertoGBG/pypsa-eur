@@ -1595,6 +1595,12 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
             unsustainable_biomass_upstream=resources(
                 "unsustainable_biomass_upstream.csv"
             ),
+            afforestation_nuts2_afforestation_rates=resources(
+                "afforestation_rates_nuts2_full.csv"
+            ),
+            afforestation_nuts2_monthly_weights=resources(
+                "afforestation_nuts2_monthly_weights.csv"
+            ),
         retries: 2
         message:
             "Downloading carbon dioxide removal data"
@@ -1608,6 +1614,14 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
                     (
                         "outputs/biomass_inputs/unsustainable_biomass_upstream.csv",
                         output.unsustainable_biomass_upstream,
+                    ),
+                    (
+                        "outputs/afforestation/afforestation_rates_nuts2_full.csv",
+                        output.afforestation_nuts2_afforestation_rates,
+                    ),
+                    (
+                        "outputs/afforestation/afforestation_nuts2_monthly_weights.csv",
+                        output.afforestation_nuts2_monthly_weights,
                     ),
                 ]:
                     with (

@@ -911,6 +911,92 @@ rule build_biomass_potentials:
         scripts("build_biomass_potentials.py")
 
 
+rule determine_carbon_dioxide_removal_availability_matrix:
+    input:
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("onshore_regions.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
+    output:
+        nc=resources(
+            "availability_matrix_carbon_dioxide_removal_{technology}.nc"
+        ),
+        plot=branch(
+            config["atlite"]["plot_availability_matrix"],
+            then=resources(
+                "availability_matrix_carbon_dioxide_removal_{technology}.png"
+            ),
+        ),
+    log:
+        logs(
+            "determine_carbon_dioxide_removal_availability_matrix_{technology}.log"
+        ),
+    wildcard_constraints:
+        technology="afforestation",
+    threads: config["atlite"].get("nprocesses", 4)
+    resources:
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
+    params:
+        renewable=config_provider("renewable"),
+        plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
+    message:
+        "Determining availability matrix for the {wildcards.technology} carbon dioxide removal technology"
+    script:
+        scripts("determine_availability_matrix.py")
+
+
+rule build_available_land:
+    input:
+        availability_matrix=resources(
+            "availability_matrix_carbon_dioxide_removal_{technology}.nc"
+        ),
+        regions=resources("onshore_regions.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", w.technology, "cutout")(w)
+        ),
+    output:
+        csv_file=resources("{technology}_available_land.csv"),
+    log:
+        logs("build_available_land_{technology}.log"),
+    wildcard_constraints:
+        technology="afforestation",
+    resources:
+        mem_mb=8000,
+    params:
+        renewable=config_provider("renewable"),
+    script:
+        scripts("build_available_land.py")
+
+
+rule build_afforestation_potentials:
+    input:
+        afforestation_corine_potentials_csv_file=resources(
+            "afforestation_available_land.csv"
+        ),
+        afforestation_nuts_file=rules.retrieve_co2_removal_data.output.afforestation_nuts2_afforestation_rates,
+        afforestation_monthly_weights_file=rules.retrieve_co2_removal_data.output.afforestation_nuts2_monthly_weights,
+    output:
+        csv_file=resources("afforestation_potentials.csv"),
+        monthly_weights_csv_file=resources(
+            "afforestation_monthly_weights.csv"
+        ),
+        seasonal_profile_csv_file=resources(
+            "afforestation_seasonal_profile.csv"
+        ),
+        png_file=resources("afforestation_potentials.png"),
+    log:
+        logs("build_afforestation_potentials.log"),
+    resources:
+        mem_mb=5000,
+    params:
+        network_geojson=resources("onshore_regions.geojson"),
+        nuts2_geojson=rules.retrieve_eu_nuts_2013.output["shapes_level_2"],
+        snapshots=config["snapshots"],
+    script:
+        scripts("build_afforestation_potentials.py")
+
+
 rule build_biomass_transport_costs:
     """Converts JRC biomass transport costs per country into EUR per km and MWh."""
     input:

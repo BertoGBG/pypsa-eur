@@ -96,6 +96,16 @@ def get_compose_inputs(w):
             dsm_profile=resources("dsm_profile.csv"),
             heat_dsm_profile=resources("residential_heat_dsm_profile.csv"),
             biomass_potentials=resources("biomass_potentials_{horizon}.csv"),
+            afforestation_potentials=(
+                resources("afforestation_potentials.csv")
+                if sector["afforestation"]
+                else []
+            ),
+            afforestation_seasonal_profile=(
+                resources("afforestation_seasonal_profile.csv")
+                if sector["afforestation"]
+                else []
+            ),
             unsustainable_biomass_upstream=(
                 resources("unsustainable_biomass_upstream_{horizon}.csv")
                 if sector["unsustainable_biomass_upstream_emissions"]
@@ -246,6 +256,7 @@ rule compose_network:
         renewable=config_provider("renewable"),
         conventional=config_provider("conventional"),
         costs=config_provider("costs"),
+        afforestation=config_provider("afforestation"),
         emission_prices=config_provider("costs", "emission_prices"),
         load=config_provider("load"),
         lines=config_provider("lines"),
