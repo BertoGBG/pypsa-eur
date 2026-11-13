@@ -1278,7 +1278,7 @@ rule build_industrial_production_per_country:
         benchmarks("build_industrial_production_per_country")
     threads: 8
     resources:
-        mem_mb=8000,
+        mem_mb=24000,
     params:
         industry=config_provider("industry"),
         countries=config_provider("countries"),

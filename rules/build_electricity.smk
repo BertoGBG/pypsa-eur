@@ -573,7 +573,7 @@ rule build_transmission_projects:
         benchmarks("build_transmission_projects")
     threads: 1
     resources:
-        mem_mb=4000,
+        mem_mb=12000,
     params:
         transmission_projects=config_provider("transmission_projects"),
         line_factor=config_provider("lines", "length_factor"),
