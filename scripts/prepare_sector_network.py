@@ -116,12 +116,14 @@ def define_spatial(nodes, options):
         spatial.gas.locations = nodes
         spatial.gas.biogas = nodes + " biogas"
         spatial.gas.biogas_to_gas = nodes + " biogas to gas"
+        spatial.gas.biomethanation_biogas = nodes + " biomethanation biogas"
         spatial.gas.biogas_to_gas_cc = nodes + " biogas to gas CC"
     else:
         spatial.gas.nodes = ["EU gas"]
         spatial.gas.locations = ["EU"]
         spatial.gas.biogas = ["EU biogas"]
         spatial.gas.biogas_to_gas = ["EU biogas to gas"]
+        spatial.gas.biomethanation_biogas = ["EU biomethanation biogas"]
         if options.get("biomass_spatial", options["biomass_transport"]):
             spatial.gas.biogas_to_gas_cc = nodes + " biogas to gas CC"
         else:
@@ -1204,7 +1206,7 @@ def add_perennials(
         perennials_area * sequestration_co2_credited
     )  # (tCO2seq)  =  (ha) * (tCO2 seq/ha)
 
-    nodes = pop_layout.index
+    nodes = spatial.nodes
     n.add("Carrier", "co2 perennials")
 
     n.add(
@@ -1261,6 +1263,231 @@ def add_perennials(
         e_nom=perennials_potentials.values,
         carrier="co2 perennials",
         e_cyclic=False,
+    )
+
+
+def add_rock_weathering(
+    n, costs, rock_weathering_potentials_file, rock_weathering_config
+):
+    """
+    Add enhanced rock weathering (CDR via accelerated mineral carbonation)
+    to the network as Bus, Store, and Link components, all sharing a single
+    "co2 rock weathering" carrier.
+
+    A single Link per node draws CO2 from the atmosphere (bus0) and
+    electricity (bus1), depositing the removed CO2 into a fixed-capacity
+    Store (bus2) representing the cumulative mineral-carbonation potential
+    at that node. The store's capacity is dimensioned from the eligible
+    land area (CORINE land cover, filtered by an annual-mean-temperature
+    threshold; see ``determine_rock_weathering_availability_matrix.py`` and
+    ``build_available_land.py``) multiplied by a per-km2 CO2 removal rate.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain an
+        'Enhanced Weathering' entry with 'electricity-input', 'VOM', and
+        'lifetime' parameters
+    rock_weathering_potentials_file : str
+        Path to CSV file with eligible area (km2) per node, as produced by
+        ``build_available_land.py``
+    rock_weathering_config : dict
+        Configuration dict with keys 'co2_removal_per_sqkm' and
+        'max_land_usage' (the ``rock_weathering`` config section)
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the rock weathering
+        Bus, Store, and Link
+    """
+    logger.info("Adding enhanced rock weathering (rock_weathering).")
+
+    rock_weathering_land = pd.read_csv(rock_weathering_potentials_file, index_col=0)
+    potentials = (
+        rock_weathering_land["potential [sqkm]"]
+        * rock_weathering_config["co2_removal_per_sqkm"]
+        * rock_weathering_config["max_land_usage"]
+    )
+
+    electricity_input = costs.at["Enhanced Weathering", "electricity-input"]
+
+    n.add("Carrier", "co2 rock weathering")
+
+    n.add(
+        "Bus",
+        spatial.nodes + " co2 rock weathering",
+        location=spatial.nodes,
+        carrier="co2 rock weathering",
+        unit="t_co2",
+    )
+
+    n.add(
+        "Store",
+        spatial.nodes,
+        suffix=" co2 rock weathering",
+        bus=spatial.nodes + " co2 rock weathering",
+        e_nom=potentials,
+        carrier="co2 rock weathering",
+    )
+
+    n.add(
+        "Link",
+        spatial.nodes,
+        suffix=" rock_weathering",
+        bus0="co2 atmosphere",
+        bus1=spatial.nodes.values,
+        bus2=spatial.nodes + " co2 rock weathering",
+        carrier="co2 rock weathering",
+        marginal_cost=costs.at["Enhanced Weathering", "VOM"],
+        efficiency=-electricity_input,
+        efficiency2=1,
+        p_nom_extendable=True,
+        lifetime=costs.at["Enhanced Weathering", "lifetime"],
+    )
+
+
+def add_biochar(n, costs, biochar_potentials_file, options):
+    """
+    Add biochar (CDR via biomass pyrolysis and stable-carbon soil storage)
+    to the network as Bus, Store, and Link components, all sharing a single
+    "co2 biochar" carrier; optionally exports pyrolysis waste heat to urban
+    central heating.
+
+    A single pyrolysis Link per node converts solid biomass (bus2) and
+    electricity (bus3) into stored biochar-carbon (bus1, drawn from the
+    atmosphere via bus0) and, if enabled, district heat (bus4, with an
+    overflow Store for heat that cannot be absorbed by the local heat
+    network). The store's capacity is dimensioned from the eligible CORINE
+    land area (see ``determine_availability_matrix.py`` and
+    ``build_available_land.py``) multiplied by a per-km2 application rate
+    and the stable-carbon fraction (``co2_per_tonne``), amortised over an
+    assumed storage horizon.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network container object
+    costs : pd.DataFrame
+        Costs and parameters for different technologies. Must contain a
+        'biochar pyrolysis' entry with 'biomass-input', 'biochar-output',
+        'electricity-input', 'heat-output', 'capital_cost', and 'VOM'
+        parameters
+
+    Returns
+    -------
+    None
+        Modifies the network object in-place by adding the biochar Bus,
+        Store, and Link (and, if enabled, heat-output Bus/Link/Store)
+
+    Notes
+    -----
+    Reads ``biochar_potentials_file`` (eligible area in km2 per
+    node) and ``options["biochar"]["application_per_sqkm"]``
+    / ``["max_land_usage"]`` / ``["number_years"]``. Heat output is gated by
+    ``sector.heating`` and ``sector.biochar.heat_output``.
+    """
+    logger.info("Adding biochar.")
+
+    biochar_land = pd.read_csv(biochar_potentials_file).set_index("node")
+
+    n.add("Carrier", "co2 biochar")
+
+    n.add(
+        "Bus",
+        spatial.nodes + " co2 biochar",
+        location=spatial.nodes,
+        carrier="co2 biochar",
+        unit="t_co2",
+    )
+
+    co2_per_tonne = (
+        1
+        / costs.at["biochar pyrolysis", "biomass-input"]
+        * 1
+        / costs.at["biochar pyrolysis", "biochar-output"]
+    )  # tCO2 / t_biochar
+
+    n.add(
+        "Store",
+        spatial.nodes + " co2 biochar",
+        bus=spatial.nodes + " co2 biochar",
+        carrier="co2 biochar",
+        e_nom_extendable=True,
+        e_nom_max=(
+            biochar_land["potential [sqkm]"].values
+            * co2_per_tonne
+            * options["biochar"]["application_per_sqkm"]
+            * options["biochar"]["max_land_usage"]
+            / options["biochar"]["number_years"]
+        ),
+    )
+
+    if len(spatial.biomass.nodes) == 1:
+        biomass_buses = spatial.biomass.nodes
+    else:
+        biomass_buses = spatial.nodes + " solid biomass"
+
+    # heat output into urban central heat system
+    if (
+        options["heating"]
+        and options["biochar"]["heat_output"]
+    ):
+        logger.info("Adding biochar heat output to urban central heat system.")
+        biochar_heat_buses = []
+        for node in spatial.nodes:
+            if (node + " urban central heat") in n.buses.index:
+                biochar_heat_bus = node + " biochar heat"
+                biochar_heat_buses.append(biochar_heat_bus)
+                n.add("Bus", biochar_heat_bus, carrier="biochar heat")
+                n.add(
+                    "Link",
+                    biochar_heat_bus,
+                    bus0=biochar_heat_bus,
+                    bus1=node + " urban central heat",
+                    p_nom_extendable=True,
+                    carrier="biochar heat",
+                )
+                biochar_heat_waste = node + " biochar heat waste"
+                n.add("Bus", biochar_heat_waste, carrier="biochar heat")
+                n.add(
+                    "Store",
+                    biochar_heat_waste,
+                    bus=biochar_heat_waste,
+                    e_nom_extendable=True,
+                    carrier="biochar heat",
+                )
+                n.add(
+                    "Link",
+                    biochar_heat_waste,
+                    bus0=biochar_heat_bus,
+                    bus1=biochar_heat_waste,
+                    p_nom_extendable=True,
+                    carrier="biochar heat",
+                )
+            else:
+                biochar_heat_buses.append(None)
+    else:
+        biochar_heat_buses = [None]
+
+    n.add(
+        "Link",
+        spatial.nodes + " biochar",
+        bus0="co2 atmosphere",
+        bus1=spatial.nodes + " co2 biochar",
+        bus2=biomass_buses,
+        bus3=spatial.nodes,
+        bus4=biochar_heat_buses,
+        carrier="co2 biochar",
+        capital_cost=costs.at["biochar pyrolysis", "capital_cost"],
+        marginal_cost=costs.at["biochar pyrolysis", "VOM"],
+        efficiency=1.0,
+        efficiency2=-costs.at["biochar pyrolysis", "biomass-input"],
+        efficiency3=-costs.at["biochar pyrolysis", "electricity-input"],
+        efficiency4=costs.at["biochar pyrolysis", "heat-output"],
+        p_nom_extendable=True,
     )
 
 
@@ -2302,6 +2529,23 @@ def add_h2_gas_infrastructure(
             capital_cost=costs.at["methanation", "capital_cost"]
             * costs.at["methanation", "efficiency"],  # costs given per kW_gas
             lifetime=costs.at["methanation", "lifetime"],
+        )
+
+    if options["biomethanation_CO2"]:
+        n.add(
+            "Link",
+            spatial.nodes,
+            suffix=" biomethantion CO2",
+            bus0=nodes + " H2",
+            bus1= spatial.co2.nodes,
+            bus2=spatial.gas.nodes,
+            carrier="biomethanation CO2",
+            capital_cost=costs.at["biomethanation CO2", "capital_cost"],
+            marginal_cost=costs.at["biomethanation CO2", "VOM"],
+            efficiency=-costs.at["biomethanation CO2", "CO2-input"],
+            efficiency2=costs.at["biomethanation CO2", "methane-output"],
+            p_nom_extendable=True,
+            lifetime=costs.at["biomethanation CO2", "lifetime"],
         )
 
     if options["coal_cc"]:
@@ -4548,6 +4792,22 @@ def add_biomass(
             )
 
     # Solid biomass to liquid fuel
+    if options["biomethanation_biogas"]:
+        n.add(
+            "Link",
+            spatial.gas.biomethanation_biogas,
+            bus0=spatial.h2.nodes,
+            bus1=spatial.gas.biogas,
+            bus2=spatial.gas.nodes,
+            carrier="biomethanation biogas",
+            capital_cost=costs.at["biomethanation", "capital_cost"],
+            marginal_cost=costs.at["biomethanation", "VOM"],
+            efficiency=costs.at["biomethanation", "biogas-input"],
+            efficiency2=-costs.at["biomethanation", "methane-output"],
+            p_nom_extendable=True,
+            lifetime=costs.at["biomethanation", "lifetime"],
+        )
+
     if options["biomass_to_liquid"]:
         add_carrier_buses(
             n,
@@ -6755,6 +7015,14 @@ def main(
     if options["dac"]:
         add_dac(n, costs, spatial)
 
+    if options.get("rock_weathering"):
+        add_rock_weathering(
+            n,
+            costs,
+            inputs.rock_weathering_potentials,
+            params.rock_weathering,
+        )
+
     if options.get("perennials"):
         add_perennials(
             n,
@@ -6775,6 +7043,14 @@ def main(
             afforestation_seasonal_profile_file=inputs.afforestation_seasonal_profile,
             afforestation_config=params.afforestation,
             discount_rate=params.costs["fill_values"]["discount rate"],
+        )
+
+    if options.get("biochar", {}).get("enable"):
+        add_biochar(
+            n,
+            costs,
+            biochar_potentials_file=inputs.biochar_potentials,
+            options=options,
         )
 
     if not options["electricity_transmission_grid"]:

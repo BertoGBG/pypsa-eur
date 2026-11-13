@@ -350,8 +350,10 @@ class DataConfig(BaseModel):
         description="Powerplants data source configuration.",
     )
     costs: _DataSourceConfig = Field(
-        default_factory=_DataSourceConfig,
-        description="Costs data source configuration.",
+        default_factory=lambda: _DataSourceConfig(
+            source="primary", version="pypsa-eur_aa"
+        ),
+        description="Costs data source configuration. Defaults to the BertoGBG technology-data fork, which includes biomethanation and the carbon dioxide removal technologies.",
     )
     country_runoff: _DataSourceConfig = Field(
         default_factory=_DataSourceConfig,

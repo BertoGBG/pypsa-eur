@@ -627,6 +627,22 @@ Configuration for `perennials` settings.
 ```
 
 
+## `rock_weathering` {#rock_weathering_cf}
+
+Only used for sector-coupling studies with `sector: rock_weathering: true`. The eligible land is set
+under `renewable: rock_weathering`.
+
+Configuration for `rock_weathering` settings.
+
+{{ schema_table("rock_weathering") }}
+
+**YAML Syntax**
+
+```yaml
+{{ yaml_section("rock_weathering") }}
+```
+
+
 ## `afforestation` {#afforestation_cf}
 
 Only used for sector-coupling studies with `sector: afforestation: true`. The eligible land is set

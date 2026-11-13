@@ -955,6 +955,11 @@ _TECH_COLORS: dict[str, str] = {
     "import methanol": "#87d0e6",
     "co2 afforestation": "#22cc22",
     "co2 perennials": "#008ffc",
+    "co2 rock weathering": "#ab6ae9",
+    "biomethanation biogas": "#c44ce6",
+    "biomethanation CO2": "#c44ce6",
+    "biochar heat": "#228B22",
+    "co2 biochar": "#005000",
 }
 
 

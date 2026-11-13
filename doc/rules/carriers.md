@@ -29,6 +29,18 @@ and seasonal profiles from the CO2-removal dataset.
 
 {{ rules("determine_carbon_dioxide_removal_availability_matrix", "build_available_land", "build_afforestation_potentials") }}
 
+`build_available_land` also serves rock weathering and biochar.
+
+Enhanced rock weathering (`sector: rock_weathering`): eligible land from
+CORINE, filtered by the mean annual temperature.
+
+{{ rules("determine_rock_weathering_availability_matrix") }}
+
+Biochar (`sector: biochar: enable`): cropland eligible for biochar application
+from CORINE.
+
+{{ rules("determine_biochar_availability_matrix") }}
+
 Perennialisation (`sector: perennials`): Eurostat crop yields per region for
 the 1st-generation biofuel cropland freed by the phase-out of the
 unsustainable bioliquids (the freed land itself is computed in

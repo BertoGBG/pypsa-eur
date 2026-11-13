@@ -4895,6 +4895,64 @@
               "type": "integer"
             }
           }
+        },
+        "rock_weathering": {
+          "description": "Configuration for enhanced rock weathering land-eligibility settings.",
+          "properties": {
+            "corine": {
+              "description": "Specifies areas according to CORINE Land Cover codes which are generally eligible for enhanced rock weathering (non-irrigated arable land, permanent crops, rice fields).",
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "natura": {
+              "default": false,
+              "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+              "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+              "type": "boolean"
+            },
+            "cutout": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "default": "default",
+              "description": "Specifies the weather data cutout file(s) to use."
+            },
+            "excluder_resolution": {
+              "default": 250,
+              "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+              "type": "number"
+            },
+            "min_mean_temp": {
+              "default": 10,
+              "description": "Exclude grid cells with annual mean air temperature below this value in degrees Celsius, since rock weathering kinetics slow down in cold climates.",
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "RockWeatheringConfig": {
+      "description": "Configuration for `rock_weathering` settings.",
+      "properties": {
+        "co2_removal_per_sqkm": {
+          "default": 309,
+          "description": "Tonnes of CO2 sequestered per square kilometre of eligible land per year (temperate-only rate).",
+          "type": "number"
+        },
+        "max_land_usage": {
+          "default": 0.2,
+          "description": "Maximum fraction of suitable area used for rock weathering.",
+          "type": "number"
         }
       }
     },
@@ -5515,6 +5573,16 @@
           "description": "Add option for transforming hydrogen and CO2 into methane using methanation.",
           "type": "boolean"
         },
+        "biomethanation_biogas": {
+          "default": true,
+          "description": "Add option for transforming hydrogen and biogas (inc. CO2) into methane using biological methanation.",
+          "type": "boolean"
+        },
+        "biomethanation_CO2": {
+          "default": true,
+          "description": "Add option for transforming hydrogen and CO2 into methane using biological methanation.",
+          "type": "boolean"
+        },
         "coal_cc": {
           "default": false,
           "description": "Add option for coal CHPs with carbon capture.",
@@ -5534,6 +5602,74 @@
           "default": false,
           "description": "Add option for perennialisation (converting 1st-generation biofuel cropland to perennial grasses) as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
+        },
+        "rock_weathering": {
+          "default": false,
+          "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
+          "type": "boolean"
+        },
+        "biochar": {
+          "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
+          "properties": {
+            "enable": {
+              "default": false,
+              "description": "Add option for biochar (CDR via biomass pyrolysis and stable-carbon soil storage) as a carbon dioxide removal (CDR) technology.",
+              "type": "boolean"
+            },
+            "heat_output": {
+              "default": false,
+              "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
+              "type": "boolean"
+            },
+            "corine": {
+              "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "natura": {
+              "default": false,
+              "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+              "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+              "type": "boolean"
+            },
+            "cutout": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "default": "default",
+              "description": "Specifies the weather data cutout file(s) to use."
+            },
+            "excluder_resolution": {
+              "default": 250,
+              "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+              "type": "number"
+            },
+            "application_per_sqkm": {
+              "default": 1500,
+              "description": "Tonnes of biochar applied per square kilometre of eligible land (approx. 15 t/ha).",
+              "type": "number"
+            },
+            "max_land_usage": {
+              "default": 0.2,
+              "description": "Maximum fraction of suitable CORINE area used for biochar.",
+              "type": "number"
+            },
+            "number_years": {
+              "default": 25,
+              "description": "Years to exhaust the maximum biochar that can be spread per square kilometre.",
+              "type": "number"
+            }
+          }
         },
         "co2_vent": {
           "default": false,
@@ -7283,6 +7419,69 @@
           },
           "description": "Named groups of bus carriers that are aggregated into a single balance timeseries plot.",
           "type": "object"
+        }
+      }
+    },
+    "_BiocharConfig": {
+      "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
+      "properties": {
+        "enable": {
+          "default": false,
+          "description": "Add option for biochar (CDR via biomass pyrolysis and stable-carbon soil storage) as a carbon dioxide removal (CDR) technology.",
+          "type": "boolean"
+        },
+        "heat_output": {
+          "default": false,
+          "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
+          "type": "boolean"
+        },
+        "corine": {
+          "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "natura": {
+          "default": false,
+          "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+          "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+          "type": "boolean"
+        },
+        "cutout": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "default": "default",
+          "description": "Specifies the weather data cutout file(s) to use."
+        },
+        "excluder_resolution": {
+          "default": 250,
+          "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+          "type": "number"
+        },
+        "application_per_sqkm": {
+          "default": 1500,
+          "description": "Tonnes of biochar applied per square kilometre of eligible land (approx. 15 t/ha).",
+          "type": "number"
+        },
+        "max_land_usage": {
+          "default": 0.2,
+          "description": "Maximum fraction of suitable CORINE area used for biochar.",
+          "type": "number"
+        },
+        "number_years": {
+          "default": 25,
+          "description": "Years to exhaust the maximum biochar that can be spread per square kilometre.",
+          "type": "number"
         }
       }
     },
@@ -9285,6 +9484,49 @@
           "default": true,
           "description": "Weight the costs of retrofitting depending on labour/material costs per country.",
           "type": "boolean"
+        }
+      }
+    },
+    "_RockWeatheringEligibilityConfig": {
+      "description": "Configuration for enhanced rock weathering land-eligibility settings.",
+      "properties": {
+        "corine": {
+          "description": "Specifies areas according to CORINE Land Cover codes which are generally eligible for enhanced rock weathering (non-irrigated arable land, permanent crops, rice fields).",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "natura": {
+          "default": false,
+          "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+          "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+          "type": "boolean"
+        },
+        "cutout": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "default": "default",
+          "description": "Specifies the weather data cutout file(s) to use."
+        },
+        "excluder_resolution": {
+          "default": 250,
+          "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+          "type": "number"
+        },
+        "min_mean_temp": {
+          "default": 10,
+          "description": "Exclude grid cells with annual mean air temperature below this value in degrees Celsius, since rock weathering kinetics slow down in cold climates.",
+          "type": "number"
         }
       }
     },
@@ -11949,6 +12191,49 @@
               "type": "integer"
             }
           }
+        },
+        "rock_weathering": {
+          "description": "Configuration for enhanced rock weathering land-eligibility settings.",
+          "properties": {
+            "corine": {
+              "description": "Specifies areas according to CORINE Land Cover codes which are generally eligible for enhanced rock weathering (non-irrigated arable land, permanent crops, rice fields).",
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "natura": {
+              "default": false,
+              "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+              "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+              "type": "boolean"
+            },
+            "cutout": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "default": "default",
+              "description": "Specifies the weather data cutout file(s) to use."
+            },
+            "excluder_resolution": {
+              "default": 250,
+              "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+              "type": "number"
+            },
+            "min_mean_temp": {
+              "default": 10,
+              "description": "Exclude grid cells with annual mean air temperature below this value in degrees Celsius, since rock weathering kinetics slow down in cold climates.",
+              "type": "number"
+            }
+          }
         }
       }
     },
@@ -13129,6 +13414,16 @@
           "description": "Add option for transforming hydrogen and CO2 into methane using methanation.",
           "type": "boolean"
         },
+        "biomethanation_biogas": {
+          "default": true,
+          "description": "Add option for transforming hydrogen and biogas (inc. CO2) into methane using biological methanation.",
+          "type": "boolean"
+        },
+        "biomethanation_CO2": {
+          "default": true,
+          "description": "Add option for transforming hydrogen and CO2 into methane using biological methanation.",
+          "type": "boolean"
+        },
         "coal_cc": {
           "default": false,
           "description": "Add option for coal CHPs with carbon capture.",
@@ -13148,6 +13443,74 @@
           "default": false,
           "description": "Add option for perennialisation (converting 1st-generation biofuel cropland to perennial grasses) as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
+        },
+        "rock_weathering": {
+          "default": false,
+          "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
+          "type": "boolean"
+        },
+        "biochar": {
+          "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
+          "properties": {
+            "enable": {
+              "default": false,
+              "description": "Add option for biochar (CDR via biomass pyrolysis and stable-carbon soil storage) as a carbon dioxide removal (CDR) technology.",
+              "type": "boolean"
+            },
+            "heat_output": {
+              "default": false,
+              "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
+              "type": "boolean"
+            },
+            "corine": {
+              "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "natura": {
+              "default": false,
+              "description": "Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+              "markdownDescription": "Switch to exclude [Natura 2000 ](https://en.wikipedia.org/wiki/Natura_2000) natural protection areas. Area is excluded if `true`.",
+              "type": "boolean"
+            },
+            "cutout": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ],
+              "default": "default",
+              "description": "Specifies the weather data cutout file(s) to use."
+            },
+            "excluder_resolution": {
+              "default": 250,
+              "description": "Resolution in meters on which to perform geographical eligibility analysis.",
+              "type": "number"
+            },
+            "application_per_sqkm": {
+              "default": 1500,
+              "description": "Tonnes of biochar applied per square kilometre of eligible land (approx. 15 t/ha).",
+              "type": "number"
+            },
+            "max_land_usage": {
+              "default": 0.2,
+              "description": "Maximum fraction of suitable CORINE area used for biochar.",
+              "type": "number"
+            },
+            "number_years": {
+              "default": 25,
+              "description": "Years to exhaust the maximum biochar that can be spread per square kilometre.",
+              "type": "number"
+            }
+          }
         },
         "co2_vent": {
           "default": false,
@@ -13925,6 +14288,21 @@
         "crcf_efficiency": {
           "default": 0.8,
           "description": "Share of the gross sequestration credited as net removal under the EU Carbon Removals and Carbon Farming regulation (EU 2024/3012): uncertainty deduction (at least 10%) and buffer-pool contribution (8-17% risk rate), (1-0.10)*(1-0.11) = 0.80, range 0.72-0.83.",
+          "type": "number"
+        }
+      }
+    },
+    "rock_weathering": {
+      "description": "Configuration for `rock_weathering` settings.",
+      "properties": {
+        "co2_removal_per_sqkm": {
+          "default": 309,
+          "description": "Tonnes of CO2 sequestered per square kilometre of eligible land per year (temperate-only rate).",
+          "type": "number"
+        },
+        "max_land_usage": {
+          "default": 0.2,
+          "description": "Maximum fraction of suitable area used for rock weathering.",
           "type": "number"
         }
       }

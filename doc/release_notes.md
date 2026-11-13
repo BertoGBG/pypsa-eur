@@ -6,6 +6,19 @@
 <!-- Upcoming Release -->
 <!-- ================= -->
 
+* Added biological methanation (`sector: biomethanation_biogas`, `sector: biomethanation_CO2`): hydrogen with
+  biogas (including its CO2) or with captured CO2 is converted to methane. The default cost data is the BertoGBG
+  technology-data fork (`data: costs: version: pypsa-eur_aa`), which includes the parameters of biomethanation
+  and of the carbon dioxide removal technologies.
+
+* Added biochar (`sector: biochar: enable`) as a carbon dioxide removal technology: pyrolysis of solid biomass,
+  with the biochar applied to cropland from CORINE land cover; the pyrolysis heat can be used in district heating
+  (`sector: biochar: heat_output`).
+
+* Added enhanced rock weathering (`sector: rock_weathering`) as a carbon dioxide removal (CDR) technology, with
+  node-level potential derived from CORINE land cover (`renewable: rock_weathering`) and filtered by the mean annual
+  temperature; settings under `rock_weathering:` ([#2142](https://github.com/PyPSA/pypsa-eur/issues/2142)).
+
 * Added perennialisation (`sector: perennials`) as a carbon dioxide removal (CDR) technology: land of the
   1st-generation (1G) biofuel crops, freed as the unsustainable bioliquids are phased out, can be converted to
   grass-clover for biorefining (protein and biogas). The cropland is the JRC ENSPRESO 1G potential of 2020 (NUTS2,

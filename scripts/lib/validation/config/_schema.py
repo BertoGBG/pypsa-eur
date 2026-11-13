@@ -32,6 +32,7 @@ from scripts.lib.validation.config.plotting import PlottingConfig
 from scripts.lib.validation.config.perennials import PerennialsConfig
 from scripts.lib.validation.config.pypsa_eur import PypsaEurConfig
 from scripts.lib.validation.config.renewable import RenewableConfig
+from scripts.lib.validation.config.rock_weathering import RockWeatheringConfig
 from scripts.lib.validation.config.run import RunConfig
 from scripts.lib.validation.config.sector import SectorConfig
 from scripts.lib.validation.config.snapshots import SnapshotsConfig
@@ -217,6 +218,10 @@ class ConfigSchema(BaseModel):
     afforestation: AfforestationConfig = Field(
         default_factory=AfforestationConfig,
         description="Afforestation configuration.",
+    )
+    rock_weathering: RockWeatheringConfig = Field(
+        default_factory=RockWeatheringConfig,
+        description="Enhanced rock weathering configuration.",
     )
     costs: CostsConfig = Field(
         default_factory=CostsConfig,

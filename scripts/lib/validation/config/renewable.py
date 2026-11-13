@@ -318,6 +318,30 @@ class _AfforestationLandConfig(BaseModel):
     )
 
 
+class _RockWeatheringEligibilityConfig(BaseModel):
+    """Configuration for enhanced rock weathering land-eligibility settings."""
+
+    corine: list[int] = Field(
+        default_factory=lambda: [12, 13, 14],
+        description="Specifies areas according to CORINE Land Cover codes which are generally eligible for enhanced rock weathering (non-irrigated arable land, permanent crops, rice fields).",
+    )
+    natura: bool = Field(
+        False,
+        description="Switch to exclude `Natura 2000 <https://en.wikipedia.org/wiki/Natura_2000>`_ natural protection areas. Area is excluded if `true`.",
+    )
+    cutout: str | list[str] = Field(
+        "default", description="Specifies the weather data cutout file(s) to use."
+    )
+    excluder_resolution: float = Field(
+        250,
+        description="Resolution in meters on which to perform geographical eligibility analysis.",
+    )
+    min_mean_temp: float = Field(
+        10,
+        description="Exclude grid cells with annual mean air temperature below this value in degrees Celsius, since rock weathering kinetics slow down in cold climates.",
+    )
+
+
 class RenewableConfig(BaseModel):
     """Configuration for `renewable` settings."""
 
@@ -372,6 +396,12 @@ class RenewableConfig(BaseModel):
     afforestation: _AfforestationLandConfig = Field(
         default_factory=_AfforestationLandConfig,
         description="Land eligible for afforestation (carbon dioxide removal), used when `sector: afforestation` is enabled.",
+    )
+    rock_weathering: _RockWeatheringEligibilityConfig = Field(
+        default_factory=_RockWeatheringEligibilityConfig,
+        description="Land-eligibility settings for enhanced rock weathering, feeding "
+        "determine_rock_weathering_availability_matrix.py the same way onwind/solar "
+        "feed determine_availability_matrix.py.",
     )
 
     model_config = ConfigDict(populate_by_name=True)

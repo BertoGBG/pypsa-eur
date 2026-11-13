@@ -29,6 +29,7 @@ costs,v0.13.3,primary,supported,2025-12-02,Part of the `technologydata` reposito
 costs,v0.13.3,archive,supported,2026-01-20,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.13.3
 costs,v0.13.2,primary,supported,2025-12-02,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.13.2/outputs
 costs,v0.13.2,archive,supported,2026-01-20,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.13.2
+costs,pypsa-eur_aa,primary,supported,2026-03-24,BertoGBG fork branch pypsa-eur_AA with additional CDR technologies.,https://raw.githubusercontent.com/BertoGBG/technology-data/refs/heads/pypsa-eur_AA/outputs
 country_hdd,unknown,build,latest supported,2025-12-02,Latest dataset built using ERA5 runoff data. This takes a very long time to build.,
 country_hdd,2025-08-13,primary,latest supported,2025-12-02,,https://zenodo.org/records/16849356/files/era5-HDD-per-country.csv
 country_hdd,2025-08-13,archive,latest supported,2026-01-13,,https://data.pypsa.org/workflows/eur/country_hdd/2025-08-13/era5-HDD-per-country.csv

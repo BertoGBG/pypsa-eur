@@ -957,6 +957,59 @@ rule determine_carbon_dioxide_removal_availability_matrix:
         scripts("determine_availability_matrix.py")
 
 
+rule determine_rock_weathering_availability_matrix:
+    """Computes the cutout cell shares eligible for enhanced rock weathering (CORINE, mean temperature)."""
+    input:
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("onshore_regions.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("renewable", "rock_weathering", "cutout")(w)
+        ),
+    output:
+        resources("cdr_availability_matrix_rock_weathering.nc"),
+    log:
+        logs("determine_rock_weathering_availability_matrix.log"),
+    threads: config["atlite"].get("nprocesses", 4)
+    resources:
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
+    params:
+        renewable=config_provider("renewable"),
+    message:
+        "Determining availability matrix for rock weathering"
+    script:
+        scripts("determine_rock_weathering_availability_matrix.py")
+
+
+rule determine_biochar_availability_matrix:
+    """Computes the cutout cell shares eligible for biochar application from CORINE land cover."""
+    input:
+        corine=ancient(rules.retrieve_corine.output["tif_file"]),
+        regions=resources("onshore_regions.geojson"),
+        cutout=lambda w: input_cutout(
+            w, config_provider("sector", "biochar", "cutout")(w)
+        ),
+    output:
+        nc=resources("cdr_availability_matrix_{technology}.nc"),
+    log:
+        logs("determine_biochar_availability_matrix_{technology}.log"),
+    wildcard_constraints:
+        technology="biochar",
+    threads: config["atlite"].get("nprocesses", 4)
+    resources:
+        mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
+    params:
+        # determine_availability_matrix.py reads params.renewable[technology];
+        # biochar's land-eligibility settings live under sector.biochar, so
+        # reshape it into the same {technology: {...}} lookup the shared
+        # script expects.
+        renewable=lambda w: {"biochar": config_provider("sector", "biochar")(w)},
+        plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
+    message:
+        "Determining availability matrix for biochar"
+    script:
+        scripts("determine_availability_matrix.py")
+
+
 rule build_available_land:
     """Aggregates the land eligible for carbon dioxide removal to hectares per region."""
     input:
@@ -965,14 +1018,19 @@ rule build_available_land:
         ),
         regions=resources("onshore_regions.geojson"),
         cutout=lambda w: input_cutout(
-            w, config_provider("renewable", w.technology, "cutout")(w)
+            w,
+            (
+                config_provider("sector", "biochar", "cutout")(w)
+                if w.technology == "biochar"
+                else config_provider("renewable", w.technology, "cutout")(w)
+            ),
         ),
     output:
         csv_file=resources("{technology}_available_land.csv"),
     log:
         logs("build_available_land_{technology}.log"),
     wildcard_constraints:
-        technology="afforestation",
+        technology="afforestation|rock_weathering|biochar",
     resources:
         mem_mb=8000,
     params:
