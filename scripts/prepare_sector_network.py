@@ -6160,6 +6160,12 @@ def add_industry(
             industrial_production_file,
             options["endogenous_sectors"]["subsectors"],
         )
+        # adjust_industry_demand returns annual values (MWh/a, Mt/a); scale to
+        # the modelled period like industrial_demand_raw (matters for runs
+        # shorter than a year, e.g. one-week tests: nyears < 1)
+        adjusted_demand = adjusted_demand * nyears
+        steel = steel * nyears
+        cement = cement * nyears
         adjusted_demand["current electricity"] = industrial_demand_raw[
             "current electricity"
         ]
