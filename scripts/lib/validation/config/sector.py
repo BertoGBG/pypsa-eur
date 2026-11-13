@@ -366,8 +366,9 @@ class _SolidBiomassImportConfig(BaseModel):
     price: float = Field(
         54, description="Price for importing solid biomass (currency/MWh)."
     )
-    max_amount: float = Field(
-        1390, description="Maximum solid biomass import potential (TWh)."
+    max_amount: float | dict[int, float] = Field(
+        1390,
+        description="Maximum solid biomass import potential (TWh/a). One value, or one value per planning horizon.",
     )
     upstream_emissions_factor: float = Field(
         0.1, description="Upstream emissions of solid biomass imports."

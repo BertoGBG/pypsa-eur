@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=schema.default.json
+# Run 2: all fork features. 50 nodes, 8 h, myopic 2025-2050. CDRs,
+# biomethanation, endogenous industry heat and shipping come from
+# config.ei_base.yaml; endogenous steel/cement and LULUCF are set here.
+# Fossil limits off, as in run 1.
+#   snakemake --configfile config/config.ei_base.yaml config/config.run2_full_50_8h.yaml
+
+run:
+  name: "full_myopic_50_8h"
+  shared_resources:
+    policy: false
+
+clustering:
+  temporal:
+    averaging: 8h
+
+# was the heat_industry default at the time of run 2
+lulucf_deviation: true
+fossil_limit: false
+
+sector:
+  endogenous_sectors:
+    enable: true

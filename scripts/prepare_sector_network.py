@@ -4681,6 +4681,7 @@ def add_biomass(
     biomass_transport_costs_file=None,
     nyears=1,
     unsustainable_biomass_upstream_file=None,
+    investment_year=None,
 ):
     """
     Add biomass-related components to the PyPSA network.
@@ -4722,6 +4723,9 @@ def add_biomass(
         the upstream emission factors of "bioethanol" and "biodiesel"
         (tCO2eq/MWh). Required if unsustainable_biomass_upstream_emissions is
         True.
+    investment_year : int, optional
+        Planning horizon, used to pick the solid biomass import limit when
+        ``solid_biomass_import: max_amount`` is given per year.
 
     Returns
     -------
@@ -4883,10 +4887,12 @@ def add_biomass(
 
     if options["solid_biomass_import"].get("enable", False):
         biomass_import_price = options["solid_biomass_import"]["price"]
-        # convert TWh in MWh
-        biomass_import_max_amount = (
-            options["solid_biomass_import"]["max_amount"] * 1e6 * nyears
+        # max_amount [TWh/a]: one value, or one value per planning horizon
+        biomass_import_max_amount_twh = get(
+            options["solid_biomass_import"]["max_amount"], investment_year
         )
+        # convert TWh in MWh
+        biomass_import_max_amount = biomass_import_max_amount_twh * 1e6 * nyears
         biomass_import_upstream_emissions = options["solid_biomass_import"][
             "upstream_emissions_factor"
         ]
@@ -4894,7 +4900,7 @@ def add_biomass(
         logger.info(
             "Adding biomass import with cost %.2f EUR/MWh, a limit of %.2f TWh, and embedded emissions of %.2f%%",
             biomass_import_price,
-            options["solid_biomass_import"]["max_amount"],
+            biomass_import_max_amount_twh,
             biomass_import_upstream_emissions * 100,
         )
 
@@ -8813,6 +8819,7 @@ def main(
             unsustainable_biomass_upstream_file=inputs.get(
                 "unsustainable_biomass_upstream"
             ),
+            investment_year=current_horizon,
         )
 
     if options["ammonia"]:

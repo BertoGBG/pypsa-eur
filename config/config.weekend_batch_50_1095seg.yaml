@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=schema.default.json
+# Settings common to the 9 scenarios of the weekend batch
+# (scenarios.weekend_batch.yaml) and to the 2025-anchored fossil-limit
+# scenarios (scenarios.fossil_limits_2025_anchor.yaml).
+# 50 nodes, tsam segmentation with 1095 segments (= 8760/8), myopic
+# 2025-2050, endogenous industry heat and steel/cement on in every scenario.
+#
+#   cp config/scenarios.weekend_batch.yaml config/scenarios.yaml   # gitignored
+#   snakemake --configfile config/config.ei_base.yaml config/config.weekend_batch_50_1095seg.yaml all
+#
+# run.name must be the literal "all": then the scenario names are taken
+# from the keys of run.scenarios.file.
+
+run:
+  name: "all"
+  scenarios:
+    enable: true
+    file: config/scenarios.yaml
+  shared_resources:
+    policy: false
+
+clustering:
+  temporal:
+    segmentation: 1095
+
+sector:
+  industry_t:
+    endogen: true
+  endogenous_sectors:
+    enable: true

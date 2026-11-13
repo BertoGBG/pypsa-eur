@@ -6408,9 +6408,19 @@
               "type": "number"
             },
             "max_amount": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                }
+              ],
               "default": 1390,
-              "description": "Maximum solid biomass import potential (TWh).",
-              "type": "number"
+              "description": "Maximum solid biomass import potential (TWh/a). One value, or one value per planning horizon."
             },
             "upstream_emissions_factor": {
               "default": 0.1,
@@ -10303,9 +10313,19 @@
           "type": "number"
         },
         "max_amount": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            }
+          ],
           "default": 1390,
-          "description": "Maximum solid biomass import potential (TWh).",
-          "type": "number"
+          "description": "Maximum solid biomass import potential (TWh/a). One value, or one value per planning horizon."
         },
         "upstream_emissions_factor": {
           "default": 0.1,
@@ -14828,9 +14848,19 @@
               "type": "number"
             },
             "max_amount": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                }
+              ],
               "default": 1390,
-              "description": "Maximum solid biomass import potential (TWh).",
-              "type": "number"
+              "description": "Maximum solid biomass import potential (TWh/a). One value, or one value per planning horizon."
             },
             "upstream_emissions_factor": {
               "default": 0.1,

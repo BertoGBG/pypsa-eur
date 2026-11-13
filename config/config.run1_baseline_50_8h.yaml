@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=schema.default.json
+# Run 1: upstream-equivalent baseline. 50 nodes, 8 h, myopic 2025-2050.
+# All fork additions off.
+#   snakemake --configfile config/config.ei_base.yaml config/config.run1_baseline_50_8h.yaml
+
+run:
+  name: "base_myopic_50_8h"
+  shared_resources:
+    policy: false
+
+clustering:
+  temporal:
+    averaging: 8h
+
+fossil_limit: false
+lulucf_deviation: false
+
+sector:
+  biochar:
+    enable: false
+  rock_weathering: false
+  afforestation: false
+  perennials: false
+  biomethanation_biogas: false
+  biomethanation_CO2: false
+  endogenous_sectors:
+    enable: false
+  industry_t:
+    endogen: false
+  shipping_endogenous: false

@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=schema.default.json
+# Base for the energy_independency production runs. Puts back the
+# heat_industry defaults that differ from config.default.yaml on this
+# upstream-based branch, so the run configs below stay the same as before.
+# Layer: config.default.yaml (automatic) -> this file -> run config
+#   snakemake --configfile config/config.ei_base.yaml config/config.<run>.yaml
+#
+# Old format -> new format:
+#   scenario: clusters: [50]          -> clustering: cluster_network: n_clusters: 50
+#   scenario: sector_opts: [8h]       -> clustering: temporal: averaging: 8h
+#   scenario: sector_opts: [1095seg]  -> clustering: temporal: segmentation: 1095
+#   scenario: planning_horizons       -> planning_horizons (top level)
+
+foresight: myopic
+
+planning_horizons:
+- 2025
+- 2030
+- 2035
+- 2040
+- 2045
+- 2050
+
+clustering:
+  cluster_network:
+    n_clusters: 50
+
+sector:
+  enabled: true
+  # CDR technologies (on by default on heat_industry)
+  afforestation: true
+  perennials: true
+  rock_weathering: true
+  biochar:
+    enable: true
+    heat_output: waste
+  biomethanation_biogas: true
+  biomethanation_CO2: true
+  # own sector extensions (on by default on heat_industry)
+  shipping_endogenous: true
+  biomass_transport: true
+  industry_t:
+    endogen: true
+  # heat_industry default: import cap per year, 50 % self-sufficiency in
+  # 2025 -> 100 % by 2050 (weekend runs 4 and 8 rely on it). Only used when
+  # solid_biomass_import: enable is true.
+  solid_biomass_import:
+    max_amount:
+      2025: 1609.3
+      2030: 1232.6
+      2035: 689.6
+      2040: 291.9
+      2045: 75.1
+      2050: 0.0
+
+# heat_industry had fossil_limit on by default; every run config below set it
+# explicitly, so it stays off here.
+fossil_limit: false
+lulucf_deviation: false
+
+solving:
+  solver:
+    name: gurobi
+    options: gurobi-default
+  mem_mb: 300000
