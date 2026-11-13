@@ -47,6 +47,8 @@ from scripts.prepare_network import main as prepare_network_for_solving
 from scripts.prepare_perfect_foresight import apply_phase_outs
 from scripts.prepare_perfect_foresight import main as prepare_perfect_foresight
 from scripts.prepare_sector_network import (
+    add_energy_limit_per_carrier,
+    add_fossil_fuel_limit,
     main as add_sector_components,
 )
 
@@ -132,6 +134,10 @@ if __name__ == "__main__":
 
     sanitize_custom_columns(n)
     sanitize_carriers(n, config)
+    # fossil supply limits (energy-security lens); after sanitize_carriers so
+    # the carriers they tag already exist
+    add_fossil_fuel_limit(n, costs, config, current_horizon)
+    add_energy_limit_per_carrier(n, costs, config, current_horizon)
     sanitize_locations(n)
     n.meta = dict(config, **dict(wildcards=dict(snakemake.wildcards)))
     if n.investment_periods.empty:

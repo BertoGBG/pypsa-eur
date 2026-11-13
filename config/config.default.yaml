@@ -115,6 +115,52 @@ lulucf_deviation_values:
   2045: 318
   2050: 381
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#fossil_limit_cf
+fossil_limit: false
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#fossil_limit_values_cf
+fossil_limit_values:
+  2025: 2600
+  2030: 1378
+  2035: 456
+  2040: 129
+  2045: 103
+  2050: 78
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#energy_limit_per_carrier_cf
+energy_limit_per_carrier: false
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#energy_limit_per_carrier_values_cf
+energy_limit_per_carrier_values:
+  gas:
+    2025: 768.0
+    2030: 571.1
+    2035: 319.6
+    2040: 208.3
+    2045: 142.8
+    2050: 102.5
+  oil:
+    2025: 1653.9
+    2030: 919.6
+    2035: 357.5
+    2040: 186.2
+    2045: 114.3
+    2050: 79.2
+  coal:
+    2025: 289.7
+    2030: 256.0
+    2035: 200.4
+    2040: 159.1
+    2045: 135.7
+    2050: 127.8
+  lignite:
+    2025: 255.0
+    2030: 259.3
+    2035: 270.3
+    2040: 284.6
+    2045: 297.9
+    2050: 303.8
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#electricity_cf
 electricity:
   voltages:

@@ -163,6 +163,34 @@ class ConfigSchema(BaseModel):
         },
         description="Deviation of the LULUCF sink in MtCO2/yr per year, linearly interpolated between years. 2030: -310 MtCO2 target (Regulation (EU) 2023/839) minus -183 MtCO2 WEM projection (EEA 2024 submissions, via CAP Reform 2025); 2020 assumed 0 and 2025 interpolated; 2035-2050 extrapolate the 2020-2030 slope (modelling assumption, not sourced).",
     )
+    fossil_limit: bool = Field(
+        False,
+        description="Annual cap on the total fossil fuel supply (gas, oil, coal, lignite) in MtCO2-eq at the wellhead (`fossil_limit_values`); unlike the CO2 budget, carbon capture gives no credit. Implemented as a `primary_energy` GlobalConstraint (add_fossil_fuel_limit).",
+    )
+    fossil_limit_values: dict[int, float] = Field(
+        default_factory=lambda: {
+            2025: 2600,
+            2030: 1378,
+            2035: 456,
+            2040: 129,
+            2045: 103,
+            2050: 78,
+        },
+        description="Cap on the total fossil fuel supply in MtCO2-eq per year (medium scenario).",
+    )
+    energy_limit_per_carrier: bool = Field(
+        False,
+        description="Independent supply cap per fossil carrier (energy-security lens), one `primary_energy` GlobalConstraint per carrier (add_energy_limit_per_carrier); can be combined with `fossil_limit`.",
+    )
+    energy_limit_per_carrier_values: dict[str, dict[int, float]] = Field(
+        default_factory=lambda: {
+            "gas": {2025: 768.0, 2030: 571.1, 2035: 319.6, 2040: 208.3, 2045: 142.8, 2050: 102.5},
+            "oil": {2025: 1653.9, 2030: 919.6, 2035: 357.5, 2040: 186.2, 2045: 114.3, 2050: 79.2},
+            "coal": {2025: 289.7, 2030: 256.0, 2035: 200.4, 2040: 159.1, 2045: 135.7, 2050: 127.8},
+            "lignite": {2025: 255.0, 2030: 259.3, 2035: 270.3, 2040: 284.6, 2045: 297.9, 2050: 303.8},
+        },
+        description="Supply cap per carrier in MtCO2-eq per year: EU-safe domestic potential (Norway+UK for gas and oil) divided by a self-sufficiency fraction that rises from today's value (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to 100% in 2050 (smoothstep).",
+    )
     electricity: ElectricityConfig = Field(
         default_factory=ElectricityConfig,
         description="Electricity sector configuration.",
