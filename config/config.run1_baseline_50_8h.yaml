@@ -28,3 +28,4 @@ sector:
   industry_t:
     endogen: false
   shipping_endogenous: false
+  unsustainable_biomass_upstream_emissions: false
