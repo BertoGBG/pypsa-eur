@@ -147,6 +147,10 @@ class _SolvingOptionsConfig(BaseModel):
     seed: int = Field(
         123, description="Random seed for increased deterministic behaviour."
     )
+    assign_capacity_duals: bool = Field(
+        True,
+        description="Write the duals of the capacity limits of non-time-dependent components (e.g. `e_nom_max` of stores, such as the potentials of the carbon dioxide removal technologies) as `mu_<constraint>` columns to the solved network.",
+    )
     custom_extra_functionality: str | None = Field(
         "../data/custom_extra_functionality.py",
         description="Path to a Python file with custom extra functionality code to be injected into the solving rules of the workflow relative to `rules` directory.",

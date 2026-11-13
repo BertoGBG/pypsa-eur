@@ -6665,6 +6665,11 @@
               "description": "Random seed for increased deterministic behaviour.",
               "type": "integer"
             },
+            "assign_capacity_duals": {
+              "default": true,
+              "description": "Write the duals of the capacity limits of non-time-dependent components (e.g. `e_nom_max` of stores, such as the potentials of the carbon dioxide removal technologies) as `mu_<constraint>` columns to the solved network.",
+              "type": "boolean"
+            },
             "custom_extra_functionality": {
               "anyOf": [
                 {
@@ -10416,6 +10421,11 @@
           "default": 123,
           "description": "Random seed for increased deterministic behaviour.",
           "type": "integer"
+        },
+        "assign_capacity_duals": {
+          "default": true,
+          "description": "Write the duals of the capacity limits of non-time-dependent components (e.g. `e_nom_max` of stores, such as the potentials of the carbon dioxide removal technologies) as `mu_<constraint>` columns to the solved network.",
+          "type": "boolean"
         },
         "custom_extra_functionality": {
           "anyOf": [
@@ -15771,6 +15781,11 @@
               "default": 123,
               "description": "Random seed for increased deterministic behaviour.",
               "type": "integer"
+            },
+            "assign_capacity_duals": {
+              "default": true,
+              "description": "Write the duals of the capacity limits of non-time-dependent components (e.g. `e_nom_max` of stores, such as the potentials of the carbon dioxide removal technologies) as `mu_<constraint>` columns to the solved network.",
+              "type": "boolean"
             },
             "custom_extra_functionality": {
               "anyOf": [
