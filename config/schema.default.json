@@ -865,7 +865,7 @@
               }
             ]
           },
-          "description": "For any carrier/technology overwrite attributes as listed below.",
+          "description": "For any carrier/technology overwrite attributes as listed below. `lifetime_unknown_dateout`: assumed lifetime (years) used only to estimate a missing closure date of existing plants. `representation`: 'link' (vintaged links off the uranium bus, retiring on each plant's closure date) or 'generator' (upstream's plain generator, fleet frozen at today's capacity).",
           "type": "object"
         }
       }
@@ -3810,7 +3810,7 @@
           "type": "array"
         },
         "Generator": {
-          "description": "Generator carriers to keep from PyPSA-Eur.",
+          "description": "Generator carriers to keep from PyPSA-Eur. Nuclear is not kept here: the existing fleet is added as vintaged links off the uranium bus in add_existing_baseyear (see `conventional: nuclear: representation`).",
           "items": {
             "type": "string"
           },
@@ -12909,7 +12909,7 @@
               }
             ]
           },
-          "description": "For any carrier/technology overwrite attributes as listed below.",
+          "description": "For any carrier/technology overwrite attributes as listed below. `lifetime_unknown_dateout`: assumed lifetime (years) used only to estimate a missing closure date of existing plants. `representation`: 'link' (vintaged links off the uranium bus, retiring on each plant's closure date) or 'generator' (upstream's plain generator, fleet frozen at today's capacity).",
           "type": "object"
         }
       }
@@ -13234,7 +13234,7 @@
           "type": "array"
         },
         "Generator": {
-          "description": "Generator carriers to keep from PyPSA-Eur.",
+          "description": "Generator carriers to keep from PyPSA-Eur. Nuclear is not kept here: the existing fleet is added as vintaged links off the uranium bus in add_existing_baseyear (see `conventional: nuclear: representation`).",
           "items": {
             "type": "string"
           },

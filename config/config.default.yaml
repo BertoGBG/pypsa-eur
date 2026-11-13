@@ -539,6 +539,8 @@ conventional:
   fuel_price_rolling_window: 6
   nuclear:
     p_max_pu: data/nuclear_p_max_pu.csv
+    lifetime_unknown_dateout: 60
+    representation: link
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#lines_cf
 lines:
@@ -629,7 +631,6 @@ pypsa_eur:
   - "solar-hsat"
   - solar
   - ror
-  - nuclear
   StorageUnit:
   - PHS
   - hydro

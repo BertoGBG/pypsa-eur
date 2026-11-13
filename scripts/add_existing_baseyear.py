@@ -30,6 +30,7 @@ import powerplantmatching as pm
 import pypsa
 import xarray as xr
 
+from scripts._helpers import nuclear_representation
 from scripts.build_energy_totals import cartesian
 from scripts.definitions.heat_system import HeatSystem
 from scripts.prepare_sector_network import cluster_heat_buses, define_spatial
@@ -166,6 +167,8 @@ def add_power_capacities_installed_before_baseyear(
     renewable_carriers: list[str],
     spatial: SimpleNamespace,
     solar_rooftop_ratio: float = 0.5,
+    unknown_dateout_lifetime_overrides: dict[str, float] | None = None,
+    nuclear_repr: str = "link",
 ) -> None:
     """
     Add power generation capacities installed before base year.
@@ -239,9 +242,28 @@ def add_power_capacities_installed_before_baseyear(
     )
     df_agg.dropna(subset="DateIn", inplace=True)
 
-    # Estimate missing DateOut
+    # Estimate missing DateOut. Fallback lifetime is costs.lifetime (a
+    # new-build cost-amortization assumption) unless overridden per-carrier
+    # via unknown_dateout_lifetime_overrides (conventional.<carrier>.
+    # lifetime_unknown_dateout) -- e.g. nuclear's 40yr Lazard figure is
+    # calibrated to a new US plant, not existing EU reactors with real-world
+    # life extensions, so using it here silently phases out real,
+    # still-operating plants with no recorded DateOut.
+    assumed_lifetime = costs.lifetime.fillna(30)
+    if unknown_dateout_lifetime_overrides:
+        for fueltype, years in unknown_dateout_lifetime_overrides.items():
+            if fueltype in assumed_lifetime.index:
+                assumed_lifetime[fueltype] = years
+    # "urban central solid biomass CHP" (the renamed Fueltype) is not a
+    # costs.csv technology; its cost key is "central solid biomass CHP".
+    # Without this alias, groups with no real DateOut get a NaN lifetime and
+    # are silently dropped by the pivot below (KeyError further down).
+    if "urban central solid biomass CHP" not in assumed_lifetime.index:
+        assumed_lifetime["urban central solid biomass CHP"] = assumed_lifetime.get(
+            "central solid biomass CHP", 25.0
+        )
     df_agg["DateOut"] = df_agg.DateOut.combine_first(
-        df_agg.DateIn + df_agg.Fueltype.map(costs.lifetime).fillna(30)
+        df_agg.DateIn + df_agg.Fueltype.map(assumed_lifetime)
     )
 
     # include renewables in df_agg
@@ -330,6 +352,11 @@ def add_power_capacities_installed_before_baseyear(
     }
 
     for grouping_year, generator, resource_class in df.index:
+        if generator == "nuclear" and nuclear_repr == "generator":
+            # Fleet is represented by add_electricity's plain Generator, which
+            # prepare_sector_network keeps in this mode. Building the vintaged
+            # Link too would double-count nuclear.
+            continue
         # capacity is the capacity in MW at each node for this
         capacity = df.loc[grouping_year, generator, resource_class]
         capacity = capacity[~capacity.isna()]
@@ -1135,6 +1162,12 @@ def main(
         renewable_carriers=renewable_carriers,
         spatial=spatial,
         solar_rooftop_ratio=params.existing_capacities["solar_rooftop_ratio"],
+        unknown_dateout_lifetime_overrides={
+            carrier: conf["lifetime_unknown_dateout"]
+            for carrier, conf in params.conventional.items()
+            if isinstance(conf, dict) and "lifetime_unknown_dateout" in conf
+        },
+        nuclear_repr=nuclear_representation({"conventional": params.conventional}),
     )
 
     if options["heating"]:

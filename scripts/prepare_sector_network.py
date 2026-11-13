@@ -34,6 +34,7 @@ from pypsa.geo import haversine_pts
 
 from scripts._helpers import (
     get,
+    nuclear_representation,
     get_temporal_resolution,
 )
 from scripts.add_electricity import (
@@ -448,7 +449,7 @@ def add_carrier_buses(
         capital_cost=capital_cost,
     )
 
-    fossils = ["coal", "gas", "oil", "lignite"]
+    fossils = ["coal", "gas", "oil", "lignite", "uranium"]
     if options["fossil_fuels"] and carrier in fossils:
         suffix = ""
 
@@ -8652,6 +8653,13 @@ def main(
     gas_input_nodes = pd.read_csv(fn, index_col=0) if fn else None
 
     carriers_to_keep = params.pypsa_eur
+    if nuclear_representation({"conventional": params.conventional}) == "generator":
+        # keep add_electricity's plain nuclear Generator (fleet frozen at
+        # today's capacity); add_existing_baseyear then builds no uranium Links
+        carriers_to_keep = {
+            **carriers_to_keep,
+            "Generator": [*carriers_to_keep.get("Generator", []), "nuclear"],
+        }
     patch_electricity_network(n, carriers_to_keep)
 
     fn = inputs.heating_efficiencies

@@ -80,6 +80,10 @@ class ConventionalConfig(ConfigModel):
         ge=1,
     )
     nuclear: dict[str, str | float] = Field(
-        default_factory=lambda: {"p_max_pu": "data/nuclear_p_max_pu.csv"},
-        description="For any carrier/technology overwrite attributes as listed below.",
+        default_factory=lambda: {
+            "p_max_pu": "data/nuclear_p_max_pu.csv",
+            "lifetime_unknown_dateout": 60,
+            "representation": "link",
+        },
+        description="For any carrier/technology overwrite attributes as listed below. `lifetime_unknown_dateout`: assumed lifetime (years) used only to estimate a missing closure date of existing plants. `representation`: 'link' (vintaged links off the uranium bus, retiring on each plant's closure date) or 'generator' (upstream's plain generator, fleet frozen at today's capacity).",
     )

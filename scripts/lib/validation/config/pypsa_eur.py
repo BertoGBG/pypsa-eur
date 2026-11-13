@@ -35,9 +35,8 @@ class PypsaEurConfig(ConfigModel):
             "solar-hsat",
             "solar",
             "ror",
-            "nuclear",
         ],
-        description="Generator carriers to keep from PyPSA-Eur.",
+        description="Generator carriers to keep from PyPSA-Eur. Nuclear is not kept here: the existing fleet is added as vintaged links off the uranium bus in add_existing_baseyear (see `conventional: nuclear: representation`).",
     )
     StorageUnit: list[str] = Field(
         default_factory=lambda: ["PHS", "hydro"],
