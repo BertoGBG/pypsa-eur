@@ -5615,6 +5615,126 @@
           "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
         },
+        "industry_t": {
+          "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
+          "properties": {
+            "endogen": {
+              "default": true,
+              "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
+              "type": "boolean"
+            },
+            "must_run": {
+              "default": 0.6,
+              "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
+              "type": "number"
+            },
+            "share_medium": {
+              "default": 0.42,
+              "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
+              "type": "number"
+            },
+            "share_high": {
+              "default": 0.58,
+              "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
+              "type": "number"
+            },
+            "heat_pump_cop": {
+              "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
+              "properties": {
+                "time_dep": {
+                  "default": true,
+                  "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
+                  "type": "boolean"
+                },
+                "sink_temperature": {
+                  "default": 150,
+                  "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
+                  "type": "number"
+                },
+                "second_law_efficiency": {
+                  "default": 0.55,
+                  "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
+                  "type": "number"
+                }
+              }
+            },
+            "low_T": {
+              "description": "Technologies for low-temperature industrial heat (steam).",
+              "properties": {
+                "biomass": {
+                  "default": true,
+                  "description": "Solid biomass boilers.",
+                  "type": "boolean"
+                },
+                "heat_pumps": {
+                  "default": true,
+                  "description": "Industrial heat pumps.",
+                  "type": "boolean"
+                },
+                "electric_boiler": {
+                  "default": true,
+                  "description": "Electric boilers.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas boilers.",
+                  "type": "boolean"
+                },
+                "methanol": {
+                  "default": true,
+                  "description": "Methanol boilers.",
+                  "type": "boolean"
+                }
+              }
+            },
+            "medium_T": {
+              "description": "Technologies for medium-temperature industrial heat.",
+              "properties": {
+                "biomass": {
+                  "default": true,
+                  "description": "Solid biomass direct firing.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas direct firing.",
+                  "type": "boolean"
+                },
+                "hydrogen": {
+                  "default": true,
+                  "description": "Hydrogen direct firing.",
+                  "type": "boolean"
+                },
+                "methanol": {
+                  "default": true,
+                  "description": "Methanol direct firing.",
+                  "type": "boolean"
+                },
+                "electric_boiler": {
+                  "default": false,
+                  "description": "Electric boilers.",
+                  "type": "boolean"
+                }
+              }
+            },
+            "high_T": {
+              "description": "Technologies for high-temperature industrial heat.",
+              "properties": {
+                "hydrogen": {
+                  "default": true,
+                  "description": "Hydrogen direct firing.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas direct firing.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
         "biochar": {
           "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
           "properties": {
@@ -5624,9 +5744,22 @@
               "type": "boolean"
             },
             "heat_output": {
-              "default": false,
-              "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "enum": [
+                    "waste",
+                    "urban_central_heat",
+                    "medium_T_industry",
+                    "high_T_industry"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "default": "waste",
+              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
             },
             "corine": {
               "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
@@ -7478,9 +7611,22 @@
           "type": "boolean"
         },
         "heat_output": {
-          "default": false,
-          "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
-          "type": "boolean"
+          "anyOf": [
+            {
+              "enum": [
+                "waste",
+                "urban_central_heat",
+                "medium_T_industry",
+                "high_T_industry"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "default": "waste",
+          "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
         },
         "corine": {
           "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
@@ -8683,6 +8829,221 @@
           "default": true,
           "description": "Whether to integrate the manually added transmission projects. They are taken from the previously existing links_tyndp.csv file.",
           "type": "boolean"
+        }
+      }
+    },
+    "_IndustryHeatPumpCopConfig": {
+      "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
+      "properties": {
+        "time_dep": {
+          "default": true,
+          "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
+          "type": "boolean"
+        },
+        "sink_temperature": {
+          "default": 150,
+          "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
+          "type": "number"
+        },
+        "second_law_efficiency": {
+          "default": 0.55,
+          "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
+          "type": "number"
+        }
+      }
+    },
+    "_IndustryHighTConfig": {
+      "description": "Technologies for high-temperature industrial heat.",
+      "properties": {
+        "hydrogen": {
+          "default": true,
+          "description": "Hydrogen direct firing.",
+          "type": "boolean"
+        },
+        "methane": {
+          "default": true,
+          "description": "Gas direct firing.",
+          "type": "boolean"
+        }
+      }
+    },
+    "_IndustryLowTConfig": {
+      "description": "Technologies for low-temperature industrial heat (steam).",
+      "properties": {
+        "biomass": {
+          "default": true,
+          "description": "Solid biomass boilers.",
+          "type": "boolean"
+        },
+        "heat_pumps": {
+          "default": true,
+          "description": "Industrial heat pumps.",
+          "type": "boolean"
+        },
+        "electric_boiler": {
+          "default": true,
+          "description": "Electric boilers.",
+          "type": "boolean"
+        },
+        "methane": {
+          "default": true,
+          "description": "Gas boilers.",
+          "type": "boolean"
+        },
+        "methanol": {
+          "default": true,
+          "description": "Methanol boilers.",
+          "type": "boolean"
+        }
+      }
+    },
+    "_IndustryMediumTConfig": {
+      "description": "Technologies for medium-temperature industrial heat.",
+      "properties": {
+        "biomass": {
+          "default": true,
+          "description": "Solid biomass direct firing.",
+          "type": "boolean"
+        },
+        "methane": {
+          "default": true,
+          "description": "Gas direct firing.",
+          "type": "boolean"
+        },
+        "hydrogen": {
+          "default": true,
+          "description": "Hydrogen direct firing.",
+          "type": "boolean"
+        },
+        "methanol": {
+          "default": true,
+          "description": "Methanol direct firing.",
+          "type": "boolean"
+        },
+        "electric_boiler": {
+          "default": false,
+          "description": "Electric boilers.",
+          "type": "boolean"
+        }
+      }
+    },
+    "_IndustryTConfig": {
+      "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
+      "properties": {
+        "endogen": {
+          "default": true,
+          "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
+          "type": "boolean"
+        },
+        "must_run": {
+          "default": 0.6,
+          "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
+          "type": "number"
+        },
+        "share_medium": {
+          "default": 0.42,
+          "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
+          "type": "number"
+        },
+        "share_high": {
+          "default": 0.58,
+          "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
+          "type": "number"
+        },
+        "heat_pump_cop": {
+          "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
+          "properties": {
+            "time_dep": {
+              "default": true,
+              "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
+              "type": "boolean"
+            },
+            "sink_temperature": {
+              "default": 150,
+              "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
+              "type": "number"
+            },
+            "second_law_efficiency": {
+              "default": 0.55,
+              "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
+              "type": "number"
+            }
+          }
+        },
+        "low_T": {
+          "description": "Technologies for low-temperature industrial heat (steam).",
+          "properties": {
+            "biomass": {
+              "default": true,
+              "description": "Solid biomass boilers.",
+              "type": "boolean"
+            },
+            "heat_pumps": {
+              "default": true,
+              "description": "Industrial heat pumps.",
+              "type": "boolean"
+            },
+            "electric_boiler": {
+              "default": true,
+              "description": "Electric boilers.",
+              "type": "boolean"
+            },
+            "methane": {
+              "default": true,
+              "description": "Gas boilers.",
+              "type": "boolean"
+            },
+            "methanol": {
+              "default": true,
+              "description": "Methanol boilers.",
+              "type": "boolean"
+            }
+          }
+        },
+        "medium_T": {
+          "description": "Technologies for medium-temperature industrial heat.",
+          "properties": {
+            "biomass": {
+              "default": true,
+              "description": "Solid biomass direct firing.",
+              "type": "boolean"
+            },
+            "methane": {
+              "default": true,
+              "description": "Gas direct firing.",
+              "type": "boolean"
+            },
+            "hydrogen": {
+              "default": true,
+              "description": "Hydrogen direct firing.",
+              "type": "boolean"
+            },
+            "methanol": {
+              "default": true,
+              "description": "Methanol direct firing.",
+              "type": "boolean"
+            },
+            "electric_boiler": {
+              "default": false,
+              "description": "Electric boilers.",
+              "type": "boolean"
+            }
+          }
+        },
+        "high_T": {
+          "description": "Technologies for high-temperature industrial heat.",
+          "properties": {
+            "hydrogen": {
+              "default": true,
+              "description": "Hydrogen direct firing.",
+              "type": "boolean"
+            },
+            "methane": {
+              "default": true,
+              "description": "Gas direct firing.",
+              "type": "boolean"
+            }
+          }
         }
       }
     },
@@ -13538,6 +13899,126 @@
           "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
         },
+        "industry_t": {
+          "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
+          "properties": {
+            "endogen": {
+              "default": true,
+              "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
+              "type": "boolean"
+            },
+            "must_run": {
+              "default": 0.6,
+              "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
+              "type": "number"
+            },
+            "share_medium": {
+              "default": 0.42,
+              "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
+              "type": "number"
+            },
+            "share_high": {
+              "default": 0.58,
+              "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
+              "type": "number"
+            },
+            "heat_pump_cop": {
+              "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
+              "properties": {
+                "time_dep": {
+                  "default": true,
+                  "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
+                  "type": "boolean"
+                },
+                "sink_temperature": {
+                  "default": 150,
+                  "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
+                  "type": "number"
+                },
+                "second_law_efficiency": {
+                  "default": 0.55,
+                  "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
+                  "type": "number"
+                }
+              }
+            },
+            "low_T": {
+              "description": "Technologies for low-temperature industrial heat (steam).",
+              "properties": {
+                "biomass": {
+                  "default": true,
+                  "description": "Solid biomass boilers.",
+                  "type": "boolean"
+                },
+                "heat_pumps": {
+                  "default": true,
+                  "description": "Industrial heat pumps.",
+                  "type": "boolean"
+                },
+                "electric_boiler": {
+                  "default": true,
+                  "description": "Electric boilers.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas boilers.",
+                  "type": "boolean"
+                },
+                "methanol": {
+                  "default": true,
+                  "description": "Methanol boilers.",
+                  "type": "boolean"
+                }
+              }
+            },
+            "medium_T": {
+              "description": "Technologies for medium-temperature industrial heat.",
+              "properties": {
+                "biomass": {
+                  "default": true,
+                  "description": "Solid biomass direct firing.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas direct firing.",
+                  "type": "boolean"
+                },
+                "hydrogen": {
+                  "default": true,
+                  "description": "Hydrogen direct firing.",
+                  "type": "boolean"
+                },
+                "methanol": {
+                  "default": true,
+                  "description": "Methanol direct firing.",
+                  "type": "boolean"
+                },
+                "electric_boiler": {
+                  "default": false,
+                  "description": "Electric boilers.",
+                  "type": "boolean"
+                }
+              }
+            },
+            "high_T": {
+              "description": "Technologies for high-temperature industrial heat.",
+              "properties": {
+                "hydrogen": {
+                  "default": true,
+                  "description": "Hydrogen direct firing.",
+                  "type": "boolean"
+                },
+                "methane": {
+                  "default": true,
+                  "description": "Gas direct firing.",
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
         "biochar": {
           "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
           "properties": {
@@ -13547,9 +14028,22 @@
               "type": "boolean"
             },
             "heat_output": {
-              "default": false,
-              "description": "Export biochar pyrolysis waste heat to the urban central heating network.",
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "enum": [
+                    "waste",
+                    "urban_central_heat",
+                    "medium_T_industry",
+                    "high_T_industry"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "default": "waste",
+              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
             },
             "corine": {
               "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",

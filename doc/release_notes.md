@@ -6,6 +6,14 @@
 <!-- Upcoming Release -->
 <!-- ================= -->
 
+* Added endogenous industrial heat supply by temperature band (`sector: industry_t`, based on
+  [#611](https://github.com/PyPSA/pypsa-eur/pull/611)): process heat is split into low-temperature (steam),
+  medium- and high-temperature bands, each supplied by an optimised mix of boilers, direct firing (with and
+  without carbon capture), electric boilers and heat pumps (hourly COP from the air temperature), with a must-run
+  share for the on-site plants. In myopic runs the must-run capacity of earlier horizons can be retired early.
+  Biochar pyrolysis heat can be sent to district heating or to the medium-/high-temperature industry heat
+  (`sector: biochar: heat_output`).
+
 * Added endogenous steel and cement production and existing industry sites
   ([#1719](https://github.com/PyPSA/pypsa-eur/pull/1719), by toniseibold, merged into this fork):
   `sector: endogenous_sectors` models steel (blast furnace/basic oxygen furnace and gas or hydrogen direct

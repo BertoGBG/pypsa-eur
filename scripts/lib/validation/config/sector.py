@@ -412,9 +412,12 @@ class _BiocharConfig(BaseModel):
         False,
         description="Add option for biochar (CDR via biomass pyrolysis and stable-carbon soil storage) as a carbon dioxide removal (CDR) technology.",
     )
-    heat_output: bool = Field(
-        False,
-        description="Export biochar pyrolysis waste heat to the urban central heating network.",
+    heat_output: (
+        Literal["waste", "urban_central_heat", "medium_T_industry", "high_T_industry"]
+        | bool
+    ) = Field(
+        "waste",
+        description="Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste).",
     )
     corine: list[int] = Field(
         default_factory=lambda: [12, 13, 14],
@@ -467,6 +470,87 @@ class _SteelBOFConfig(BaseModel):
     )
     pledge_delay: int = Field(
         0, description="Delays the decommission year by number of years."
+    )
+
+
+class _IndustryHeatPumpCopConfig(BaseModel):
+    """Configuration for `sector.industry_t.heat_pump_cop` settings."""
+
+    time_dep: bool = Field(
+        True,
+        description="Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
+    )
+    sink_temperature: float = Field(
+        150,
+        description="Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
+    )
+    second_law_efficiency: float = Field(
+        0.55,
+        description="Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
+    )
+
+
+class _IndustryLowTConfig(BaseModel):
+    """Technologies for low-temperature industrial heat (steam)."""
+
+    biomass: bool = Field(True, description="Solid biomass boilers.")
+    heat_pumps: bool = Field(True, description="Industrial heat pumps.")
+    electric_boiler: bool = Field(True, description="Electric boilers.")
+    methane: bool = Field(True, description="Gas boilers.")
+    methanol: bool = Field(True, description="Methanol boilers.")
+
+
+class _IndustryMediumTConfig(BaseModel):
+    """Technologies for medium-temperature industrial heat."""
+
+    biomass: bool = Field(True, description="Solid biomass direct firing.")
+    methane: bool = Field(True, description="Gas direct firing.")
+    hydrogen: bool = Field(True, description="Hydrogen direct firing.")
+    methanol: bool = Field(True, description="Methanol direct firing.")
+    electric_boiler: bool = Field(False, description="Electric boilers.")
+
+
+class _IndustryHighTConfig(BaseModel):
+    """Technologies for high-temperature industrial heat."""
+
+    hydrogen: bool = Field(True, description="Hydrogen direct firing.")
+    methane: bool = Field(True, description="Gas direct firing.")
+
+
+class _IndustryTConfig(BaseModel):
+    """Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band)."""
+
+    endogen: bool = Field(
+        True,
+        description="Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
+    )
+    must_run: float = Field(
+        0.6,
+        description="Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
+    )
+    share_medium: float = Field(
+        0.42,
+        description="Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
+    )
+    share_high: float = Field(
+        0.58,
+        description="Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
+    )
+    heat_pump_cop: _IndustryHeatPumpCopConfig = Field(
+        default_factory=_IndustryHeatPumpCopConfig,
+        description="COP of the low-temperature industrial heat pumps.",
+    )
+    low_T: _IndustryLowTConfig = Field(
+        default_factory=_IndustryLowTConfig,
+        description="Technologies for low-temperature heat.",
+    )
+    medium_T: _IndustryMediumTConfig = Field(
+        default_factory=_IndustryMediumTConfig,
+        description="Technologies for medium-temperature heat.",
+    )
+    high_T: _IndustryHighTConfig = Field(
+        default_factory=_IndustryHighTConfig,
+        description="Technologies for high-temperature heat.",
     )
 
 
@@ -794,6 +878,10 @@ class SectorConfig(BaseModel):
     rock_weathering: bool = Field(
         False,
         description="Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
+    )
+    industry_t: _IndustryTConfig = Field(
+        default_factory=_IndustryTConfig,
+        description="Endogenous industrial heat supply by temperature band.",
     )
     biochar: _BiocharConfig = Field(
         default_factory=_BiocharConfig,
