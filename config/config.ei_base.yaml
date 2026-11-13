@@ -39,6 +39,8 @@ sector:
   # own sector extensions (on by default on heat_industry)
   shipping_endogenous: true
   biomass_transport: true
+  # crop cultivation emissions of the unsustainable bioliquids (bioliquids PR)
+  unsustainable_biomass_upstream_emissions: true
   industry_t:
     endogen: true
   # heat_industry default: import cap per year, 50 % self-sufficiency in
