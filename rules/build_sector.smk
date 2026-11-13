@@ -1687,3 +1687,25 @@ def input_heat_source_power(w):
             w
         ).keys()
     }
+
+
+rule build_industry_plants:
+    """Maps existing steel, cement, ammonia and methanol plants to the clustered regions."""
+    params:
+        countries=config_provider("countries"),
+    input:
+        regions_onshore=resources("onshore_regions.geojson"),
+        ammonia="data/ammonia_plants.csv",
+        isi_database="data/1-s2.0-S0196890424010586-mmc2.xlsx",
+        gem_gcct=rules.retrieve_gem_cement_concrete_tracker.output["xlsx"],
+    output:
+        industry_plants=resources("industry_plants.csv"),
+    threads: 1
+    resources:
+        mem_mb=4000,
+    log:
+        logs("build_industry_plants.log"),
+    benchmark:
+        benchmarks("build_industry_plants")
+    script:
+        scripts("build_industry_plants.py")

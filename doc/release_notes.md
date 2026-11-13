@@ -6,6 +6,14 @@
 <!-- Upcoming Release -->
 <!-- ================= -->
 
+* Added endogenous steel and cement production and existing industry sites
+  ([#1719](https://github.com/PyPSA/pypsa-eur/pull/1719), by toniseibold, merged into this fork):
+  `sector: endogenous_sectors` models steel (blast furnace/basic oxygen furnace and gas or hydrogen direct
+  reduced iron with electric arc furnace) and cement (clinker kiln and finishing) as endogenous production; in
+  myopic and perfect foresight runs, existing steel, cement, ammonia and methanol plants are added
+  (`build_industry_plants`, `existing_capacities: grouping_years_industry`); `sector: methanol: meoh_to_oa`
+  adds methanol-to-olefins/aromatics for high-value chemicals.
+
 * Added biological methanation (`sector: biomethanation_biogas`, `sector: biomethanation_CO2`): hydrogen with
   biogas (including its CO2) or with captured CO2 is converted to methane. The default cost data is the BertoGBG
   technology-data fork (`data: costs: version: pypsa-eur_aa`), which includes the parameters of biomethanation

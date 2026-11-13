@@ -135,10 +135,22 @@ def get_compose_inputs(w):
             industrial_demand=resources("industrial_energy_demand_{horizon}.csv"),
             hourly_heat_demand_total=resources("hourly_heat_demand_total.nc"),
             industrial_production=resources("industrial_production_{horizon}.csv"),
+            industry_sector_ratios=(
+                resources("industry_sector_ratios_{horizon}.csv")
+                if sector["endogenous_sectors"]["enable"]
+                else []
+            ),
             district_heat_share=resources("district_heat_share_{horizon}.csv"),
             heating_efficiencies=resources("heating_efficiencies.csv"),
             existing_heating_distribution=resources(
                 "existing_heating_distribution_{horizon}.csv"
+            ),
+            industry_plants=(
+                resources("industry_plants.csv")
+                if sector["industry"]
+                and foresight != "overnight"
+                and horizon == horizons[0]
+                else []
             ),
             temp_soil_total=resources("temp_soil_total.nc"),
             temp_air_total=resources("temp_air_total.nc"),

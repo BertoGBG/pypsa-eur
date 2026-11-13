@@ -20,3 +20,10 @@ section.
 ## Regional demand
 
 {{ rules("build_industrial_distribution_key", "build_industrial_production_per_node", "build_industrial_energy_demand_per_country_today", "build_industrial_energy_demand_per_node_today", "build_industrial_energy_demand_per_node") }}
+
+## Existing industry sites
+
+Existing steel, cement, ammonia and methanol plants, added as brownfield
+capacities in myopic and perfect foresight runs (`sector: endogenous_sectors`).
+
+{{ rules("build_industry_plants") }}
