@@ -1589,6 +1589,7 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
 ]:
 
     rule retrieve_co2_removal_data:
+        """Retrieves the CO2-removal dataset and unpacks the files used by the model."""
         input:
             zip=storage(CO2_REMOVAL_DATASET["url"]),
         output:
@@ -1601,6 +1602,9 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
             afforestation_nuts2_monthly_weights=resources(
                 "afforestation_nuts2_monthly_weights.csv"
             ),
+            eurostat_crops_nuts2=resources("eurostat_apro_cpshr_nuts2_raw.csv"),
+            eurostat_crops_nuts0=resources("eurostat_apro_cpshr_nuts0_raw.csv"),
+            crop_heating_values=resources("table26_heating_values.csv"),
         retries: 2
         message:
             "Downloading carbon dioxide removal data"
@@ -1622,6 +1626,18 @@ if (CO2_REMOVAL_DATASET := dataset_version("co2_removal_data"))["source"] in [
                     (
                         "outputs/afforestation/afforestation_nuts2_monthly_weights.csv",
                         output.afforestation_nuts2_monthly_weights,
+                    ),
+                    (
+                        "outputs/perennialisation/eurostat_apro_cpshr_nuts2_raw.csv",
+                        output.eurostat_crops_nuts2,
+                    ),
+                    (
+                        "outputs/perennialisation/eurostat_apro_cpshr_nuts0_raw.csv",
+                        output.eurostat_crops_nuts0,
+                    ),
+                    (
+                        "outputs/biomass_inputs/table26_heating_values.csv",
+                        output.crop_heating_values,
                     ),
                 ]:
                     with (

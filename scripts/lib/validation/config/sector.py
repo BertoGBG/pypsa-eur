@@ -698,6 +698,10 @@ class SectorConfig(BaseModel):
         False,
         description="Add afforestation as a carbon dioxide removal technology, configured under `afforestation`.",
     )
+    perennials: bool = Field(
+        False,
+        description="Add option for perennialisation (converting 1st-generation biofuel cropland to perennial grasses) as a carbon dioxide removal (CDR) technology.",
+    )
     co2_vent: bool = Field(
         False,
         description="Add option for vent out CO2 from storages to the atmosphere.",

@@ -887,6 +887,16 @@ rule build_biomass_potentials:
             else []
         ),
         country_shapes=resources("country_shapes.geojson"),
+        costs=lambda w: (
+            resources("costs_{horizon}_processed.csv")
+            if config_provider("sector", "perennials")(w)
+            else []
+        ),
+        crop_heating_values=lambda w: (
+            rules.retrieve_co2_removal_data.output.crop_heating_values
+            if config_provider("sector", "perennials")(w)
+            else []
+        ),
         unsustainable_biomass_upstream_data=lambda w: (
             rules.retrieve_co2_removal_data.output["unsustainable_biomass_upstream"]
             if config_provider("sector", "unsustainable_biomass_upstream_emissions")(w)
@@ -912,6 +922,7 @@ rule build_biomass_potentials:
 
 
 rule determine_carbon_dioxide_removal_availability_matrix:
+    """Computes the cutout cell shares eligible for afforestation from CORINE land cover."""
     input:
         corine=ancient(rules.retrieve_corine.output["tif_file"]),
         regions=resources("onshore_regions.geojson"),
@@ -920,12 +931,12 @@ rule determine_carbon_dioxide_removal_availability_matrix:
         ),
     output:
         nc=resources(
-            "availability_matrix_carbon_dioxide_removal_{technology}.nc"
+            "cdr_availability_matrix_{technology}.nc"
         ),
         plot=branch(
             config["atlite"]["plot_availability_matrix"],
             then=resources(
-                "availability_matrix_carbon_dioxide_removal_{technology}.png"
+                "cdr_availability_matrix_{technology}.png"
             ),
         ),
     log:
@@ -947,9 +958,10 @@ rule determine_carbon_dioxide_removal_availability_matrix:
 
 
 rule build_available_land:
+    """Aggregates the land eligible for carbon dioxide removal to hectares per region."""
     input:
         availability_matrix=resources(
-            "availability_matrix_carbon_dioxide_removal_{technology}.nc"
+            "cdr_availability_matrix_{technology}.nc"
         ),
         regions=resources("onshore_regions.geojson"),
         cutout=lambda w: input_cutout(
@@ -970,6 +982,7 @@ rule build_available_land:
 
 
 rule build_afforestation_potentials:
+    """Computes afforestation potentials, rotation ages and seasonal profiles per region."""
     input:
         afforestation_corine_potentials_csv_file=resources(
             "afforestation_available_land.csv"
@@ -995,6 +1008,40 @@ rule build_afforestation_potentials:
         snapshots=config["snapshots"],
     script:
         scripts("build_afforestation_potentials.py")
+
+
+rule build_perennials_yields_eurostat_average:
+    """Computes Eurostat yields of the 1st-generation biofuel crops per NUTS-2 region."""
+    input:
+        nuts2021=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
+        crops_nuts2=rules.retrieve_co2_removal_data.output.eurostat_crops_nuts2,
+        crops_nuts0=rules.retrieve_co2_removal_data.output.eurostat_crops_nuts0,
+        crop_heating_values=rules.retrieve_co2_removal_data.output.crop_heating_values,
+    output:
+        yields_all=resources("perennials_yields_1G_biofuels.csv"),
+    log:
+        logs("build_perennials_yields_eurostat_average.log"),
+    script:
+        scripts("build_perennials_yields_eurostat_average.py")
+
+
+rule build_perennials_yields:
+    """Maps the 1st-generation biofuel crop yields from NUTS-2 to the clustered regions."""
+    input:
+        nuts2=rules.retrieve_eu_nuts_2021.output.shapes_level_2,
+        country_shapes=resources("country_shapes.geojson"),
+        perennials_yields_1G_biofuels=resources("perennials_yields_1G_biofuels.csv"),
+        regions_onshore=resources("onshore_regions.geojson"),
+    output:
+        csv_file=resources("perennials_yields_1G_biofuels_regions.csv"),
+    log:
+        logs("build_perennials_yields.log"),
+    resources:
+        mem_mb=8000,
+    params:
+        biomass=config_provider("biomass"),
+    script:
+        scripts("build_perennials_yields.py")
 
 
 rule build_biomass_transport_costs:

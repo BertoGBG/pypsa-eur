@@ -954,6 +954,7 @@ _TECH_COLORS: dict[str, str] = {
     "import oil": "#93eda2",
     "import methanol": "#87d0e6",
     "co2 afforestation": "#22cc22",
+    "co2 perennials": "#008ffc",
 }
 
 

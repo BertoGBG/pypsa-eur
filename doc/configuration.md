@@ -612,6 +612,21 @@ Configuration for `industry` settings.
     Only used for sector-coupling studies.
 
 
+## `perennials` {#perennials_cf}
+
+Only used for sector-coupling studies with `sector: perennials: true`.
+
+Configuration for `perennials` settings.
+
+{{ schema_table("perennials") }}
+
+**YAML Syntax**
+
+```yaml
+{{ yaml_section("perennials") }}
+```
+
+
 ## `afforestation` {#afforestation_cf}
 
 Only used for sector-coupling studies with `sector: afforestation: true`. The eligible land is set
