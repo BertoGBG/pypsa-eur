@@ -121,6 +121,12 @@ def record(technology: str, metric: str, value, unit: str = ""):
     })
 
 
+def res_file(name: str) -> Path:
+    """Resource file of this run, or of the shared resources if not there."""
+    path = RES_RUN / name
+    return path if path.exists() else SHARED_RES / name
+
+
 def check_file(path: Path, label: str) -> bool:
     exists = path.exists()
     status = OK if exists else FAIL
@@ -429,13 +435,13 @@ def print_lccdr(n_opt, links, stores, cdr_store_carrier: str, label: str):
 
 def check_afforestation_build():
     section("AFFORESTATION 1. RETRIEVE: afforestation NUTS data")
-    nuts_file = RES_RUN / "afforestation_rates_nuts2_full.csv"
+    nuts_file = res_file("afforestation_rates_nuts2_full.csv")
     check_file(nuts_file, "NUTS2 growth rates (CSV)")
-    weights_file = RES_RUN / "afforestation_nuts2_monthly_weights.csv"
+    weights_file = res_file("afforestation_nuts2_monthly_weights.csv")
     check_file(weights_file, "NUTS2 monthly weights (CSV)")
 
     section("AFFORESTATION 2. BUILD: CORINE afforestation land area")
-    corine_csv = RES_RUN / "afforestation_available_land.csv"
+    corine_csv = res_file("afforestation_available_land.csv")
     corine_ok = check_file(corine_csv, f"Available land CSV")
     if corine_ok:
         df_corine = pd.read_csv(corine_csv)
@@ -448,7 +454,7 @@ def check_afforestation_build():
             print(f"{WARN}  NaN values detected in CORINE potentials CSV.")
 
     section("AFFORESTATION 3. BUILD: afforestation CO2 potentials (clustered)")
-    affo_pot = RES_RUN / "afforestation_potentials.csv"
+    affo_pot = res_file("afforestation_potentials.csv")
     pot_ok = check_file(affo_pot, f"Afforestation potentials")
     if pot_ok:
         df_pot = pd.read_csv(affo_pot, index_col="node")
@@ -468,9 +474,9 @@ def check_afforestation_build():
             print(f"{WARN}  NaN values detected in afforestation potentials CSV.")
 
     section("AFFORESTATION 3b. BUILD: node-level monthly weights and seasonal profile")
-    mw_csv = RES_RUN / "afforestation_monthly_weights.csv"
-    sp_csv = RES_RUN / "afforestation_seasonal_profile.csv"
-    pot_png = RES_RUN / "afforestation_potentials.png"
+    mw_csv = res_file("afforestation_monthly_weights.csv")
+    sp_csv = res_file("afforestation_seasonal_profile.csv")
+    pot_png = res_file("afforestation_potentials.png")
     mw_ok = check_file(mw_csv, f"Monthly weights CSV")
     check_file(sp_csv, f"Seasonal profile CSV")
     check_file(pot_png, f"Afforestation potentials PNG")
@@ -581,7 +587,7 @@ def check_afforestation_optimal(n_opt):
 
 def check_biochar_build():
     section("BIOCHAR 1. BUILD: biochar available land")
-    biochar_csv = RES_RUN / "biochar_available_land.csv"
+    biochar_csv = res_file("biochar_available_land.csv")
     csv_ok = check_file(biochar_csv, f"Biochar available land CSV")
     if csv_ok:
         df = pd.read_csv(biochar_csv)
@@ -788,7 +794,7 @@ def check_perennials_optimal(n_opt):
 
 def check_rock_weathering_build():
     section("ROCK WEATHERING 1. BUILD: available land (CORINE + mean-temperature exclusion)")
-    rw_csv = RES_RUN / "rock_weathering_available_land.csv"
+    rw_csv = res_file("rock_weathering_available_land.csv")
     rw_ok = check_file(rw_csv, f"Rock weathering available land CSV")
     if rw_ok:
         df_rw = pd.read_csv(rw_csv, index_col=0)
