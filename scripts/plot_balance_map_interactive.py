@@ -167,6 +167,18 @@ if __name__ == "__main__":
     eb = eb.dropna()
     bus_size = eb.groupby(level=["bus", "carrier"]).sum()
 
+    if bus_size.empty:
+        # e.g. no CO2 stored in early planning horizons: nothing to draw
+        import logging
+        import sys
+
+        logging.getLogger(__name__).warning(
+            f"No {carrier} balance in the network. Writing a placeholder map."
+        )
+        with open(snakemake.output[0], "w") as f:
+            f.write(f"<html><body><p>No {carrier} balance in network</p></body></html>")
+        sys.exit(0)
+
     # line and links widths according to optimal capacity
     flow = n.statistics.transmission(groupby=False, bus_carrier=carrier)
     if not flow.empty:

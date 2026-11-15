@@ -87,6 +87,9 @@ def plot_energy_balance_timeseries(
     """Create energy balance time series plot with positive/negative stacked areas."""
     if time is not None:
         df = df.loc[time]
+        if df.empty:
+            # coarse time resolution: no snapshot falls in this month
+            return
 
     # Handle small values and renaming
     techs_below_threshold = df.columns[
