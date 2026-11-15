@@ -2476,7 +2476,12 @@ def insert_electricity_distribution_grid(
     v2gs = n.links.index[n.links.carrier == "V2G"]
     n.links.loc[v2gs, "bus1"] += " low voltage"
 
-    hps = n.links.index[n.links.carrier.str.contains("heat pump")]
+    # industry heat pumps are not reversed (electricity on bus0) and stay on
+    # the AC node like the other industry converters
+    hps = n.links.index[
+        n.links.carrier.str.contains("heat pump")
+        & ~n.links.carrier.str.contains("industry")
+    ]
     n.links.loc[hps, "bus1"] += " low voltage"
 
     rh = n.links.index[n.links.carrier.str.contains("resistive heater")]
