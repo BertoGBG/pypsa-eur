@@ -162,9 +162,15 @@ def load_check_params(args: argparse.Namespace) -> dict:
 
     run_cfg = cfg.get("run", {})
 
-    RDIR = run_cfg.get("name") or getattr(args, "run_name", None) or "run"
-    if getattr(args, "run_name", None) and not run_cfg.get("name"):
+    # the run name given on the command line wins: in scenario mode the stored
+    # run.name is the list of all scenarios (or "all"), not this run
+    name = run_cfg.get("name")
+    if getattr(args, "run_name", None):
         RDIR = args.run_name
+    elif isinstance(name, str) and name not in ("", "all"):
+        RDIR = name
+    else:
+        RDIR = "run"
 
     clustering = cfg.get("clustering", {}).get("cluster_network", {})
     CLUSTERS = str(args.clusters or clustering.get("n_clusters", ""))
@@ -182,13 +188,15 @@ def load_check_params(args: argparse.Namespace) -> dict:
     RES_RUN = base_dir / "resources" / RDIR
     RESULTS = base_dir / "results"   / RDIR
 
-    # shared resources: if run.shared_resources.policy is a string, resources live there
+    # shared resources: policy "base" keeps the shared files directly in
+    # resources/; any other string names a subfolder of resources/
     shared_policy = run_cfg.get("shared_resources", {}).get("policy", False)
-    SHARED_RES = (
-        (base_dir / "resources" / shared_policy)
-        if isinstance(shared_policy, str)
-        else RES_RUN
-    )
+    if shared_policy == "base":
+        SHARED_RES = RES
+    elif isinstance(shared_policy, str):
+        SHARED_RES = base_dir / "resources" / shared_policy
+    else:
+        SHARED_RES = RES_RUN
 
     print(f"Run:    {RDIR}  |  WC: {WC}")
 
