@@ -695,7 +695,7 @@ def check_perennials_build():
     check_file(SHARED_RES / "perennials_yields_1G_biofuels.csv", "Perennials yields (all NUTS)")
 
     section("PERENNIALS 2. BUILD: perennial potentials (clustered)")
-    yields_clustered = RES_RUN / "perennials_yields_1G_biofuels_regions.csv"
+    yields_clustered = res_file("perennials_yields_1G_biofuels_regions.csv")
     if check_file(yields_clustered, f"Perennials yields clustered s_{CLUSTERS}"):
         df = pd.read_csv(yields_clustered)
         print(f"        Rows: {len(df)}  |  Columns: {list(df.columns)}")
