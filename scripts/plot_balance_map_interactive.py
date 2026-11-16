@@ -166,6 +166,7 @@ if __name__ == "__main__":
     eb.loc[components] = eb.loc[components].drop(index=carriers_in_eb, level="carrier")
     eb = eb.dropna()
     bus_size = eb.groupby(level=["bus", "carrier"]).sum()
+    bus_size = bus_size[bus_size.abs() > 1e-6]
 
     if bus_size.empty:
         # e.g. no CO2 stored in early planning horizons: nothing to draw
