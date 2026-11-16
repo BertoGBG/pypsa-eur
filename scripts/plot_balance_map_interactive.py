@@ -12,6 +12,8 @@ The map is rendered with pydeck through `n.explore()` and written as a
 self-contained HTML file with tooltips for inspection in a browser.
 """
 
+import sys
+
 import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -282,23 +284,29 @@ if __name__ == "__main__":
         auto_highlight=True,
     )
 
-    map = n.explore(
-        branch_components=branch_components,
-        bus_size=bus_size.div(unit_conversion),
-        bus_split_circle=True,
-        line_width=line_flow.div(unit_conversion),
-        line_flow=line_flow.div(unit_conversion),
-        line_color="rosybrown",
-        link_width=link_flow.div(unit_conversion),
-        link_flow=link_flow.div(unit_conversion),
-        link_color=branch_color,
-        arrow_size_factor=arrow_size_factor,
-        tooltip=tooltip,
-        auto_scale=True,
-        branch_width_max=branch_width_max,
-        bus_size_max=bus_size_max,
-        map_style=map_style,
-    )
+    try:
+        map = n.explore(
+            branch_components=branch_components,
+            bus_size=bus_size.div(unit_conversion),
+            bus_split_circle=True,
+            line_width=line_flow.div(unit_conversion),
+            line_flow=line_flow.div(unit_conversion),
+            line_color="rosybrown",
+            link_width=link_flow.div(unit_conversion),
+            link_flow=link_flow.div(unit_conversion),
+            link_color=branch_color,
+            arrow_size_factor=arrow_size_factor,
+            tooltip=tooltip,
+            auto_scale=True,
+            branch_width_max=branch_width_max,
+            bus_size_max=bus_size_max,
+            map_style=map_style,
+        )
+    except KeyError:
+        # balances too small to draw after unit scaling (e.g. CO2 stored in 2025)
+        with open(snakemake.output[0], "w") as f:
+            f.write(f"<html><body><p>No {carrier} balance to draw</p></body></html>")
+        sys.exit(0)
 
     map.layers.insert(0, regions_layer)
 
