@@ -73,6 +73,14 @@ class _UnsustainableBioliquidsConfig(ConfigModel):
         10.19,
         description="Lower heating value of biodiesel (MWh/t), 36.7 GJ/t (JRC, Edwards et al. 2019).",
     )
+    share_retained: dict[int, float] | None = Field(
+        None,
+        description="Share of today's unsustainable bioliquids kept available per planning horizon. If not set, `biomass: share_unsustainable_use_retained` is used, like for solid biomass and biogas.",
+    )
+    free_use: bool = Field(
+        False,
+        description="If false, the available unsustainable bioliquids must be used in full (fixed annual use). If true, they can be used up to the available amount, and their cropland is shared with `sector: perennials`: in each node, the share of the land used for bioliquids plus the share converted to perennials is at most one.",
+    )
 
 
 class BiomassConfig(BaseModel):

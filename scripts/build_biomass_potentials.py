@@ -433,11 +433,12 @@ def add_unsustainable_potentials(df, input_eurostat):
         "R5300",  # Biogases
     )
 
-    # Calculate unsustainable bioliquids
+    # Calculate unsustainable bioliquids (own retained share if configured)
+    share_bioliquids = bioliquids_share_retained(params, investment_year)
     df_wo_ch["unsustainable bioliquids"] = _calc_unsustainable_potential(
         df_wo_ch,
         df_unsustainable,
-        share_unsus,
+        share_bioliquids,
         resource_type="R5210|R5220|R5230|R5290",  # gasoline, diesel, kerosene, liquids
     )
 
@@ -478,6 +479,17 @@ def eurostat_primary_production(input_eurostat):
         .value.unstack("siec")
     )
     return df.rename({v: k for k, v in idees_rename.items()}, axis=0), year
+
+
+def bioliquids_share_retained(params, investment_year):
+    """
+    Share of today's unsustainable bioliquids available in the planning
+    horizon: ``biomass: unsustainable_bioliquids: share_retained`` if set,
+    otherwise ``biomass: share_unsustainable_use_retained``.
+    """
+    own = params["unsustainable_bioliquids"].get("share_retained")
+    shares = own if own else params["share_unsustainable_use_retained"]
+    return shares.get(investment_year)
 
 
 def biofuels_1G_from_bioliquids(
@@ -661,7 +673,12 @@ if __name__ == "__main__":
             "biofuels_1G_bioethanol_sugar": crop_energy["MINBIOCRP21"],
             "biofuels_1G_biodiesel": crop_energy["MINBIORPS1"],
         }
-        share_freed = 1 - params["share_unsustainable_use_retained"][investment_year]
+        if params["unsustainable_bioliquids"].get("free_use", False):
+            # the whole 1G cropland can be used for bioliquids or perennials;
+            # the network shares it between the two
+            share_freed = 1.0
+        else:
+            share_freed = 1 - bioliquids_share_retained(params, investment_year)
         biofuels_1G = biofuels_1G_from_bioliquids(
             enspreso_1G,
             eurostat,

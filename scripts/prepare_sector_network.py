@@ -1318,6 +1318,110 @@ def add_perennials(
     )
 
 
+def free_unsustainable_bioliquids(
+    n,
+    biomass_potentials_file=None,
+    perennials_yields_file=None,
+    sequestration_co2_credited=None,
+):
+    """
+    Let the optimisation choose how much of the unsustainable bioliquids to
+    use, and share their cropland with perennialisation.
+
+    By default the unsustainable bioliquids are a fixed annual use
+    (``e_sum_min = e_sum_max``). Here the lower bound is removed, so they can
+    be used up to the available amount. If perennials are in the network
+    (``biomass_potentials_file`` given), the 1st-generation (1G) biofuel
+    cropland of each location becomes a Store of land (ha), drawn by both
+    uses: the bioliquids are supplied from it through a Link (MWh of fuel per
+    ha), and the perennials Link draws 1/``sequestration_co2_credited`` ha per
+    tCO2. In each location, the share of the land used for bioliquids plus the
+    share converted to perennials is therefore at most one.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        Network with the unsustainable bioliquids (``add_biomass``) and, if
+        coupled, the perennials (``add_perennials``) already added.
+    biomass_potentials_file : str, optional
+        Biomass potentials with the ``biofuels_1G`` crop columns (MWh of crop/y).
+    perennials_yields_file : str, optional
+        1G crop yields per node (MWh of crop/ha/y).
+    sequestration_co2_credited : float, optional
+        Credited CO2 sequestration of perennials (tCO2/ha/y).
+    """
+    gens = n.generators.index[n.generators.carrier == "unsustainable bioliquids"]
+    if gens.empty:
+        return
+    n.generators.loc[gens, "e_sum_min"] = 0.0
+    logger.info("Unsustainable bioliquids: free use up to the available amount.")
+
+    if biomass_potentials_file is None:
+        return
+    per_links = n.links.index[n.links.carrier == "co2 perennials"]
+    if per_links.empty:
+        return
+
+    # 1G cropland per node (ha), as in add_perennials
+    biomass_potentials = pd.read_csv(biomass_potentials_file, index_col=0)
+    yields = pd.read_csv(perennials_yields_file).set_index("name")
+    area = (
+        biomass_potentials.filter(regex="biofuels_1G")
+        / yields.filter(regex="biofuels_1G")
+    ).sum(axis=1)
+
+    per_node = n.links.loc[per_links, "bus2"]  # perennial link -> its node
+    for gen in gens:
+        bus = n.generators.at[gen, "bus"]
+        location = n.buses.at[bus, "location"]
+        # spatial: land of the node; EU bioliquids: land of all nodes
+        if location in area.index:
+            links = per_node.index[per_node == location]
+            land = area.get(location, 0.0)
+        else:
+            links = per_node.index
+            land = area.reindex(per_node.values).sum()
+        fuel = n.generators.at[gen, "e_sum_max"]
+        if not (land > 0 and fuel > 0 and np.isfinite(fuel)):
+            continue
+
+        land_bus = f"{location} 1G land"
+        n.add("Bus", land_bus, location=location, carrier="1G land", unit="ha")
+        n.add(
+            "Store",
+            land_bus,
+            bus=land_bus,
+            carrier="1G land",
+            e_nom=land,
+            e_initial=land,
+            e_cyclic=False,
+        )
+        yield_fuel = fuel / land  # MWh of fuel per ha
+        n.add(
+            "Link",
+            gen + " land",
+            bus0=land_bus,
+            bus1=bus,
+            carrier="unsustainable bioliquids",
+            efficiency=yield_fuel,
+            p_nom=n.generators.at[gen, "p_nom"] / yield_fuel,
+            marginal_cost=n.generators.at[gen, "marginal_cost"] * yield_fuel,
+        )
+        n.remove("Generator", gen)
+        if "bus4" not in n.links.columns:
+            n.links["bus4"] = ""
+        if "efficiency4" not in n.links.columns:
+            n.links["efficiency4"] = 1.0
+        n.links["bus4"] = n.links["bus4"].fillna("")
+        n.links["efficiency4"] = n.links["efficiency4"].fillna(1.0)
+        n.links.loc[links, "bus4"] = land_bus
+        n.links.loc[links, "efficiency4"] = -1.0 / sequestration_co2_credited
+
+    if "1G land" not in n.carriers.index:
+        n.add("Carrier", "1G land")
+    logger.info("Unsustainable bioliquids and perennials share the 1G cropland.")
+
+
 def add_rock_weathering(
     n, costs, rock_weathering_potentials_file, rock_weathering_config
 ):
@@ -8906,6 +9010,19 @@ def main(
             sequestration_co2_credited=params.perennials[
                 "sequestration_co2_credited"
             ],
+        )
+
+    if params.biomass["unsustainable_bioliquids"].get("free_use", False):
+        couple = bool(options.get("perennials"))
+        free_unsustainable_bioliquids(
+            n,
+            biomass_potentials_file=inputs.biomass_potentials if couple else None,
+            perennials_yields_file=(
+                inputs.perennials_yields_1G_biofuels if couple else None
+            ),
+            sequestration_co2_credited=(
+                params.perennials["sequestration_co2_credited"] if couple else None
+            ),
         )
 
     if options.get("afforestation"):

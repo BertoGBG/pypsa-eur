@@ -285,6 +285,7 @@ rule compose_network:
         costs=config_provider("costs"),
         afforestation=config_provider("afforestation"),
         perennials=config_provider("perennials"),
+        biomass=config_provider("biomass"),
         rock_weathering=config_provider("rock_weathering"),
         emission_prices=config_provider("costs", "emission_prices"),
         load=config_provider("load"),

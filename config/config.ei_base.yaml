@@ -65,3 +65,19 @@ solving:
     name: gurobi
     options: gurobi-default
   mem_mb: 300000
+
+# 1st-generation bioliquids: available at today's level in every horizon
+# (no phase-out), used only if the optimisation wants them (no must-use),
+# and their cropland is shared with perennialisation. Their cultivation
+# emissions are counted (sector: unsustainable_biomass_upstream_emissions).
+biomass:
+  unsustainable_bioliquids:
+    share_retained:
+      2020: 1
+      2025: 1
+      2030: 1
+      2035: 1
+      2040: 1
+      2045: 1
+      2050: 1
+    free_use: true

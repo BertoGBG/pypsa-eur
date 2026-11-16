@@ -481,6 +481,26 @@
               "default": 10.19,
               "description": "Lower heating value of biodiesel (MWh/t), 36.7 GJ/t (JRC, Edwards et al. 2019).",
               "type": "number"
+            },
+            "share_retained": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of today's unsustainable bioliquids kept available per planning horizon. If not set, `biomass: share_unsustainable_use_retained` is used, like for solid biomass and biogas."
+            },
+            "free_use": {
+              "default": false,
+              "description": "If false, the available unsustainable bioliquids must be used in full (fixed annual use). If true, they can be used up to the available amount, and their cropland is shared with `sector: perennials`: in each node, the share of the land used for bioliquids plus the share converted to perennials is at most one.",
+              "type": "boolean"
             }
           }
         }
@@ -10734,6 +10754,26 @@
           "default": 10.19,
           "description": "Lower heating value of biodiesel (MWh/t), 36.7 GJ/t (JRC, Edwards et al. 2019).",
           "type": "number"
+        },
+        "share_retained": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Share of today's unsustainable bioliquids kept available per planning horizon. If not set, `biomass: share_unsustainable_use_retained` is used, like for solid biomass and biogas."
+        },
+        "free_use": {
+          "default": false,
+          "description": "If false, the available unsustainable bioliquids must be used in full (fixed annual use). If true, they can be used up to the available amount, and their cropland is shared with `sector: perennials`: in each node, the share of the land used for bioliquids plus the share converted to perennials is at most one.",
+          "type": "boolean"
         }
       }
     },
@@ -13383,6 +13423,26 @@
               "default": 10.19,
               "description": "Lower heating value of biodiesel (MWh/t), 36.7 GJ/t (JRC, Edwards et al. 2019).",
               "type": "number"
+            },
+            "share_retained": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Share of today's unsustainable bioliquids kept available per planning horizon. If not set, `biomass: share_unsustainable_use_retained` is used, like for solid biomass and biogas."
+            },
+            "free_use": {
+              "default": false,
+              "description": "If false, the available unsustainable bioliquids must be used in full (fixed annual use). If true, they can be used up to the available amount, and their cropland is shared with `sector: perennials`: in each node, the share of the land used for bioliquids plus the share converted to perennials is at most one.",
+              "type": "boolean"
             }
           }
         }

@@ -686,6 +686,8 @@ biomass:
   unsustainable_bioliquids:
     MWh_bioethanol_per_tbioethanol: 7.447
     MWh_biodiesel_per_tbiodiesel: 10.19
+    share_retained:
+    free_use: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#solar_thermal_cf
 solar_thermal:
