@@ -4079,11 +4079,18 @@ def add_biomass(
             bus0=spatial.h2.nodes,
             bus1=spatial.gas.biogas,
             bus2=spatial.gas.nodes,
+            bus3="co2 atmosphere",
             carrier="biomethanation biogas",
             capital_cost=costs.at["biomethanation", "capital_cost"],
             marginal_cost=costs.at["biomethanation", "VOM"],
-            efficiency=costs.at["biomethanation", "Biogas Input"],
-            efficiency2=-costs.at["biomethanation", "Methane Output"],
+            # per MWh H2: biogas consumed, methane produced
+            efficiency=-costs.at["biomethanation", "Biogas Input"],
+            efficiency2=costs.at["biomethanation", "Methane Output"],
+            # all carbon of the methane comes from the biogas (CH4 and CO2),
+            # so it is biogenic: credit the CO2 charged when it is burned,
+            # as for biogas upgrading
+            efficiency3=-costs.at["biomethanation", "Methane Output"]
+            * costs.at["gas", "CO2 intensity"],
             p_min_pu=options["min_part_load_biomethanation"],
             p_nom_extendable=True,
             lifetime=costs.at["biomethanation", "lifetime"],
