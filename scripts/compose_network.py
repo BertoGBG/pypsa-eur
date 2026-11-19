@@ -52,7 +52,7 @@ from scripts.prepare_sector_network import (
 
 logger = logging.getLogger(__name__)
 
-SECTOR_RENEWABLE_CARRIERS = {"solar rooftop", "afforestation", "biochar", "perennials"}
+SECTOR_RENEWABLE_CARRIERS = {"solar rooftop"}
 
 
 if __name__ == "__main__":
@@ -100,10 +100,7 @@ if __name__ == "__main__":
 
     renewable_carriers = sorted(
         set(params.renewable_carriers)
-        | (
-            SECTOR_RENEWABLE_CARRIERS
-            & (set(n.generators.carrier) | set(n.links.carrier))
-        )
+        | (SECTOR_RENEWABLE_CARRIERS & set(n.generators.carrier))
     )
 
     if foresight != "overnight" and is_first_horizon:
