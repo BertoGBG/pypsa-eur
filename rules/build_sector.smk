@@ -961,8 +961,10 @@ rule determine_carbon_dioxide_removal_availability_matrix:
     resources:
         mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
     params:
-        renewable=config_provider("renewable"),
+        technology=lambda w: config_provider("renewable", w.technology)(w),
         plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
+        disable_progressbar=config_provider("run", "disable_progressbar"),
+        show_progress=config_provider("atlite", "show_progress"),
     message:
         "Determining availability matrix for the {wildcards.technology} carbon dioxide removal technology"
     script:
@@ -1010,12 +1012,13 @@ rule determine_biochar_availability_matrix:
     resources:
         mem_mb=config["atlite"].get("nprocesses", 4) * 5000,
     params:
-        # determine_availability_matrix.py reads params.renewable[technology];
-        # biochar's land-eligibility settings live under sector.biochar, so
-        # reshape it into the same {technology: {...}} lookup the shared
-        # script expects.
-        renewable=lambda w: {"biochar": config_provider("sector", "biochar")(w)},
+        # the shared determine_availability_matrix.py reads params.technology
+        # (the land-eligibility settings of this technology); biochar's live
+        # under sector.biochar
+        technology=config_provider("sector", "biochar"),
         plot_availability_matrix=config_provider("atlite", "plot_availability_matrix"),
+        disable_progressbar=config_provider("run", "disable_progressbar"),
+        show_progress=config_provider("atlite", "show_progress"),
     message:
         "Determining availability matrix for biochar"
     script:
