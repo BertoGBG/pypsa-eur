@@ -24,7 +24,7 @@ clustering:
     segmentation: 1095
 
 sector:
-  industry_t:
-    endogen: true
+  industry_heat:
+    enable: true
   endogenous_sectors:
     enable: true

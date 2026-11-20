@@ -41,8 +41,8 @@ sector:
   biomass_transport: true
   # crop cultivation emissions of the unsustainable bioliquids (bioliquids PR)
   unsustainable_biomass_upstream_emissions: true
-  industry_t:
-    endogen: true
+  industry_heat:
+    enable: true
   # heat_industry default: import cap per year, 50 % self-sufficiency in
   # 2025 -> 100 % by 2050 (weekend runs 4 and 8 rely on it). Only used when
   # solid_biomass_import: enable is true.

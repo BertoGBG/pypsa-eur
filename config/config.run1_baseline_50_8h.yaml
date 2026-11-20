@@ -25,7 +25,7 @@ sector:
   biomethanation_CO2: false
   endogenous_sectors:
     enable: false
-  industry_t:
-    endogen: false
+  industry_heat:
+    enable: false
   shipping_endogenous: false
   unsustainable_biomass_upstream_emissions: false

@@ -70,7 +70,6 @@ if __name__ == "__main__":
     set_scenario_config(snakemake)
 
     # Extract configuration and parameters
-    config = snakemake.config
     params = snakemake.params
     inputs = snakemake.input
 
@@ -133,13 +132,24 @@ if __name__ == "__main__":
     maybe_adjust_costs_and_potentials(n, adjustments["sector"], current_horizon)
 
     sanitize_custom_columns(n)
-    sanitize_carriers(n, config)
+    sanitize_carriers(n, params.nice_names, params.tech_colors)
     # fossil supply limits (energy-security lens); after sanitize_carriers so
     # the carriers they tag already exist
-    add_fossil_fuel_limit(n, costs, config, current_horizon)
-    add_energy_limit_per_carrier(n, costs, config, current_horizon)
+    fossil_limits = {
+        key: getattr(params, key)
+        for key in [
+            "fossil_limit",
+            "fossil_limit_values",
+            "energy_limit_per_carrier",
+            "energy_limit_per_carrier_values",
+        ]
+    }
+    add_fossil_fuel_limit(n, costs, fossil_limits, current_horizon)
+    add_energy_limit_per_carrier(n, costs, fossil_limits, current_horizon)
     sanitize_locations(n)
-    n.meta = dict(config, **dict(wildcards=dict(snakemake.wildcards)))
+    n.meta["snakemake_config"] = dict(
+        snakemake.config, wildcards=dict(snakemake.wildcards)
+    )
     if n.investment_periods.empty:
         n.consistency_check()
     else:

@@ -19,8 +19,10 @@ copernicus_land_cover,v3.0.1,archive,latest supported,2026-01-20,"The primary is
 copernicus_land_cover,v2.0.2,archive,deprecated supported,2026-01-13,,https://data.pypsa.org/workflows/eur/copernicus_land_cover/v2.0.2/PROBAV_LC100_global_v3.0.1_2015-base_Discrete-Classification-map_EPSG-4326.tif
 corine,v18_5,archive,latest supported,2026-01-13,,https://data.pypsa.org/workflows/eur/corine/v18_5/corine.zip
 corine,unknown,primary,latest supported,2025-12-02,Need to register with CLMS API and create an access token. The download URL is dynamic,
-costs,v0.15.0,primary,latest supported,2026-06-09,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.15.0/outputs
-costs,v0.15.0,archive,latest supported,2026-06-09,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.15.0
+costs,v0.16.0,primary,latest supported,2026-11-17,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.16.0/outputs
+costs,v0.16.0,archive,latest supported,2026-11-18,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.16.0
+costs,v0.15.0,primary,supported,2026-06-09,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.15.0/outputs
+costs,v0.15.0,archive,supported,2026-06-09,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.15.0
 costs,v0.14.0,primary,supported,2026-02-13,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.14.0/outputs
 costs,v0.14.0,archive,supported,2026-02-13,Part of the `technologydata` repository and versioned on GitHub.,https://data.pypsa.org/workflows/eur/costs/v0.14.0
 costs,v0.13.4,primary,supported,2025-12-02,Part of the `technologydata` repository and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/technology-data/refs/tags/v0.13.4/outputs
@@ -60,6 +62,8 @@ eurostat_balances,2023-04,primary,not-supported,2025-12-02,"The link is broken, 
 eurostat_balances,2023-04,archive,not-supported,2026-01-13,,https://data.pypsa.org/workflows/eur/eurostat_balances/2023-04/balances.zip
 eurostat_household_balances,unknown,primary,latest supported,2025-12-02,"URL limits the period to 2013-2022, but the data is updated regularly.",https://ec.europa.eu/eurostat/databrowser-backend/api/extraction/1.0/LIVE/false/sdmx/csv/nrg_d_hhq__custom_11480365?startPeriod=2013&endPeriod=2022
 eurostat_household_balances,2025-07-09,archive,latest supported,2026-01-13,,https://data.pypsa.org/workflows/eur/eurostat_household_balances/2025-07-09/nrg_d_hhq.csv
+ffe_industry_load_profiles,unknown,primary,latest supported,2026-11-16,API endpoint provides latest data without versioning,https://api.opendata.ffe.de/opendata?id_opendata=59
+ffe_industry_load_profiles,2026-11-16,archive,latest supported,2026-11-16,,https://data.pypsa.org/workflows/eur/ffe_industry_load_profiles/2026-11-16/ffe_industry_load_profiles.json
 gdp_per_capita,2018-02-06,primary,latest supported,2025-12-02,"Primary link is a direct download, earlier part of zenodo bundle",https://zenodo.org/records/16556029/files/GDP_per_capita_PPP_1990_2015_v2.nc
 gdp_per_capita,2018-02-06,archive,latest supported,2026-01-13,"Primary link is a direct download, earlier part of zenodo bundle",https://data.pypsa.org/workflows/eur/gdp_per_capita/2018-02-06/GDP_per_capita_PPP_1990_2015_v2.nc
 gebco,2014,primary,latest supported,2025-12-02,The dataset will be cut for the required regions after download,https://www.bodc.ac.uk/data/open_download/gebco/GEBCO_30SEC/zip/
@@ -136,8 +140,10 @@ osm_boundaries,unknown,primary,latest supported,2025-12-02,Overpass API is used 
 osm_boundaries,unknown,archive,latest supported,2026-01-13,,https://data.pypsa.org/workflows/eur/osm_boundaries/unknown/osm_boundaries.zip
 population_count,2018-11-01,primary,latest supported,2025-12-02,,https://data.worldpop.org/GIS/Population/Global_2000_2020/2019/0_Mosaicked/ppp_2019_1km_Aggregated.tif
 population_count,2018-11-01,archive,latest supported,2026-01-13,earlier part of zenodo bundle,https://data.pypsa.org/workflows/eur/population_count/2018-11-01/ppp_2019_1km_Aggregated.tif
-powerplants,0.8.1,primary,latest supported,2026-02-11,Part of the `powerplantmatching` package and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/powerplantmatching/refs/tags/v0.8.1/powerplants.csv
-powerplants,0.8.1,archive,latest supported,2026-02-12,Part of the `powerplantmatching` package and versioned on GitHub.,https://data.pypsa.org/workflows/eur/powerplants/0.8.1/powerplants.csv
+powerplants,0.9.1,primary,latest supported,2026-10-08,Part of the `powerplantmatching` package and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/powerplantmatching/refs/tags/v0.9.1/powerplants.csv
+powerplants,0.9.1,archive,latest supported,2026-11-11,Part of the `powerplantmatching` package and versioned on GitHub.,https://data.pypsa.org/workflows/eur/powerplants/0.9.1/powerplants.csv
+powerplants,0.8.1,primary,supported,2026-02-11,Part of the `powerplantmatching` package and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/powerplantmatching/refs/tags/v0.8.1/powerplants.csv
+powerplants,0.8.1,archive,supported,2026-02-12,Part of the `powerplantmatching` package and versioned on GitHub.,https://data.pypsa.org/workflows/eur/powerplants/0.8.1/powerplants.csv
 powerplants,0.8.0,primary,supported,2026-02-05,Part of the `powerplantmatching` package and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/powerplantmatching/refs/tags/v0.8.0/powerplants.csv
 powerplants,0.8.0,archive,supported,2026-02-09,Part of the `powerplantmatching` package and versioned on GitHub.,https://data.pypsa.org/workflows/eur/powerplants/0.8.0/powerplants.csv
 powerplants,0.7.1,primary,supported,2025-12-02,Part of the `powerplantmatching` package and versioned on GitHub.,https://raw.githubusercontent.com/PyPSA/powerplantmatching/refs/tags/v0.7.1/powerplants.csv

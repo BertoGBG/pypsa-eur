@@ -2312,6 +2312,26 @@
               "type": "string"
             }
           }
+        },
+        "ffe_industry_load_profiles": {
+          "description": "Configuration for a single data source.",
+          "properties": {
+            "source": {
+              "default": "archive",
+              "description": "Source of the data. 'archive' retrieves pre-built data, 'primary' retrieves from primary source.",
+              "enum": [
+                "archive",
+                "primary",
+                "build"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "default": "latest",
+              "description": "Version of the data to use. Uses the specific 'version' for the selected 'source' or the dataset tagged 'latest' for this source.",
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -2510,7 +2530,7 @@
           "type": "array"
         },
         "conventional_carriers": {
-          "description": "List of conventional power plants to include in the model from `resources/powerplants.csv`. If an included carrier is also listed in `extendable_carriers`, the capacity is taken as a lower bound.",
+          "description": "List of conventional power plants to include in the model from `resources/powerplants.csv`. If an included carrier is also listed in `extendable_carriers`, the capacity is taken as a lower bound. Sector-coupled models ignore OCGT, CCGT, oil, coal, lignite, biomass and waste here, because they add these technologies as links with fuel and emission tracking. With myopic or perfect foresight, they also ignore nuclear, which is added as links from uranium with its build years.",
           "items": {
             "type": "string"
           },
@@ -2683,7 +2703,7 @@
           "type": "number"
         },
         "conventional_carriers": {
-          "description": "List of conventional power plants to include in the sectoral network.",
+          "description": "Fuels for which buses are added to the sector-coupled network with myopic or perfect foresight, so that existing power plants can connect to them. Does not select which existing power plants are added.",
           "items": {
             "type": "string"
           },
@@ -2950,6 +2970,11 @@
           "default": 0.013,
           "description": "The emissions from oil fuel processing (e.g. oil in petrochemical refinieries). The default value of 0.013 tCO2/MWh is based on DE statistics for 2019; the EU value is very similar.",
           "type": "number"
+        },
+        "temporal_electricity_industry_load": {
+          "default": true,
+          "description": "Use hourly load profiles per industry branch for the industrial electricity demand instead of a flat profile. The profiles from [FfE](https://opendata.ffe.de/dataset/normalized-industrial-electrical-load-profiles-germany/) are for Germany and are applied to all countries.",
+          "type": "boolean"
         }
       }
     },
@@ -3147,6 +3172,11 @@
           "markdownDescription": "Whether to supplement missing data for selected time period should be supplemented by synthetic data from [Zenodo ](https://zenodo.org/records/10820928).",
           "type": "boolean"
         },
+        "prefer_synthetic": {
+          "default": false,
+          "description": "Whether to prefer synthetic data over historical data, e.g. for a consistent method across weather years. Historical data is then used only where synthetic data is missing. Implies `supplement_synthetic`.",
+          "type": "boolean"
+        },
         "substation_only": {
           "default": true,
           "description": "Whether to only consider substations for the spatial disaggregation of the per-country electricity demand data.",
@@ -3319,10 +3349,10 @@
                 }
               ],
               "default": [
-                -11,
-                30,
-                34,
-                71
+                -11.0,
+                30.0,
+                34.0,
+                71.0
               ],
               "description": "Bounding box of static maps as ``[x_min, x_max, y_min, y_max]`` in longitude/latitude degrees. If ``null``, the boundaries are derived automatically from the plotted regions."
             },
@@ -3809,46 +3839,6 @@
           },
           "description": "Colors used to represent technologies and carriers consistently across all plots. Values must be hex color strings, e.g. ``#235ebc``.",
           "type": "object"
-        }
-      }
-    },
-    "PypsaEurConfig": {
-      "description": "Configuration for `pypsa_eur` settings.",
-      "properties": {
-        "Bus": {
-          "description": "Bus carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Link": {
-          "description": "Link carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Generator": {
-          "description": "Generator carriers to keep from PyPSA-Eur. Nuclear is not kept here: the existing fleet is added as vintaged links off the uranium bus in add_existing_baseyear (see `conventional: nuclear: representation`).",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "StorageUnit": {
-          "description": "StorageUnit carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Store": {
-          "description": "Store carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         }
       }
     },
@@ -4835,17 +4825,13 @@
               "type": "number"
             },
             "hydro_max_hours": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                }
-              ],
               "default": "energy_capacity_totals_by_country",
-              "description": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. `PyPSA documentation <https://docs.pypsa.org/latest/user-guide/components/storage-units/>`_.",
-              "markdownDescription": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. [PyPSA documentation ](https://docs.pypsa.org/latest/user-guide/components/storage-units/)."
+              "description": "Method to set the storage capacity of hydro reservoirs from the country totals `E_store` in `data/hydro_capacities.csv`, at least 0.2 TWh. `energy_capacity_totals_by_country` spreads the storage missing from the power plant data over all reservoir units of a country by `p_nom`. `estimate_by_large_installations` gives all reservoir units of a country `E_store / p_nom_discharge` hours. In countries without totals, units keep their listed storage or get 6 hours.",
+              "enum": [
+                "energy_capacity_totals_by_country",
+                "estimate_by_large_installations"
+              ],
+              "type": "string"
             },
             "flatten_dispatch": {
               "default": false,
@@ -5702,6 +5688,11 @@
           "description": "Add option for coal CHPs with carbon capture.",
           "type": "boolean"
         },
+        "ccgt_cc": {
+          "default": false,
+          "description": "Add option for gas CCGTs with post-combustion carbon capture.",
+          "type": "boolean"
+        },
         "dac": {
           "default": true,
           "description": "Add option for Direct Air Capture (DAC).",
@@ -5721,126 +5712,6 @@
           "default": false,
           "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
-        },
-        "industry_t": {
-          "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
-          "properties": {
-            "endogen": {
-              "default": true,
-              "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
-              "type": "boolean"
-            },
-            "must_run": {
-              "default": 0.6,
-              "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
-              "type": "number"
-            },
-            "share_medium": {
-              "default": 0.42,
-              "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
-              "type": "number"
-            },
-            "share_high": {
-              "default": 0.58,
-              "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
-              "type": "number"
-            },
-            "heat_pump_cop": {
-              "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
-              "properties": {
-                "time_dep": {
-                  "default": true,
-                  "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
-                  "type": "boolean"
-                },
-                "sink_temperature": {
-                  "default": 150,
-                  "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
-                  "type": "number"
-                },
-                "second_law_efficiency": {
-                  "default": 0.55,
-                  "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
-                  "type": "number"
-                }
-              }
-            },
-            "low_T": {
-              "description": "Technologies for low-temperature industrial heat (steam).",
-              "properties": {
-                "biomass": {
-                  "default": true,
-                  "description": "Solid biomass boilers.",
-                  "type": "boolean"
-                },
-                "heat_pumps": {
-                  "default": true,
-                  "description": "Industrial heat pumps.",
-                  "type": "boolean"
-                },
-                "electric_boiler": {
-                  "default": true,
-                  "description": "Electric boilers.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas boilers.",
-                  "type": "boolean"
-                },
-                "methanol": {
-                  "default": true,
-                  "description": "Methanol boilers.",
-                  "type": "boolean"
-                }
-              }
-            },
-            "medium_T": {
-              "description": "Technologies for medium-temperature industrial heat.",
-              "properties": {
-                "biomass": {
-                  "default": true,
-                  "description": "Solid biomass direct firing.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas direct firing.",
-                  "type": "boolean"
-                },
-                "hydrogen": {
-                  "default": true,
-                  "description": "Hydrogen direct firing.",
-                  "type": "boolean"
-                },
-                "methanol": {
-                  "default": true,
-                  "description": "Methanol direct firing.",
-                  "type": "boolean"
-                },
-                "electric_boiler": {
-                  "default": false,
-                  "description": "Electric boilers.",
-                  "type": "boolean"
-                }
-              }
-            },
-            "high_T": {
-              "description": "Technologies for high-temperature industrial heat.",
-              "properties": {
-                "hydrogen": {
-                  "default": true,
-                  "description": "Hydrogen direct firing.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas direct firing.",
-                  "type": "boolean"
-                }
-              }
-            }
-          }
         },
         "biochar": {
           "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
@@ -5866,7 +5737,7 @@
                 }
               ],
               "default": "waste",
-              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
+              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options feed the 200-500 \u00b0C and >500 \u00b0C process heat buses and need `sector: industry_heat: enable`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
             },
             "corine": {
               "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
@@ -5993,11 +5864,6 @@
           "default": 30,
           "description": "The cost of sequestering a ton of CO2 (currency/tCO2).",
           "type": "number"
-        },
-        "co2_sequestration_lifetime": {
-          "default": 50,
-          "description": "The lifetime of a CO2 sequestration site (years).",
-          "type": "integer"
         },
         "co2_spatial": {
           "default": true,
@@ -6241,6 +6107,62 @@
           "description": "Add option for new hydrogen pipelines.",
           "type": "boolean"
         },
+        "transport_corridors": {
+          "description": "Configuration for `sector.transport_corridors` settings.",
+          "properties": {
+            "H2": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            },
+            "CO2": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            },
+            "biomass": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
         "gas_network": {
           "default": true,
           "description": "Add existing natural gas infrastructure, incl. LNG terminals, production and entry-points. The existing gas network is added with a lossless transport model. A length-weighted `k-edge augmentation algorithm <https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation>`_ can be run to add new candidate gas pipelines such that all regions of the model can be connected to the gas network. When activated, all the gas demands are regionally disaggregated as well.",
@@ -6314,6 +6236,54 @@
           ],
           "description": "Add a more detailed description of conventional carriers. Any power generation requires the consumption of fuel from nodes representing that fuel."
         },
+        "industry_heat": {
+          "description": "Configuration for `sector.industry_heat` settings.",
+          "properties": {
+            "enable": {
+              "default": false,
+              "description": "Optimise the supply of industry process heat above 100 \u00b0C per temperature band instead of using exogenous fuel shares. Does not cover the steel sector. Uses today's specific energy consumption and no existing plants, so that the first horizon of a myopic pathway can replace all of today's heat supply.",
+              "type": "boolean"
+            },
+            "min_part_load": {
+              "default": 0.8,
+              "description": "Minimum part load of newly built industry process heat supply.",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "exclude_sectors": {
+              "description": "Industry sectors in `data/industry_heat_temperature_shares.csv` that keep exogenous fuel shares. Pulp production is excluded by default because it burns its own by-products.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "technologies": {
+              "additionalProperties": {
+                "items": {
+                  "enum": [
+                    "solid biomass",
+                    "gas",
+                    "hydrogen",
+                    "heat pump",
+                    "electric boiler"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "description": "Supply technologies per temperature band in \u00b0C. Solid biomass and gas are also added with carbon capture. Heat pumps and electric boilers only supply `heat100-200`. Heat pumps have a constant coefficient of performance that assumes excess heat as source.",
+              "propertyNames": {
+                "enum": [
+                  "heat100-200",
+                  "heat200-500",
+                  "heat500+"
+                ]
+              },
+              "type": "object"
+            }
+          }
+        },
         "biomass_to_liquid": {
           "default": true,
           "description": "Add option for transforming solid biomass into liquid fuel with the same properties as oil.",
@@ -6346,7 +6316,12 @@
         },
         "municipal_solid_waste": {
           "default": false,
-          "description": "Add option for municipal solid waste.",
+          "description": "Add municipal solid waste as carbon-neutral fuel for waste-to-energy plants. Only used with `industry: waste_to_energy` or `industry: waste_to_energy_cc`.",
+          "type": "boolean"
+        },
+        "waste_spatial": {
+          "default": false,
+          "description": "Model plastic and municipal solid waste for each bus region instead of one European bus. Only used with `industry: waste_to_energy` or `industry: waste_to_energy_cc`. Waste can be transported between regions if `biomass_transport` is enabled.",
           "type": "boolean"
         },
         "limit_max_growth": {
@@ -6528,8 +6503,8 @@
               "type": "array"
             }
           ],
-          "default": "2013-01-01",
-          "description": "Left bound of date range."
+          "default": "2013-01-01 00:00",
+          "description": "First snapshot (included)."
         },
         "end": {
           "anyOf": [
@@ -6543,25 +6518,8 @@
               "type": "array"
             }
           ],
-          "default": "2014-01-01",
-          "description": "Right bound of date range."
-        },
-        "inclusive": {
-          "anyOf": [
-            {
-              "enum": [
-                "left",
-                "right",
-                "both"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": "left",
-          "description": "Make the time interval closed to the `left`, `right`, or both sides `both` or neither side `None`."
+          "default": "2013-12-31 23:00",
+          "description": "Last snapshot (included), with time, e.g. `2013-12-31 23:00`."
         }
       }
     },
@@ -7748,7 +7706,7 @@
             }
           ],
           "default": "waste",
-          "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
+          "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options feed the 200-500 \u00b0C and >500 \u00b0C process heat buses and need `sector: industry_heat: enable`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
         },
         "corine": {
           "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
@@ -8029,6 +7987,23 @@
       "required": [
         "grid_codes"
       ]
+    },
+    "_CorridorConfig": {
+      "description": "Configuration for the candidate corridors of one carrier.",
+      "properties": {
+        "min_degree": {
+          "default": 1,
+          "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_offshore_distance": {
+          "default": null,
+          "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      }
     },
     "_CutoutConfig": {
       "description": "Configuration for a single cutout in `atlite.cutouts`.",
@@ -8856,17 +8831,13 @@
           "type": "number"
         },
         "hydro_max_hours": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "number"
-            }
-          ],
           "default": "energy_capacity_totals_by_country",
-          "description": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. `PyPSA documentation <https://docs.pypsa.org/latest/user-guide/components/storage-units/>`_.",
-          "markdownDescription": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. [PyPSA documentation ](https://docs.pypsa.org/latest/user-guide/components/storage-units/)."
+          "description": "Method to set the storage capacity of hydro reservoirs from the country totals `E_store` in `data/hydro_capacities.csv`, at least 0.2 TWh. `energy_capacity_totals_by_country` spreads the storage missing from the power plant data over all reservoir units of a country by `p_nom`. `estimate_by_large_installations` gives all reservoir units of a country `E_store / p_nom_discharge` hours. In countries without totals, units keep their listed storage or get 6 hours.",
+          "enum": [
+            "energy_capacity_totals_by_country",
+            "estimate_by_large_installations"
+          ],
+          "type": "string"
         },
         "flatten_dispatch": {
           "default": false,
@@ -8954,218 +8925,51 @@
         }
       }
     },
-    "_IndustryHeatPumpCopConfig": {
-      "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
+    "_IndustryHeatConfig": {
+      "description": "Configuration for `sector.industry_heat` settings.",
       "properties": {
-        "time_dep": {
-          "default": true,
-          "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
-          "type": "boolean"
-        },
-        "sink_temperature": {
-          "default": 150,
-          "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
-          "type": "number"
-        },
-        "second_law_efficiency": {
-          "default": 0.55,
-          "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
-          "type": "number"
-        }
-      }
-    },
-    "_IndustryHighTConfig": {
-      "description": "Technologies for high-temperature industrial heat.",
-      "properties": {
-        "hydrogen": {
-          "default": true,
-          "description": "Hydrogen direct firing.",
-          "type": "boolean"
-        },
-        "methane": {
-          "default": true,
-          "description": "Gas direct firing.",
-          "type": "boolean"
-        }
-      }
-    },
-    "_IndustryLowTConfig": {
-      "description": "Technologies for low-temperature industrial heat (steam).",
-      "properties": {
-        "biomass": {
-          "default": true,
-          "description": "Solid biomass boilers.",
-          "type": "boolean"
-        },
-        "heat_pumps": {
-          "default": true,
-          "description": "Industrial heat pumps.",
-          "type": "boolean"
-        },
-        "electric_boiler": {
-          "default": true,
-          "description": "Electric boilers.",
-          "type": "boolean"
-        },
-        "methane": {
-          "default": true,
-          "description": "Gas boilers.",
-          "type": "boolean"
-        },
-        "methanol": {
-          "default": true,
-          "description": "Methanol boilers.",
-          "type": "boolean"
-        }
-      }
-    },
-    "_IndustryMediumTConfig": {
-      "description": "Technologies for medium-temperature industrial heat.",
-      "properties": {
-        "biomass": {
-          "default": true,
-          "description": "Solid biomass direct firing.",
-          "type": "boolean"
-        },
-        "methane": {
-          "default": true,
-          "description": "Gas direct firing.",
-          "type": "boolean"
-        },
-        "hydrogen": {
-          "default": true,
-          "description": "Hydrogen direct firing.",
-          "type": "boolean"
-        },
-        "methanol": {
-          "default": true,
-          "description": "Methanol direct firing.",
-          "type": "boolean"
-        },
-        "electric_boiler": {
+        "enable": {
           "default": false,
-          "description": "Electric boilers.",
-          "type": "boolean"
-        }
-      }
-    },
-    "_IndustryTConfig": {
-      "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
-      "properties": {
-        "endogen": {
-          "default": true,
-          "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
+          "description": "Optimise the supply of industry process heat above 100 \u00b0C per temperature band instead of using exogenous fuel shares. Does not cover the steel sector. Uses today's specific energy consumption and no existing plants, so that the first horizon of a myopic pathway can replace all of today's heat supply.",
           "type": "boolean"
         },
-        "must_run": {
-          "default": 0.6,
-          "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
+        "min_part_load": {
+          "default": 0.8,
+          "description": "Minimum part load of newly built industry process heat supply.",
+          "maximum": 1,
+          "minimum": 0,
           "type": "number"
         },
-        "share_medium": {
-          "default": 0.42,
-          "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
-          "type": "number"
+        "exclude_sectors": {
+          "description": "Industry sectors in `data/industry_heat_temperature_shares.csv` that keep exogenous fuel shares. Pulp production is excluded by default because it burns its own by-products.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
-        "share_high": {
-          "default": 0.58,
-          "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
-          "type": "number"
-        },
-        "heat_pump_cop": {
-          "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
-          "properties": {
-            "time_dep": {
-              "default": true,
-              "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
-              "type": "boolean"
+        "technologies": {
+          "additionalProperties": {
+            "items": {
+              "enum": [
+                "solid biomass",
+                "gas",
+                "hydrogen",
+                "heat pump",
+                "electric boiler"
+              ],
+              "type": "string"
             },
-            "sink_temperature": {
-              "default": 150,
-              "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
-              "type": "number"
-            },
-            "second_law_efficiency": {
-              "default": 0.55,
-              "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
-              "type": "number"
-            }
-          }
-        },
-        "low_T": {
-          "description": "Technologies for low-temperature industrial heat (steam).",
-          "properties": {
-            "biomass": {
-              "default": true,
-              "description": "Solid biomass boilers.",
-              "type": "boolean"
-            },
-            "heat_pumps": {
-              "default": true,
-              "description": "Industrial heat pumps.",
-              "type": "boolean"
-            },
-            "electric_boiler": {
-              "default": true,
-              "description": "Electric boilers.",
-              "type": "boolean"
-            },
-            "methane": {
-              "default": true,
-              "description": "Gas boilers.",
-              "type": "boolean"
-            },
-            "methanol": {
-              "default": true,
-              "description": "Methanol boilers.",
-              "type": "boolean"
-            }
-          }
-        },
-        "medium_T": {
-          "description": "Technologies for medium-temperature industrial heat.",
-          "properties": {
-            "biomass": {
-              "default": true,
-              "description": "Solid biomass direct firing.",
-              "type": "boolean"
-            },
-            "methane": {
-              "default": true,
-              "description": "Gas direct firing.",
-              "type": "boolean"
-            },
-            "hydrogen": {
-              "default": true,
-              "description": "Hydrogen direct firing.",
-              "type": "boolean"
-            },
-            "methanol": {
-              "default": true,
-              "description": "Methanol direct firing.",
-              "type": "boolean"
-            },
-            "electric_boiler": {
-              "default": false,
-              "description": "Electric boilers.",
-              "type": "boolean"
-            }
-          }
-        },
-        "high_T": {
-          "description": "Technologies for high-temperature industrial heat.",
-          "properties": {
-            "hydrogen": {
-              "default": true,
-              "description": "Hydrogen direct firing.",
-              "type": "boolean"
-            },
-            "methane": {
-              "default": true,
-              "description": "Gas direct firing.",
-              "type": "boolean"
-            }
-          }
+            "type": "array"
+          },
+          "description": "Supply technologies per temperature band in \u00b0C. Solid biomass and gas are also added with carbon capture. Heat pumps and electric boilers only supply `heat100-200`. Heat pumps have a constant coefficient of performance that assumes excess heat as source.",
+          "propertyNames": {
+            "enum": [
+              "heat100-200",
+              "heat200-500",
+              "heat500+"
+            ]
+          },
+          "type": "object"
         }
       }
     },
@@ -9291,10 +9095,10 @@
             }
           ],
           "default": [
-            -11,
-            30,
-            34,
-            71
+            -11.0,
+            30.0,
+            34.0,
+            71.0
           ],
           "description": "Bounding box of static maps as ``[x_min, x_max, y_min, y_max]`` in longitude/latitude degrees. If ``null``, the boundaries are derived automatically from the plotted regions."
         },
@@ -10742,6 +10546,62 @@
         }
       }
     },
+    "_TransportCorridorsConfig": {
+      "description": "Configuration for `sector.transport_corridors` settings.",
+      "properties": {
+        "H2": {
+          "description": "Configuration for the candidate corridors of one carrier.",
+          "properties": {
+            "min_degree": {
+              "default": 1,
+              "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_offshore_distance": {
+              "default": null,
+              "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          }
+        },
+        "CO2": {
+          "description": "Configuration for the candidate corridors of one carrier.",
+          "properties": {
+            "min_degree": {
+              "default": 1,
+              "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_offshore_distance": {
+              "default": null,
+              "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          }
+        },
+        "biomass": {
+          "description": "Configuration for the candidate corridors of one carrier.",
+          "properties": {
+            "min_degree": {
+              "default": 1,
+              "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_offshore_distance": {
+              "default": null,
+              "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
     "_UnsustainableBioliquidsConfig": {
       "description": "Configuration for `biomass.unsustainable_bioliquids` settings.",
       "properties": {
@@ -11094,8 +10954,8 @@
               "type": "array"
             }
           ],
-          "default": "2013-01-01",
-          "description": "Left bound of date range."
+          "default": "2013-01-01 00:00",
+          "description": "First snapshot (included)."
         },
         "end": {
           "anyOf": [
@@ -11109,25 +10969,8 @@
               "type": "array"
             }
           ],
-          "default": "2014-01-01",
-          "description": "Right bound of date range."
-        },
-        "inclusive": {
-          "anyOf": [
-            {
-              "enum": [
-                "left",
-                "right",
-                "both"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": "left",
-          "description": "Make the time interval closed to the `left`, `right`, or both sides `both` or neither side `None`."
+          "default": "2013-12-31 23:00",
+          "description": "Last snapshot (included), with time, e.g. `2013-12-31 23:00`."
         }
       }
     },
@@ -11439,7 +11282,7 @@
           "type": "array"
         },
         "conventional_carriers": {
-          "description": "List of conventional power plants to include in the model from `resources/powerplants.csv`. If an included carrier is also listed in `extendable_carriers`, the capacity is taken as a lower bound.",
+          "description": "List of conventional power plants to include in the model from `resources/powerplants.csv`. If an included carrier is also listed in `extendable_carriers`, the capacity is taken as a lower bound. Sector-coupled models ignore OCGT, CCGT, oil, coal, lignite, biomass and waste here, because they add these technologies as links with fuel and emission tracking. With myopic or perfect foresight, they also ignore nuclear, which is added as links from uranium with its build years.",
           "items": {
             "type": "string"
           },
@@ -12743,17 +12586,13 @@
               "type": "number"
             },
             "hydro_max_hours": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                }
-              ],
               "default": "energy_capacity_totals_by_country",
-              "description": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. `PyPSA documentation <https://docs.pypsa.org/latest/user-guide/components/storage-units/>`_.",
-              "markdownDescription": "Maximum state of charge capacity of the pumped-hydro storage (PHS) in terms of hours at full output capacity `p_nom` or heuristically determined. Cf. [PyPSA documentation ](https://docs.pypsa.org/latest/user-guide/components/storage-units/)."
+              "description": "Method to set the storage capacity of hydro reservoirs from the country totals `E_store` in `data/hydro_capacities.csv`, at least 0.2 TWh. `energy_capacity_totals_by_country` spreads the storage missing from the power plant data over all reservoir units of a country by `p_nom`. `estimate_by_large_installations` gives all reservoir units of a country `E_store / p_nom_discharge` hours. In countries without totals, units keep their listed storage or get 6 hours.",
+              "enum": [
+                "energy_capacity_totals_by_country",
+                "estimate_by_large_installations"
+              ],
+              "type": "string"
             },
             "flatten_dispatch": {
               "default": false,
@@ -13264,6 +13103,11 @@
           "markdownDescription": "Whether to supplement missing data for selected time period should be supplemented by synthetic data from [Zenodo ](https://zenodo.org/records/10820928).",
           "type": "boolean"
         },
+        "prefer_synthetic": {
+          "default": false,
+          "description": "Whether to prefer synthetic data over historical data, e.g. for a consistent method across weather years. Historical data is then used only where synthetic data is missing. Implies `supplement_synthetic`.",
+          "type": "boolean"
+        },
         "substation_only": {
           "default": true,
           "description": "Whether to only consider substations for the spatial disaggregation of the per-country electricity demand data.",
@@ -13283,46 +13127,6 @@
               "type": "number"
             }
           }
-        }
-      }
-    },
-    "pypsa_eur": {
-      "description": "Configuration for `pypsa_eur` settings.",
-      "properties": {
-        "Bus": {
-          "description": "Bus carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Link": {
-          "description": "Link carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Generator": {
-          "description": "Generator carriers to keep from PyPSA-Eur. Nuclear is not kept here: the existing fleet is added as vintaged links off the uranium bus in add_existing_baseyear (see `conventional: nuclear: representation`).",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "StorageUnit": {
-          "description": "StorageUnit carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "Store": {
-          "description": "Store carriers to keep from PyPSA-Eur.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
         }
       }
     },
@@ -13522,7 +13326,7 @@
           "type": "number"
         },
         "conventional_carriers": {
-          "description": "List of conventional power plants to include in the sectoral network.",
+          "description": "Fuels for which buses are added to the sector-coupled network with myopic or perfect foresight, so that existing power plants can connect to them. Does not select which existing power plants are added.",
           "items": {
             "type": "string"
           },
@@ -14182,6 +13986,11 @@
           "description": "Add option for coal CHPs with carbon capture.",
           "type": "boolean"
         },
+        "ccgt_cc": {
+          "default": false,
+          "description": "Add option for gas CCGTs with post-combustion carbon capture.",
+          "type": "boolean"
+        },
         "dac": {
           "default": true,
           "description": "Add option for Direct Air Capture (DAC).",
@@ -14201,126 +14010,6 @@
           "default": false,
           "description": "Add option for enhanced rock weathering as a carbon dioxide removal (CDR) technology.",
           "type": "boolean"
-        },
-        "industry_t": {
-          "description": "Configuration for `sector.industry_t` (endogenous industrial heat supply by temperature band).",
-          "properties": {
-            "endogen": {
-              "default": true,
-              "description": "Optimise the heat supply of industry endogenously per temperature band (low, medium, high); false: fixed solid biomass and gas demand as in the upstream model.",
-              "type": "boolean"
-            },
-            "must_run": {
-              "default": 0.6,
-              "description": "Minimum dispatch (`p_min_pu`) of the industrial heat supply: heat is supplied by discrete on-site plants that follow the local demand.",
-              "type": "number"
-            },
-            "share_medium": {
-              "default": 0.42,
-              "description": "Share of medium-temperature process heat (Agora Industry, EU27, Fig. 5).",
-              "type": "number"
-            },
-            "share_high": {
-              "default": 0.58,
-              "description": "Share of high-temperature process heat (Agora Industry, EU27, Fig. 5).",
-              "type": "number"
-            },
-            "heat_pump_cop": {
-              "description": "Configuration for `sector.industry_t.heat_pump_cop` settings.",
-              "properties": {
-                "time_dep": {
-                  "default": true,
-                  "description": "Hourly, node-resolved COP of the low-temperature industrial heat pumps from the ambient air temperature; false: fixed COP from technology-data.",
-                  "type": "boolean"
-                },
-                "sink_temperature": {
-                  "default": 150,
-                  "description": "Sink temperature in degrees Celsius (steam); the DEA high-temperature heat pump sheet covers sinks up to 150 degrees Celsius.",
-                  "type": "number"
-                },
-                "second_law_efficiency": {
-                  "default": 0.55,
-                  "description": "Real COP as a fraction of the theoretical Carnot COP (DEA technology catalogue).",
-                  "type": "number"
-                }
-              }
-            },
-            "low_T": {
-              "description": "Technologies for low-temperature industrial heat (steam).",
-              "properties": {
-                "biomass": {
-                  "default": true,
-                  "description": "Solid biomass boilers.",
-                  "type": "boolean"
-                },
-                "heat_pumps": {
-                  "default": true,
-                  "description": "Industrial heat pumps.",
-                  "type": "boolean"
-                },
-                "electric_boiler": {
-                  "default": true,
-                  "description": "Electric boilers.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas boilers.",
-                  "type": "boolean"
-                },
-                "methanol": {
-                  "default": true,
-                  "description": "Methanol boilers.",
-                  "type": "boolean"
-                }
-              }
-            },
-            "medium_T": {
-              "description": "Technologies for medium-temperature industrial heat.",
-              "properties": {
-                "biomass": {
-                  "default": true,
-                  "description": "Solid biomass direct firing.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas direct firing.",
-                  "type": "boolean"
-                },
-                "hydrogen": {
-                  "default": true,
-                  "description": "Hydrogen direct firing.",
-                  "type": "boolean"
-                },
-                "methanol": {
-                  "default": true,
-                  "description": "Methanol direct firing.",
-                  "type": "boolean"
-                },
-                "electric_boiler": {
-                  "default": false,
-                  "description": "Electric boilers.",
-                  "type": "boolean"
-                }
-              }
-            },
-            "high_T": {
-              "description": "Technologies for high-temperature industrial heat.",
-              "properties": {
-                "hydrogen": {
-                  "default": true,
-                  "description": "Hydrogen direct firing.",
-                  "type": "boolean"
-                },
-                "methane": {
-                  "default": true,
-                  "description": "Gas direct firing.",
-                  "type": "boolean"
-                }
-              }
-            }
-          }
         },
         "biochar": {
           "description": "Configuration for `sector.biochar` settings.\n\nAll biochar settings, including its land-eligibility settings, are\nconsolidated here rather than split across `renewable.biochar` (like\nafforestation/rock_weathering) and a top-level `biochar:` key, since\nbiochar is the only technology sharing the shared\ndetermine_availability_matrix.py/build_available_land.py plumbing\nwhose config was fully collected under `sector.<technology>`.",
@@ -14346,7 +14035,7 @@
                 }
               ],
               "default": "waste",
-              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options need `sector: industry_t: endogen`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
+              "description": "Destination of the pyrolysis heat: 'waste', 'urban_central_heat', 'medium_T_industry' or 'high_T_industry' (the industry options feed the 200-500 \u00b0C and >500 \u00b0C process heat buses and need `sector: industry_heat: enable`). Heat the destination cannot absorb goes to waste. `true`/`false` are kept for compatibility (district heating / waste)."
             },
             "corine": {
               "description": "CORINE Land Cover codes for non-irrigated arable land (potential biochar feedstock land).",
@@ -14473,11 +14162,6 @@
           "default": 30,
           "description": "The cost of sequestering a ton of CO2 (currency/tCO2).",
           "type": "number"
-        },
-        "co2_sequestration_lifetime": {
-          "default": 50,
-          "description": "The lifetime of a CO2 sequestration site (years).",
-          "type": "integer"
         },
         "co2_spatial": {
           "default": true,
@@ -14721,6 +14405,62 @@
           "description": "Add option for new hydrogen pipelines.",
           "type": "boolean"
         },
+        "transport_corridors": {
+          "description": "Configuration for `sector.transport_corridors` settings.",
+          "properties": {
+            "H2": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            },
+            "CO2": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            },
+            "biomass": {
+              "description": "Configuration for the candidate corridors of one carrier.",
+              "properties": {
+                "min_degree": {
+                  "default": 1,
+                  "description": "Minimum number of candidate corridors per region. The candidates start from the Gabriel graph and add the shortest Delaunay edges until each region reaches this degree. Set to 0 to use the full Delaunay graph.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "max_offshore_distance": {
+                  "default": null,
+                  "description": "Maximum offshore length of a candidate corridor (km). Defaults to unlimited (`.inf`).",
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          }
+        },
         "gas_network": {
           "default": true,
           "description": "Add existing natural gas infrastructure, incl. LNG terminals, production and entry-points. The existing gas network is added with a lossless transport model. A length-weighted `k-edge augmentation algorithm <https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation>`_ can be run to add new candidate gas pipelines such that all regions of the model can be connected to the gas network. When activated, all the gas demands are regionally disaggregated as well.",
@@ -14794,6 +14534,54 @@
           ],
           "description": "Add a more detailed description of conventional carriers. Any power generation requires the consumption of fuel from nodes representing that fuel."
         },
+        "industry_heat": {
+          "description": "Configuration for `sector.industry_heat` settings.",
+          "properties": {
+            "enable": {
+              "default": false,
+              "description": "Optimise the supply of industry process heat above 100 \u00b0C per temperature band instead of using exogenous fuel shares. Does not cover the steel sector. Uses today's specific energy consumption and no existing plants, so that the first horizon of a myopic pathway can replace all of today's heat supply.",
+              "type": "boolean"
+            },
+            "min_part_load": {
+              "default": 0.8,
+              "description": "Minimum part load of newly built industry process heat supply.",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "exclude_sectors": {
+              "description": "Industry sectors in `data/industry_heat_temperature_shares.csv` that keep exogenous fuel shares. Pulp production is excluded by default because it burns its own by-products.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "technologies": {
+              "additionalProperties": {
+                "items": {
+                  "enum": [
+                    "solid biomass",
+                    "gas",
+                    "hydrogen",
+                    "heat pump",
+                    "electric boiler"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "description": "Supply technologies per temperature band in \u00b0C. Solid biomass and gas are also added with carbon capture. Heat pumps and electric boilers only supply `heat100-200`. Heat pumps have a constant coefficient of performance that assumes excess heat as source.",
+              "propertyNames": {
+                "enum": [
+                  "heat100-200",
+                  "heat200-500",
+                  "heat500+"
+                ]
+              },
+              "type": "object"
+            }
+          }
+        },
         "biomass_to_liquid": {
           "default": true,
           "description": "Add option for transforming solid biomass into liquid fuel with the same properties as oil.",
@@ -14826,7 +14614,12 @@
         },
         "municipal_solid_waste": {
           "default": false,
-          "description": "Add option for municipal solid waste.",
+          "description": "Add municipal solid waste as carbon-neutral fuel for waste-to-energy plants. Only used with `industry: waste_to_energy` or `industry: waste_to_energy_cc`.",
+          "type": "boolean"
+        },
+        "waste_spatial": {
+          "default": false,
+          "description": "Model plastic and municipal solid waste for each bus region instead of one European bus. Only used with `industry: waste_to_energy` or `industry: waste_to_energy_cc`. Waste can be transported between regions if `biomass_transport` is enabled.",
           "type": "boolean"
         },
         "limit_max_growth": {
@@ -15210,6 +15003,11 @@
           "default": 0.013,
           "description": "The emissions from oil fuel processing (e.g. oil in petrochemical refinieries). The default value of 0.013 tCO2/MWh is based on DE statistics for 2019; the EU value is very similar.",
           "type": "number"
+        },
+        "temporal_electricity_industry_load": {
+          "default": true,
+          "description": "Use hourly load profiles per industry branch for the industrial electricity demand instead of a flat profile. The profiles from [FfE](https://opendata.ffe.de/dataset/normalized-industrial-electrical-load-profiles-germany/) are for Germany and are applied to all countries.",
+          "type": "boolean"
         }
       }
     },
@@ -17397,6 +17195,26 @@
               "type": "string"
             }
           }
+        },
+        "ffe_industry_load_profiles": {
+          "description": "Configuration for a single data source.",
+          "properties": {
+            "source": {
+              "default": "archive",
+              "description": "Source of the data. 'archive' retrieves pre-built data, 'primary' retrieves from primary source.",
+              "enum": [
+                "archive",
+                "primary",
+                "build"
+              ],
+              "type": "string"
+            },
+            "version": {
+              "default": "latest",
+              "description": "Version of the data to use. Uses the specific 'version' for the selected 'source' or the dataset tagged 'latest' for this source.",
+              "type": "string"
+            }
+          }
         }
       }
     },
@@ -17480,10 +17298,10 @@
                 }
               ],
               "default": [
-                -11,
-                30,
-                34,
-                71
+                -11.0,
+                30.0,
+                34.0,
+                71.0
               ],
               "description": "Bounding box of static maps as ``[x_min, x_max, y_min, y_max]`` in longitude/latitude degrees. If ``null``, the boundaries are derived automatically from the plotted regions."
             },

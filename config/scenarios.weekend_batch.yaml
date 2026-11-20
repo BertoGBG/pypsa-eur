@@ -40,7 +40,7 @@
 
 weekend_run1:
   # Baseline reference: everything off. NOT the same as the old
-  # config.run1_baseline_50_8h.yaml, which also disabled industry_t.endogen
+  # config.run1_baseline_50_8h.yaml, which also disabled industry_heat.enable
   # /endogenous_sectors -- this batch keeps those ON (set in the common
   # config file) for every scenario including this one.
   fossil_limit: false

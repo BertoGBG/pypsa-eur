@@ -38,13 +38,13 @@ idx = pd.IndexSlice
 
 
 def add_brownfield(
-    n,
-    n_p,
-    year,
-    h2_retrofit=False,
-    h2_retrofit_capacity_per_ch4=None,
-    capacity_threshold=None,
-):
+    n: pypsa.Network,
+    n_p: pypsa.Network,
+    year: int,
+    h2_retrofit: bool = False,
+    h2_retrofit_capacity_per_ch4: float | None = None,
+    capacity_threshold: float | None = None,
+) -> None:
     """
     Add brownfield capacity from previous network.
 
@@ -143,26 +143,10 @@ def add_brownfield(
                 ],
             )
 
-        # must-run industry-heat links (add_*_t_industry in prepare_sector_network.py)
-        # can force a fixed vintage to overshoot demand if it falls in a later
-        # horizon; keep them extendable but capped at their old p_nom (shrink-only,
-        # capital_cost=0 since sunk) so the model can retire the excess instead of
-        # going infeasible. New capacity still grows via the current horizon's link.
-        industry_heat_i = (
-            c.static.index[
-                c.static.bus1.str.endswith(
-                    (" lowT industry", " mediumT industry", " highT industry")
-                )
-            ]
-            if c.name == "Link"
-            else c.static.index[[]]
-        )
-
         n_p.remove(
             c.name,
             c.static.index[
                 (c.static[f"{attr}_nom_extendable"] & ~c.static.index.isin(chp_heat))
-                & ~c.static.index.isin(industry_heat_i)
                 & (c.static[f"{attr}_nom_opt"] < capacity_threshold)
             ],
         )
@@ -171,13 +155,11 @@ def add_brownfield(
         c.static[f"{attr}_nom"] = c.static[f"{attr}_nom_opt"]
         c.static[f"{attr}_nom_extendable"] = False
 
-        if len(industry_heat_i) > 0:
-            c.static.loc[industry_heat_i, f"{attr}_nom_max"] = c.static.loc[
-                industry_heat_i, f"{attr}_nom_opt"
-            ]
-            c.static.loc[industry_heat_i, f"{attr}_nom_min"] = 0.0
-            c.static.loc[industry_heat_i, f"{attr}_nom_extendable"] = True
-            c.static.loc[industry_heat_i, "capital_cost"] = 0.0
+        # existing industry heat supply may idle, otherwise its minimum part
+        # load is infeasible with falling demand or emission limits
+        if c.name == "Link":
+            industry_heat = c.static.carrier.str.fullmatch("heat.+ industry .+")
+            c.static.loc[industry_heat, "p_min_pu"] = 0.0
 
         n.add(c.name, c.static.index, **c.static)
 
@@ -265,7 +247,9 @@ def add_brownfield(
             fr = "H2 pipeline retrofitted"
             to = "gas pipeline"
             CH4_per_H2 = 1 / h2_retrofit_capacity_per_ch4
-            already_retrofitted.index = already_retrofitted.index.str.replace(fr, to)
+            already_retrofitted.index = already_retrofitted.index.str.replace(
+                fr, to
+            ).str.removesuffix(f"-{year}")
             remaining_capacity = (
                 pipe_capacity
                 - CH4_per_H2
@@ -302,7 +286,7 @@ def update_transmission_limit(n: pypsa.Network, transmission_limit: str) -> None
     n.global_constraints.loc[f"l{kind}_limit", "constant"] = float(factor) * ref
 
 
-def disable_grid_expansion_if_limit_hit(n):
+def disable_grid_expansion_if_limit_hit(n: pypsa.Network) -> None:
     """
     Check if transmission expansion limit is already reached; then turn off.
 
@@ -389,7 +373,9 @@ def adjust_renewable_profiles(n, input_profiles, params, year):
             n.generators_t.p_max_pu.loc[:, p_max_pu.columns] = p_max_pu
 
 
-def update_heat_pump_efficiency(n: pypsa.Network, n_p: pypsa.Network, year: int):
+def update_heat_pump_efficiency(
+    n: pypsa.Network, n_p: pypsa.Network, year: int
+) -> None:
     """
     Update the efficiency of heat pumps from previous years to current year
     (e.g. 2030 heat pumps receive 2040 heat pump COPs in 2030).
@@ -411,7 +397,7 @@ def update_heat_pump_efficiency(n: pypsa.Network, n_p: pypsa.Network, year: int)
 
     # get names of heat pumps in previous iteration that cannot be replaced by direct utilisation in this iteration
     heat_pump_idx_previous_iteration = n_p.links.index[
-        n_p.links.index.str.contains("heat pump")
+        n_p.links.index.str.contains("urban central.*heat pump")
         & n_p.links.index.str[:-4].isin(
             n.links_t.efficiency.columns.str.rstrip(  # sources that can be directly used are no longer represented by heat pumps in the dynamic efficiency dataframe
                 str(year)
