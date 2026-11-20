@@ -3121,18 +3121,28 @@ def add_h2_gas_infrastructure(
         )
 
     if options["biomethanation_CO2"]:
+        co2_input = costs.at["biomethanation CO2", "CO2-input"]
+        methane_output = costs.at["biomethanation CO2", "methane-output"]
+        # carbon balance: the CO2 that does not end up in the methane leaves
+        # the reactor unconverted and is vented. technology-data gives slightly
+        # more CO2 input (0.165 t/MWh_H2) than the methane carries
+        # (0.8229 x 0.198 = 0.163 t), which would otherwise vanish and count
+        # as removal.
+        co2_vented = co2_input - methane_output * costs.at["gas", "CO2 intensity"]
         n.add(
             "Link",
             spatial.nodes,
-            suffix=" biomethantion CO2",
+            suffix=" biomethanation CO2",
             bus0=nodes + " H2",
-            bus1= spatial.co2.nodes,
+            bus1=spatial.co2.nodes,
             bus2=spatial.gas.nodes,
+            bus3="co2 atmosphere",
             carrier="biomethanation CO2",
             capital_cost=costs.at["biomethanation CO2", "capital_cost"],
             marginal_cost=costs.at["biomethanation CO2", "VOM"],
-            efficiency=-costs.at["biomethanation CO2", "CO2-input"],
-            efficiency2=costs.at["biomethanation CO2", "methane-output"],
+            efficiency=-co2_input,
+            efficiency2=methane_output,
+            efficiency3=co2_vented,
             p_nom_extendable=True,
             lifetime=costs.at["biomethanation CO2", "lifetime"],
         )
