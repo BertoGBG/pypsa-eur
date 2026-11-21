@@ -6898,18 +6898,28 @@ def add_industry(
             efficiency2=costs.at["solid biomass", "CO2 intensity"],
             efficiency3=-costs.at["solid biomass", "CO2 intensity"],
         )
-        n.add(
-            "Link",
-            spatial.cement.heat,
-            suffix=" waste",
-            bus0=spatial.oil.non_sequestered_hvc,
-            bus1=spatial.cement.heat,
-            bus2=spatial.cement.nodes + " emission",
-            carrier="cement heat waste",
-            p_nom=1e6,
-            efficiency=0.9,
-            efficiency2=costs.at["oil", "CO2 intensity"],
-        )
+        # plastic waste (non-sequestered HVC) as kiln fuel; its buses only
+        # exist with waste-to-energy (add_waste), per node or one EU bus
+        # (sector: waste_spatial)
+        waste_buses = pd.Index(spatial.waste.nodes)
+        if waste_buses.isin(n.buses.index).all():
+            waste_bus0 = (
+                spatial.cement.location + " non-sequestered HVC"
+                if len(waste_buses) > 1
+                else waste_buses[0]
+            )
+            n.add(
+                "Link",
+                spatial.cement.heat,
+                suffix=" waste",
+                bus0=waste_bus0,
+                bus1=spatial.cement.heat,
+                bus2=spatial.cement.nodes + " emission",
+                carrier="cement heat waste",
+                p_nom=1e6,
+                efficiency=0.9,
+                efficiency2=costs.at["oil", "CO2 intensity"],
+            )
         n.add(
             "Link",
             spatial.cement.nodes,
