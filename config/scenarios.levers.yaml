@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=schema.default.json
+# Lever settings of the energy_independency study, one lever changed at a time
+# from the base in config.ei_base.yaml. Combine with the constraint scenarios
+# (import limits, climate target, LULUCF) for the production runs.
+# Values and sources: paper, Supplemental Note S7.
+
+lever_base: {}
+
+# Lever 1, CO2 infrastructure: sequestration capacity x1.6 (400 Mt plateau)
+lever_co2_high:
+  sector:
+    co2_sequestration_potential:
+      2020: 0
+      2025: 0
+      2030: 64
+      2035: 160
+      2040: 288
+      2045: 400
+      2050: 400
+
+# Lever 2, land transport: fleet shares from 100 % zero-emission car sales
+# from 2030 (Zeyen et al. 2025 "Fast") with a 15-year stock turnover
+lever_transport_fast:
+  sector:
+    land_transport_electric_share:
+      2020: 0
+      2025: 0.05
+      2030: 0.28
+      2035: 0.61
+      2040: 0.89
+      2045: 1
+      2050: 1
+    land_transport_ice_share:
+      2020: 1
+      2025: 0.95
+      2030: 0.72
+      2035: 0.39
+      2040: 0.11
+      2045: 0
+      2050: 0
+
+# Lever 3, power grid: x1.5 by 2050 (Neumann et al. 2025 optimum)
+lever_grid_high:
+  electricity:
+    transmission_limit:
+      2025: v1.0
+      2030: v1.085
+      2035: v1.085
+      2040: v1.085
+      2045: v1.085
+      2050: v1.085

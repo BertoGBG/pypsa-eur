@@ -25,6 +25,18 @@ clustering:
   cluster_network:
     n_clusters: 50
 
+# Lever 3, power grid: base = x1.25 by 2050 at an equal rate per horizon
+# (myopic: each value is relative to the previous horizon's grid); the
+# hydrogen network is not limited. High case (x1.5) set per scenario.
+electricity:
+  transmission_limit:
+    2025: v1.0
+    2030: v1.046
+    2035: v1.046
+    2040: v1.046
+    2045: v1.046
+    2050: v1.046
+
 sector:
   enabled: true
   # CDR technologies (on by default on heat_industry)
@@ -36,8 +48,9 @@ sector:
     heat_output: waste
   biomethanation_biogas: true
   biomethanation_CO2: true
-  # 2050 raised from the default 250 Mt: with BAU LULUCF the 2050 net target
-  # (-381 Mt) is infeasible at 250 Mt once carbon is conserved (merge test 2026-11-23)
+  # Lever 1, CO2 infrastructure: base profile (PyPSA-Eur default, 250 Mt
+  # plateau). High profile = x1.6 (400 Mt plateau), set per scenario.
+  # Note: base profile + business-as-usual LULUCF has no solution in 2050.
   co2_sequestration_potential:
     2020: 0
     2025: 0
@@ -45,7 +58,10 @@ sector:
     2035: 100
     2040: 180
     2045: 250
-    2050: 400
+    2050: 250
+  # Lever 2, land transport: base = PyPSA-Eur default electric shares
+  # (5/20/45/70/85/100 %), consistent with the EU 2035 ICE sales ban and a
+  # 15-year fleet turnover. Fast case set per scenario.
   # own sector extensions (on by default on heat_industry)
   shipping_endogenous: true
   biomass_transport: true
