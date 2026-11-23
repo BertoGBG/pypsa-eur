@@ -36,6 +36,16 @@ sector:
     heat_output: waste
   biomethanation_biogas: true
   biomethanation_CO2: true
+  # 2050 raised from the default 250 Mt: with BAU LULUCF the 2050 net target
+  # (-381 Mt) is infeasible at 250 Mt once carbon is conserved (merge test 2026-11-23)
+  co2_sequestration_potential:
+    2020: 0
+    2025: 0
+    2030: 40
+    2035: 100
+    2040: 180
+    2045: 250
+    2050: 400
   # own sector extensions (on by default on heat_industry)
   shipping_endogenous: true
   biomass_transport: true
