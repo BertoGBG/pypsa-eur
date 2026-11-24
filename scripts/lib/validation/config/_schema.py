@@ -183,12 +183,12 @@ class ConfigSchema(BaseModel):
     )
     energy_limit_per_carrier_values: dict[str, dict[int, float]] = Field(
         default_factory=lambda: {
-            "gas": {2025: 768.0, 2030: 571.1, 2035: 319.6, 2040: 208.3, 2045: 142.8, 2050: 102.5},
-            "oil": {2025: 1653.9, 2030: 919.6, 2035: 357.5, 2040: 186.2, 2045: 114.3, 2050: 79.2},
-            "coal": {2025: 289.7, 2030: 256.0, 2035: 200.4, 2040: 159.1, 2045: 135.7, 2050: 127.8},
-            "lignite": {2025: 255.0, 2030: 259.3, 2035: 270.3, 2040: 284.6, 2045: 297.9, 2050: 303.8},
+            "gas": {2025: 768.0, 2030: 665.0, 2035: 474.3, 2040: 313.2, 2045: 177.4, 2050: 102.5},
+            "oil": {2025: 1653.9, 2030: 1447.8, 2035: 1031.9, 2040: 600.9, 2045: 242.9, 2050: 79.2},
+            "coal": {2025: 289.7, 2030: 272.8, 2035: 232.7, 2040: 184.8, 2045: 144.6, 2050: 127.8},
+            "lignite": {2025: 255.0, 2030: 260.1, 2035: 272.2, 2040: 286.6, 2045: 298.7, 2050: 303.8},
         },
-        description="Supply cap per carrier in MtCO2-eq per year: EU-safe domestic potential (Norway+UK for gas and oil) divided by a self-sufficiency fraction that rises from today's value (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to 100% in 2050 (smoothstep).",
+        description="Supply cap per carrier in MtCO2-eq per year: EU-safe production (Norway+UK for gas and oil, EU coal and lignite) plus an import allowance that moves from today's imports (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to the 2050 target (here 100% self-sufficiency) along a smoothstep.",
     )
     electricity: ElectricityConfig = Field(
         default_factory=ElectricityConfig,

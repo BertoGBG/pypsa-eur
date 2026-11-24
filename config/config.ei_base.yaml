@@ -80,16 +80,18 @@ sector:
   unsustainable_biomass_upstream_emissions: true
   industry_heat:
     enable: true
-  # heat_industry default: import cap per year, 50 % self-sufficiency in
-  # 2025 -> 100 % by 2050 (weekend runs 4 and 8 rely on it). Only used when
-  # solid_biomass_import: enable is true.
+  # solid biomass import cap (TWh/yr), 100 % self-sufficiency in 2050:
+  # starts at today's extra-EU imports (21.5 TWh of pellets in 2024) and
+  # declines with the total fossil import allowance (import-allowance
+  # formulation, text_docs/scripts/build_energy_limit_per_carrier.py).
+  # Only used when solid_biomass_import: enable is true.
   solid_biomass_import:
     max_amount:
-      2025: 1609.3
-      2030: 1232.6
-      2035: 689.6
-      2040: 291.9
-      2045: 75.1
+      2025: 21.5
+      2030: 19.3
+      2035: 13.9
+      2040: 7.6
+      2045: 2.2
       2050: 0.0
 
 # heat_industry had fossil_limit on by default; every run config below set it

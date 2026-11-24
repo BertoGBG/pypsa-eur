@@ -11089,7 +11089,7 @@
         },
         "type": "object"
       },
-      "description": "Supply cap per carrier in MtCO2-eq per year: EU-safe domestic potential (Norway+UK for gas and oil) divided by a self-sufficiency fraction that rises from today's value (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to 100% in 2050 (smoothstep).",
+      "description": "Supply cap per carrier in MtCO2-eq per year: EU-safe production (Norway+UK for gas and oil, EU coal and lignite) plus an import allowance that moves from today's imports (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to the 2050 target (here 100% self-sufficiency) along a smoothstep.",
       "type": "object"
     },
     "electricity": {
