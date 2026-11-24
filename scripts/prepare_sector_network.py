@@ -1371,6 +1371,31 @@ def add_perennials(
     )
 
 
+def free_unsustainable_solid_biomass(n):
+    """
+    Let the optimisation choose how much of the unsustainable solid biomass
+    to use, up to the available amount.
+
+    By default the unsustainable solid biomass (today's use of fuelwood and
+    other solid biofuels that is phased out) must be used in full: the
+    generators have ``e_sum_min = e_sum_max``, or, with spatially resolved
+    biomass but no biomass transport, a global constraint fixes the total
+    use (``sense="=="``). Here the lower bound is removed, so it is treated
+    like the sustainable solid biomass, as a maximum potential.
+
+    Parameters
+    ----------
+    n : pypsa.Network
+        Network with the unsustainable solid biomass already added.
+    """
+    gens = n.generators.index[n.generators.carrier == "unsustainable solid biomass"]
+    if not gens.empty:
+        n.generators.loc[gens, "e_sum_min"] = 0.0
+    if "unsustainable biomass limit" in n.global_constraints.index:
+        n.global_constraints.loc["unsustainable biomass limit", "sense"] = "<="
+    logger.info("Unsustainable solid biomass: free use up to the available amount.")
+
+
 def free_unsustainable_bioliquids(
     n,
     biomass_potentials_file=None,
@@ -8705,6 +8730,9 @@ def main(
                 "sequestration_co2_credited"
             ],
         )
+
+    if params.biomass.get("free_use_unsustainable_solid_biomass", False):
+        free_unsustainable_solid_biomass(n)
 
     if params.biomass["unsustainable_bioliquids"].get("free_use", False):
         couple = bool(options.get("perennials"))

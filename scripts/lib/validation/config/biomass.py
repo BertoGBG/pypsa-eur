@@ -124,6 +124,10 @@ class BiomassConfig(BaseModel):
         },
         description="Share determines phase-in of ENSPRESO biomass potentials.",
     )
+    free_use_unsustainable_solid_biomass: bool = Field(
+        False,
+        description="If false, the solid biomass of today's use that is phased out (`unsustainable solid biomass`) must be used in full in every planning horizon. If true, it can be used up to the available amount, like the sustainable solid biomass.",
+    )
     unsustainable_bioliquids: _UnsustainableBioliquidsConfig = Field(
         default_factory=_UnsustainableBioliquidsConfig,
         description="Properties of the unsustainable bioliquids, used to derive the 1st-generation biofuel cropland freed by their phase-out for `sector: perennials`.",

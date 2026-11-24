@@ -108,6 +108,9 @@ solving:
 # and their cropland is shared with perennialisation. Their cultivation
 # emissions are counted (sector: unsustainable_biomass_upstream_emissions).
 biomass:
+  # solid biomass of today's use (phased out by 2040) is a maximum
+  # potential, not a must-use, like the sustainable solid biomass
+  free_use_unsustainable_solid_biomass: true
   unsustainable_bioliquids:
     share_retained:
       2020: 1

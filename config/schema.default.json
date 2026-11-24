@@ -469,6 +469,11 @@
           "description": "Share determines phase-in of ENSPRESO biomass potentials.",
           "type": "object"
         },
+        "free_use_unsustainable_solid_biomass": {
+          "default": false,
+          "description": "If false, the solid biomass of today's use that is phased out (`unsustainable solid biomass`) must be used in full in every planning horizon. If true, it can be used up to the available amount, like the sustainable solid biomass.",
+          "type": "boolean"
+        },
         "unsustainable_bioliquids": {
           "description": "Configuration for `biomass.unsustainable_bioliquids` settings.",
           "properties": {
@@ -13214,6 +13219,11 @@
           },
           "description": "Share determines phase-in of ENSPRESO biomass potentials.",
           "type": "object"
+        },
+        "free_use_unsustainable_solid_biomass": {
+          "default": false,
+          "description": "If false, the solid biomass of today's use that is phased out (`unsustainable solid biomass`) must be used in full in every planning horizon. If true, it can be used up to the available amount, like the sustainable solid biomass.",
+          "type": "boolean"
         },
         "unsustainable_bioliquids": {
           "description": "Configuration for `biomass.unsustainable_bioliquids` settings.",

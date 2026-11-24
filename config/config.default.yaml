@@ -664,6 +664,7 @@ biomass:
     2040: 1
     2045: 1
     2050: 1
+  free_use_unsustainable_solid_biomass: false
   unsustainable_bioliquids:
     MWh_bioethanol_per_tbioethanol: 7.447
     MWh_biodiesel_per_tbiodiesel: 10.19
