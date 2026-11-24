@@ -13,6 +13,16 @@
 
 foresight: myopic
 
+# Weather year 2024 (includes the January 2024 cold spell). The cutout is
+# the pre-built one from the PyPSA data archive (ERA5 + SARAH3). 2024 is a
+# leap year: 29 February is dropped (snapshots: drop_leap_day, default).
+snapshots:
+  start: "2024-01-01 00:00"
+  end: "2024-12-31 23:00"
+
+atlite:
+  default_cutout: europe-2024-sarah3-era5
+
 planning_horizons:
 - 2025
 - 2030
@@ -46,8 +56,9 @@ sector:
   biochar:
     enable: true
     heat_output: waste
-  biomethanation_biogas: true
-  biomethanation_CO2: true
+  # biomethanation off: never selected in the test runs
+  biomethanation_biogas: false
+  biomethanation_CO2: false
   # Lever 1, CO2 infrastructure: base profile (PyPSA-Eur default, 250 Mt
   # plateau). High profile = x1.6 (400 Mt plateau), set per scenario.
   # Note: base profile + business-as-usual LULUCF has no solution in 2050.
