@@ -48,6 +48,7 @@ from scripts.prepare_perfect_foresight import apply_phase_outs
 from scripts.prepare_perfect_foresight import main as prepare_perfect_foresight
 from scripts.prepare_sector_network import (
     add_energy_limit_per_carrier,
+    add_like_for_like,
     add_fossil_fuel_limit,
     main as add_sector_components,
 )
@@ -142,10 +143,16 @@ if __name__ == "__main__":
             "fossil_limit_values",
             "energy_limit_per_carrier",
             "energy_limit_per_carrier_values",
+            "like_for_like",
+            "like_for_like_values",
+            "lulucf_deviation",
+            "lulucf_deviation_values",
         ]
     }
     add_fossil_fuel_limit(n, costs, fossil_limits, current_horizon)
     add_energy_limit_per_carrier(n, costs, fossil_limits, current_horizon)
+    # after apply_co2_budget_constraints: reads the CO2 limit of the horizon
+    add_like_for_like(n, costs, fossil_limits, current_horizon, nyears)
     sanitize_locations(n)
     n.meta["snakemake_config"] = dict(
         snakemake.config, wildcards=dict(snakemake.wildcards)

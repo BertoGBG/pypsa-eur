@@ -1217,6 +1217,88 @@ def add_import_limit_constraint(n: pypsa.Network, sns: pd.DatetimeIndex) -> None
     n.model.add_constraints(lhs, limit_sense, rhs, name="import_limit")
 
 
+def add_like_for_like_constraint(n: pypsa.Network, sns: pd.DatetimeIndex) -> None:
+    """
+    Like-for-like constraint G - D <= E (see add_like_for_like in
+    prepare_sector_network). All terms are totals over the modelled period
+    in tCO2.
+
+    G: fossil generators (carriers tagged in n.carriers.like_for_like_co2_eq)
+       times their CO2 content, plus the process-emissions load (constant) and
+       the calcination CO2 of the cement kiln (its port to the cement emission
+       bus). Flows from other links into the process-emissions bus (e.g.
+       naphtha) are not counted, their carbon is counted as fossil supply.
+    D: flow through the "co2 sequestered" links and the rock weathering links.
+    """
+    glcs = n.global_constraints.query('type == "like_for_like"')
+    if glcs.empty:
+        return
+    if n._multi_invest:
+        logger.warning("like_for_like | not implemented for perfect foresight. Skipped.")
+        return
+    name, glc = next(iter(glcs.iterrows()))
+    w = n.snapshot_weightings.loc[sns, "generators"]
+
+    def coeff(var, index, values):
+        dim = [d for d in var.dims if d != "snapshot"][0]
+        return xr.DataArray(np.asarray(values, dtype=float), coords={dim: list(index)}, dims=dim)
+
+    terms = []
+    # fossil supply
+    co2eq = n.carriers.get(glc.carrier_attribute, pd.Series(dtype=float)).fillna(0.0)
+    gens = n.generators.index[n.generators.carrier.map(co2eq).fillna(0.0) > 0]
+    if not gens.empty:
+        p = n.model["Generator-p"].loc[sns, gens]
+        eps = n.generators.loc[gens, "carrier"].map(co2eq)
+        terms.append((p * coeff(p, gens, eps) * w).sum())
+
+    # cement kiln calcination
+    kilns = n.links.index[n.links.carrier == "cement kiln"]
+    calc = pd.Series(0.0, index=kilns)
+    for k in range(1, 10):
+        col = f"bus{k}"
+        if col not in n.links.columns:
+            break
+        on = n.links.loc[kilns, col].astype(str).str.endswith("cement emission")
+        eff = n.links.loc[kilns, "efficiency" if k == 1 else f"efficiency{k}"]
+        calc = calc.where(~on, eff)
+    kilns = calc.index[calc > 0]
+    if not kilns.empty:
+        p = n.model["Link-p"].loc[sns, kilns]
+        terms.append((p * coeff(p, kilns, calc[kilns]) * w).sum())
+
+    # durable storage
+    seq = n.links.index[n.links.carrier == "co2 sequestered"]
+    erw = n.links.index[n.links.carrier == "co2 rock weathering"]
+    for idx in [seq, erw]:
+        if not idx.empty:
+            terms.append(-(n.model["Link-p"].loc[sns, idx] * w).sum())
+
+    if not terms:
+        logger.warning("like_for_like | no components found. Skipped.")
+        return
+    lhs = terms[0]
+    for t in terms[1:]:
+        lhs = lhs + t
+
+    # process-emissions load: CO2 injected into the bus (negative p_set)
+    loads = n.loads.index[n.loads.carrier == "process emissions"]
+    proc = 0.0
+    if not loads.empty:
+        p_set = n.get_switchable_as_dense("Load", "p_set", sns)[loads]
+        proc = float(-(p_set.mul(w, axis=0)).sum().sum())
+    rhs = glc.constant - proc
+
+    nyears = w.sum() / 8760
+    logger.info(
+        f"like_for_like | fossil generators {len(gens)}, cement kilns {len(kilns)}, "
+        f"sequestration links {len(seq)}, rock weathering links {len(erw)}; "
+        f"process-emissions load {proc / 1e6 / nyears:.1f} MtCO2/yr; "
+        f"limit {glc.constant / 1e6 / nyears:.1f} MtCO2/yr."
+    )
+    n.model.add_constraints(lhs <= rhs, name=f"GlobalConstraint-{name}")
+
+
 def add_co2_atmosphere_constraint(
     n: pypsa.Network, snapshots: pd.DatetimeIndex
 ) -> None:
@@ -1308,6 +1390,7 @@ def extra_functionality(
         add_retrofit_gas_boiler_constraint(n, snapshots)
     else:
         add_co2_atmosphere_constraint(n, snapshots)
+    add_like_for_like_constraint(n, snapshots)
 
     egs = config["sector"]["enhanced_geothermal"]
     if egs["enable"] and egs["flexible"]:

@@ -160,6 +160,12 @@ energy_limit_per_carrier_values:
     2045: 298.7
     2050: 303.8
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#like_for_like_cf
+like_for_like: false
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#like_for_like_values_cf
+like_for_like_values:
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration/#electricity_cf
 electricity:
   voltages:

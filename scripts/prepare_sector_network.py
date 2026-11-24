@@ -2187,6 +2187,77 @@ def add_fossil_fuel_limit(n, costs, config, investment_year):
     )
 
 
+def add_like_for_like(n, costs, config, investment_year, nyears=1.0):
+    """
+    Prepare the like-for-like constraint G - D <= E (enforced in solve_network).
+
+    G is the geological carbon used by the system: the supply of fossil
+    carriers at the wellhead/mine (gas, oil, coal, lignite) times their CO2
+    content, plus the fossil process CO2 of industry before capture (the
+    exogenous process-emissions load and the calcination CO2 of the cement
+    kiln). D is the durable storage: CO2 injected into geological storage,
+    whatever its origin, plus CO2 removed by enhanced rock weathering. Biochar,
+    afforestation and perennialisation do not enter D. E is the CO2 limit of the
+    horizon without the LULUCF correction (or `like_for_like_values`), so in the
+    net-zero year the constraint is the strict condition G <= D.
+
+    Here the CO2 content of each fossil carrier is stored in
+    n.carriers["like_for_like_co2_eq"] and E (tCO2 over the modelled period) as
+    a GlobalConstraint of the custom type "like_for_like". Must be called after
+    the CO2 budget constraints have been added.
+    """
+    if not config.get("like_for_like", False):
+        return
+
+    values = config.get("like_for_like_values")
+    if values:
+        E_t = get(values, investment_year)
+        if E_t is None:
+            logger.warning(
+                f"like_for_like | no value in like_for_like_values for "
+                f"{investment_year}. Skipping constraint."
+            )
+            return
+        constant = E_t * 1e6 * nyears
+        source = "like_for_like_values"
+    else:
+        names = [
+            i for i in n.global_constraints.index if str(i).startswith("CO2Limit-upper")
+        ]
+        if not names:
+            logger.warning(
+                "like_for_like | no CO2Limit-upper constraint in the network and no "
+                "like_for_like_values. Skipping constraint."
+            )
+            return
+        constant = n.global_constraints.at[names[0], "constant"]
+        if config.get("lulucf_deviation", False):
+            deviation = get(config.get("lulucf_deviation_values", {}), investment_year)
+            if deviation:
+                # undo the LULUCF correction of apply_co2_budget_constraints
+                constant += deviation * 1e6 * nyears
+        source = f"{names[0]} without LULUCF correction"
+
+    intensities = _resolve_fossil_co2_intensities(n, costs, label="like_for_like | ")
+    n.carriers["like_for_like_co2_eq"] = 0.0
+    for carrier, val in intensities.items():
+        n.carriers.at[carrier, "like_for_like_co2_eq"] = val
+
+    logger.info(
+        f"Adding like-for-like constraint for {investment_year}: fossil carbon + "
+        f"process CO2 - (sequestered + rock weathering) <= "
+        f"{constant / 1e6 / nyears:.1f} MtCO2/yr ({source})."
+    )
+    n.add(
+        "GlobalConstraint",
+        "like_for_like",
+        type="like_for_like",
+        carrier_attribute="like_for_like_co2_eq",
+        sense="<=",
+        constant=constant,
+    )
+
+
 def add_energy_limit_per_carrier(n, costs, config, investment_year):
     """
     Add independent per-carrier global constraints on fossil-fuel supply,

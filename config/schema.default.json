@@ -11092,6 +11092,26 @@
       "description": "Supply cap per carrier in MtCO2-eq per year: EU-safe production (Norway+UK for gas and oil, EU coal and lignite) plus an import allowance that moves from today's imports (Eurostat nrg_bal_c 2024, UK from DESNZ DUKES) to the 2050 target (here 100% self-sufficiency) along a smoothstep.",
       "type": "object"
     },
+    "like_for_like": {
+      "default": false,
+      "description": "Like-for-like constraint G - D <= E: geological carbon used (fossil fuel supply at the wellhead/mine plus fossil process CO2 of industry, before capture) minus durable storage (CO2 sequestered plus enhanced rock weathering) must stay below the CO2 limit of the climate path without the LULUCF correction. Biochar, afforestation and perennialisation do not count. Myopic/overnight only (add_like_for_like in prepare_sector_network, enforced in solve_network).",
+      "type": "boolean"
+    },
+    "like_for_like_values": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Right-hand side E of the like-for-like constraint in MtCO2 per year. If null, the CO2 limit of the planning horizon without the LULUCF correction is used, so the constraint becomes the strict condition G <= D in the net-zero year."
+    },
     "electricity": {
       "description": "Configuration for `electricity` settings.",
       "properties": {

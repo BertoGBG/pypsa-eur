@@ -338,6 +338,8 @@ rule compose_network:
         energy_limit_per_carrier_values=config_provider(
             "energy_limit_per_carrier_values"
         ),
+        like_for_like=config_provider("like_for_like"),
+        like_for_like_values=config_provider("like_for_like_values"),
         adjustments=config_provider("adjustments"),
         nice_names=config_provider("plotting", "nice_names"),
         tech_colors=config_provider("plotting", "tech_colors"),
