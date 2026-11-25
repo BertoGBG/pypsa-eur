@@ -59,6 +59,8 @@ sector:
   # biomethanation off: never selected in the test runs
   biomethanation_biogas: false
   biomethanation_CO2: false
+  # vehicle-to-grid off (2026-11-25); smart charging (bev_dsm) stays on
+  v2g: false
   # Lever 1, CO2 infrastructure: base profile (PyPSA-Eur default, 250 Mt
   # plateau). High profile = x1.6 (400 Mt plateau), set per scenario.
   # Note: base profile + business-as-usual LULUCF has no solution in 2050.
