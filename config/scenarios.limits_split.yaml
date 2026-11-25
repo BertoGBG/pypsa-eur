@@ -19,8 +19,9 @@
 #                when M = 0 (autarky per carrier)
 #   limits_share_*: old share formulation (curve A); limits_limitcase_ref_*:
 #                limit case D1 (kappa = 1, reference path), same two splits
-#   *_lulucfwnp_*: reference path corrected for the weak-new-policy LULUCF
-#                shortfall (64 Mt in 2025, 127 Mt from 2030); B and D1 re-derived
+#   *_lulucf_*:  reference path corrected for the shortfall of the LULUCF sink
+#                (lulucf_deviation_values: EEA 2026, Member State projections
+#                with additional measures); B and D1 re-derived
 #   biomass:     imports 21.5 TWh (2024) x M(t)/M(2025)
 #   climate_19:  1.9 C path, Victoria et al. (2022) method, net zero in 2050,
 #                as fractions of 1990 (4603.6 MtCO2)
@@ -137,34 +138,34 @@ limits_limitcase_ref_free:
     solid_biomass_import:
       enable: true
       max_amount: {2025: 21.5, 2030: 3.2, 2035: 0.3, 2040: 0.0, 2045: 0.0, 2050: 0.0}
-limits_tight_lulucfwnp_pace:
+limits_tight_lulucf_pace:
   fossil_limit: true
-  fossil_limit_values: {2025: 2849.4, 2030: 1874.5, 2035: 953.2, 2040: 734.4, 2045: 671.3,
+  fossil_limit_values: {2025: 2859.0, 2030: 1932.0, 2035: 984.1, 2040: 734.4, 2045: 671.3,
     2050: 613.2}
   energy_limit_per_carrier: true
   energy_limit_per_carrier_values:
-    gas: {2025: 732.2, 2030: 489.5, 2035: 239.7, 2040: 169.2, 2045: 134.9, 2050: 102.5}
-    oil: {2025: 1537.8, 2030: 877.9, 2035: 269.9, 2040: 133.6, 2045: 104.8, 2050: 79.2}
-    coal: {2025: 275.5, 2030: 203.4, 2035: 139.8, 2040: 127.8, 2045: 127.8, 2050: 127.8}
+    gas: {2025: 734.3, 2030: 501.9, 2035: 246.3, 2040: 169.2, 2045: 134.9, 2050: 102.5}
+    oil: {2025: 1544.5, 2030: 918.1, 2035: 291.5, 2040: 133.6, 2045: 104.8, 2050: 79.2}
+    coal: {2025: 276.4, 2030: 208.3, 2035: 142.4, 2040: 127.8, 2045: 127.8, 2050: 127.8}
     lignite: {2025: 303.8, 2030: 303.8, 2035: 303.8, 2040: 303.8, 2045: 303.8, 2050: 303.8}
   sector:
     solid_biomass_import:
       enable: true
-      max_amount: {2025: 21.5, 2030: 11.0, 2035: 1.7, 2040: 0.0, 2045: 0.0, 2050: 0.0}
-limits_limitcase_ref_lulucfwnp_pace:
+      max_amount: {2025: 21.5, 2030: 11.6, 2035: 2.1, 2040: 0.0, 2045: 0.0, 2050: 0.0}
+limits_limitcase_ref_lulucf_pace:
   fossil_limit: true
-  fossil_limit_values: {2025: 2993.2, 2030: 997.3, 2035: 812.5, 2040: 734.4, 2045: 671.3,
+  fossil_limit_values: {2025: 2993.2, 2030: 1021.9, 2035: 812.7, 2040: 734.4, 2045: 671.3,
     2050: 613.2}
   energy_limit_per_carrier: true
   energy_limit_per_carrier_values:
-    gas: {2025: 763.2, 2030: 300.6, 2035: 209.4, 2040: 169.2, 2045: 134.9, 2050: 102.5}
-    oil: {2025: 1638.4, 2030: 264.4, 2035: 171.5, 2040: 133.6, 2045: 104.8, 2050: 79.2}
-    coal: {2025: 287.8, 2030: 128.6, 2035: 127.8, 2040: 127.8, 2045: 127.8, 2050: 127.8}
+    gas: {2025: 763.2, 2030: 305.8, 2035: 209.4, 2040: 169.2, 2045: 134.9, 2050: 102.5}
+    oil: {2025: 1638.4, 2030: 281.6, 2035: 171.7, 2040: 133.6, 2045: 104.8, 2050: 79.2}
+    coal: {2025: 287.8, 2030: 130.7, 2035: 127.8, 2040: 127.8, 2045: 127.8, 2050: 127.8}
     lignite: {2025: 303.8, 2030: 303.8, 2035: 303.8, 2040: 303.8, 2045: 303.8, 2050: 303.8}
   sector:
     solid_biomass_import:
       enable: true
-      max_amount: {2025: 21.5, 2030: 0.1, 2035: 0.0, 2040: 0.0, 2045: 0.0, 2050: 0.0}
+      max_amount: {2025: 21.5, 2030: 0.4, 2035: 0.0, 2040: 0.0, 2045: 0.0, 2050: 0.0}
 climate_19:
   co2_budget:
     upper: {2025: 0.648, 2030: 0.5661, 2035: 0.4229, 2040: 0.292, 2045: 0.1922, 2050: 0.0}

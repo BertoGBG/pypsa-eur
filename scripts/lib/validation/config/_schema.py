@@ -152,15 +152,15 @@ class ConfigSchema(BaseModel):
     )
     lulucf_deviation_values: dict[int, float] = Field(
         default_factory=lambda: {
-            2020: 0,
-            2025: 64,
-            2030: 127,
-            2035: 191,
-            2040: 254,
-            2045: 318,
-            2050: 381,
+            2020: 73.2,
+            2025: 54.4,
+            2030: 69.5,
+            2035: 96.1,
+            2040: 112.8,
+            2045: 116.7,
+            2050: 129.3,
         },
-        description="Deviation of the LULUCF sink in MtCO2/yr per year, linearly interpolated between years. 2030: -310 MtCO2 target (Regulation (EU) 2023/839) minus -183 MtCO2 WEM projection (EEA 2024 submissions, via CAP Reform 2025); 2020 assumed 0 and 2025 interpolated; 2035-2050 extrapolate the 2020-2030 slope (modelling assumption, not sourced).",
+        description="Shortfall of the EU-27 LULUCF sink against the -310 MtCO2e target of 2030 (Regulation (EU) 2023/839), held as reference to 2050, in MtCO2/yr per planning horizon. Single source: EEA (2026), Trends and projections in Europe 2026, Figure 3.2: Member State projections (2025 submissions) with additional measures (WAM) for 2030-2050 (-240, -214, -197, -193, -181 MtCO2e); 2025 from the approximated inventory (-256), 2020 from the inventory (-237).",
     )
     fossil_limit: bool = Field(
         False,
