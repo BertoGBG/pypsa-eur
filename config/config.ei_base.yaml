@@ -59,17 +59,19 @@ sector:
   # biomethanation off: never selected in the test runs
   biomethanation_biogas: false
   biomethanation_CO2: false
-  # Lever 1, CO2 infrastructure: base profile (PyPSA-Eur default, 250 Mt
-  # plateau). High profile = x1.6 (400 Mt plateau), set per scenario.
-  # Note: base profile + business-as-usual LULUCF has no solution in 2050.
+  # CO2 storage, base (2026-11-26): 400 MtCO2/yr from 2045 (PyPSA-Eur default
+  # path x1.6), close to the 398 Mt/yr with the EU's planned storage sites
+  # (Xiong et al. 2026). At 250 Mt the like-for-like constraint plus the
+  # storage limit dominate 2050 (CO2 price ~0 in the quick test). Sensitivity:
+  # 250 Mt/yr (PyPSA-Eur default path 0/0/40/100/180/250/250).
   co2_sequestration_potential:
     2020: 0
     2025: 0
-    2030: 40
-    2035: 100
-    2040: 180
-    2045: 250
-    2050: 250
+    2030: 64
+    2035: 160
+    2040: 288
+    2045: 400
+    2050: 400
   # Lever 2, land transport: base = PyPSA-Eur default electric shares
   # (5/20/45/70/85/100 %), consistent with the EU 2035 ICE sales ban and a
   # 15-year fleet turnover. Fast case set per scenario.
